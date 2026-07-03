@@ -4,7 +4,7 @@ import { Ball, stepBall, BALL_RADIUS } from './physics.js';
 import { Stage } from './stage.js';
 import { LEVELS, WORLDS, starThresholds } from './levels.js';
 import { getCharacter, buildCharacterMesh, animateCharacter } from './characters.js';
-import { pollInput, pollInputDuel, initTouch, clearInput, onPause } from './input.js';
+import { pollInput, pollInputDuel, initTouch, clearInput, onPause, onRestart, requestTiltPermission } from './input.js';
 import { collideBalls, Ghost, DuelNet } from './duel.js';
 import { UI } from './ui.js';
 import { getSave, save, addBananas, recordResult, unlockNextLevel } from './save.js';
@@ -192,6 +192,9 @@ function loadStage(index, { resetLives = false, keepNet = false } = {}) {
   UI.clear();
   UI.hudVisible(true);
   UI.flashMessage('READY...', 0);
+  UI.setExtra(document.body.classList.contains('touch')
+    ? 'JOYSTICK roll · JUMP · SKILL'
+    : 'WASD roll · SPACE jump · SHIFT/F skill · Q/E camera · R restart');
   sfx.ready();
   if (level.isRush) {
     G.rushDir = new RushDirector({
@@ -683,9 +686,12 @@ function showNetDuelResults() {
 const camTarget = new THREE.Vector3();
 function updateCamera(dt, input) {
   const b = G.ball;
+  // manual camera rotate (Q/E, right stick, shoulder buttons) overrides assist
+  const camX = (input && input.camX) || 0;
+  if (Math.abs(camX) > 0.04) G.camYaw -= camX * dt * 2.6;
   // steer camera yaw toward travel direction when moving
   const hs = Math.hypot(b.vel.x, b.vel.z);
-  if (getSave().settings.camAssist && hs > 2.5 && G.state === 'play') {
+  if (Math.abs(camX) <= 0.04 && getSave().settings.camAssist && hs > 2.5 && G.state === 'play') {
     const travelYaw = Math.atan2(-b.vel.x, -b.vel.z);
     let d = travelYaw - G.camYaw;
     while (d > Math.PI) d -= Math.PI * 2;
@@ -992,6 +998,23 @@ UI.on('quit', () => {
 UI.on('next', () => {
   const next = Math.min(G.levelIndex + 1, LEVELS.length - 1);
   loadStage(next);
+});
+
+onRestart(() => {
+  if (G.netDuel) return;   // never abandon a live online duel by accident
+  if (G.state === 'play' || G.state === 'countdown') {
+    if (G.mode === 'rush') startRushMode();
+    else loadStage(G.levelIndex);
+  } else if (G.state === 'duel') {
+    startDuelLocal();
+  } else if (G.state === 'target' && G.targetGame) {
+    startTargetMode();
+  }
+});
+
+UI.on('tiltToggled', async () => {
+  const ok = await requestTiltPermission();   // iOS needs an explicit grant
+  if (!ok) UI.flashMessage('TILT PERMISSION DENIED', 1500);
 });
 
 onPause(() => {

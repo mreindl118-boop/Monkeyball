@@ -72,12 +72,19 @@ join any relay by pasting its `ws://` URL in the Duel menu.
 
 ## 🎮 Controls
 
-| Action | Keyboard | Gamepad | Touch |
+| Action | Keyboard | Gamepad | Touch (Android/mobile) |
 |---|---|---|---|
-| Roll | WASD / Arrows | Left stick | Virtual joystick (left half) |
+| Roll | WASD / Arrows | Left stick | Virtual joystick (left half) or device tilt (enable in Settings) |
 | Jump | Space | A | JUMP button |
-| Skill | Shift / E | X / B | SKILL button |
+| Skill | Shift / F | X / B | SKILL button |
+| Rotate camera | Q / E | Right stick or LB/RB | camera auto-follows (toggle in Settings) |
+| Quick restart | R | — | — |
 | Pause | P / Esc | Start | ⏸ button |
+
+Local Duel: P1 = WASD + Space/Left-Shift (or gamepad 1), P2 = Arrows + Enter/Right-Shift
+(or gamepad 2). Sky Target flight: stick/WASD steers & pitches (push up to dive — invert in
+Settings), skill button fires your air ability. Every mode works with keyboard, gamepad and
+touch; menus are point-and-click/tap.
 
 ## 🚀 Run locally
 

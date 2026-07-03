@@ -68,7 +68,7 @@ export const UI = {
     s.appendChild(play); s.appendChild(shop); s.appendChild(settings);
     const sv = getSave();
     s.appendChild(el('div', 'subtitle', `Bank: <span class="banana-count">🍌 ${sv.bananaBank}</span> &nbsp;·&nbsp; Total Score: ⭐ ${sv.totalScore}`));
-    s.appendChild(el('div', 'footnote', 'WASD / Arrows / Stick to roll · SPACE jump · SHIFT skill · P pause'));
+    s.appendChild(el('div', 'footnote', 'WASD/Arrows/Stick roll · SPACE jump · SHIFT/F skill · Q/E camera · R restart · P pause · Gamepad & touch supported'));
     this.emit('previewChar', null);
     screens.appendChild(s);
   },
@@ -248,6 +248,9 @@ export const UI = {
 
     mkRow('🎮 Local Duel', 'Two players, one device, one arena. P1: WASD + Space/Shift · P2: Arrows + Enter/RShift (gamepads work too).',
       'PLAY', () => { sfx.select(); this.emit('duelLocal'); });
+    if (document.body.classList.contains('touch')) {
+      col.lastChild.querySelector('p').innerHTML += ' <b>On touch devices, plug in a keyboard or two gamepads.</b>';
+    }
 
     mkRow('🌐 Host Online', 'Create a room and share the 4-letter code with a friend.',
       'HOST', () => { sfx.select(); this.emit('duelHost'); });
@@ -410,6 +413,8 @@ export const UI = {
     mk('Music', 'music', refreshMusic);
     mk('Sound Effects', 'sfx');
     mk('Tilt Controls (mobile)', 'tilt', () => this.emit('tiltToggled'));
+    mk('Camera Assist (auto-follow)', 'camAssist');
+    mk('Invert Flight Pitch', 'invertPitch');
     const reset = el('button', 'btn secondary', '⚠ RESET SAVE');
     reset.onclick = () => { if (confirm('Wipe all progress?')) { resetSave(); sfx.denied(); this.showTitle(); } };
     col.appendChild(reset);

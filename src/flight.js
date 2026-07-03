@@ -354,7 +354,8 @@ export class TargetMode {
     const hs = Math.hypot(this.airVel.x, this.airVel.z);
 
     // pitch input: dive (y>0 = stick down? our input y: up=-1) — up-stick dives like Monkey Target
-    const dive = -input.y;   // push up on stick = nose down = speed
+    let dive = -input.y;   // push up on stick = nose down = speed
+    if (getSave().settings.invertPitch) dive = -dive;
     if (dive > 0.05) {
       this.airVel.addScaledVector(f, dive * this.fs.diveGain * dt);
       this.airVel.y -= dive * this.fs.diveGain * 0.8 * dt;

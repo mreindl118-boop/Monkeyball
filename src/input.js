@@ -8,6 +8,7 @@ let tiltVec = { x: 0, y: 0 };
 let jumpQueued = false, abilityQueued = false;
 let jumpHeldNow = false;
 let pauseCb = null;
+let restartCb = null;
 // per-player edge queues for local duels (P1 = WASD side, P2 = arrows side)
 const pq = [
   { jump: false, ability: false, jumpHeld: false },
@@ -15,17 +16,25 @@ const pq = [
 ];
 
 export function onPause(cb) { pauseCb = cb; }
+export function onRestart(cb) { restartCb = cb; }
+
+function isTyping(e) {
+  const t = e.target;
+  return t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+}
 
 window.addEventListener('keydown', (e) => {
-  if (e.repeat) return;
+  if (e.repeat || isTyping(e)) return;
   keys.add(e.code);
   if (e.code === 'Space') { jumpQueued = true; jumpHeldNow = true; pq[0].jump = true; pq[0].jumpHeld = true; }
-  if (e.code === 'ShiftLeft' || e.code === 'KeyE') { abilityQueued = true; pq[0].ability = true; }
+  if (e.code === 'ShiftLeft' || e.code === 'KeyF') { abilityQueued = true; pq[0].ability = true; }
   if (e.code === 'ShiftRight') { abilityQueued = true; pq[1].ability = true; }
   if (e.code === 'Enter' || e.code === 'NumpadEnter') { pq[1].jump = true; pq[1].jumpHeld = true; }
   if (e.code === 'Escape' || e.code === 'KeyP') pauseCb && pauseCb();
+  if (e.code === 'KeyR') restartCb && restartCb();
 });
 window.addEventListener('keyup', (e) => {
+  if (isTyping(e)) return;
   keys.delete(e.code);
   if (e.code === 'Space') { jumpHeldNow = false; pq[0].jumpHeld = false; }
   if (e.code === 'Enter' || e.code === 'NumpadEnter') pq[1].jumpHeld = false;
@@ -110,7 +119,9 @@ export async function requestTiltPermission() {
 
 // ---------------- polling ----------------
 export function pollInput() {
-  let x = 0, y = 0;
+  let x = 0, y = 0, camX = 0;
+  if (keys.has('KeyQ')) camX -= 1;
+  if (keys.has('KeyE')) camX += 1;
   if (keys.has('ArrowLeft') || keys.has('KeyA')) x -= 1;
   if (keys.has('ArrowRight') || keys.has('KeyD')) x += 1;
   if (keys.has('ArrowUp') || keys.has('KeyW')) y -= 1;
@@ -123,6 +134,10 @@ export function pollInput() {
     const gx = p.axes[0] || 0, gy = p.axes[1] || 0;
     if (Math.abs(gx) > 0.12) x += gx;
     if (Math.abs(gy) > 0.12) y += gy;
+    const rx = p.axes[2] || 0;
+    if (Math.abs(rx) > 0.15) camX += rx;
+    if (p.buttons[4]?.pressed) camX -= 1;   // shoulder buttons rotate too
+    if (p.buttons[5]?.pressed) camX += 1;
     if (p.buttons[0]?.pressed) { if (!pollInput._gpJump) { jumpQueued = true; } pollInput._gpJump = true; jumpHeldNow = true; }
     else { pollInput._gpJump = false; }
     if (p.buttons[2]?.pressed || p.buttons[1]?.pressed) { if (!pollInput._gpAb) abilityQueued = true; pollInput._gpAb = true; }
@@ -139,7 +154,7 @@ export function pollInput() {
 
   const jump = jumpQueued; jumpQueued = false;
   const ability = abilityQueued; abilityQueued = false;
-  return { x, y, jump, ability, jumpHeld: jumpHeldNow };
+  return { x, y, camX: Math.max(-1, Math.min(1, camX)), jump, ability, jumpHeld: jumpHeldNow };
 }
 
 export function clearInput() {
