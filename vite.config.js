@@ -9,6 +9,10 @@ export default defineConfig({
   },
   server: {
     host: true,
-    port: 5173
+    port: 5173,
+    proxy: {
+      // duel relay (run `npm run relay` alongside `npm run dev`)
+      '/ws': { target: 'ws://localhost:8765', ws: true }
+    }
   }
 });

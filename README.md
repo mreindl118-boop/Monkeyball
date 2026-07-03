@@ -5,7 +5,41 @@ arcade physics engine. Pick a rascal (a loving parody of a famous video-game her
 inside a transparent ball, and roll through 15 hand-crafted stages across 3 worlds — grabbing
 bananas, dodging bumpers, riding launch pads, and racing the clock to the goal gate.
 
-![worlds](https://img.shields.io/badge/worlds-3-green) ![stages](https://img.shields.io/badge/stages-15-blue) ![characters](https://img.shields.io/badge/rascals-8-yellow)
+![worlds](https://img.shields.io/badge/worlds-3-green) ![stages](https://img.shields.io/badge/stages-15-blue) ![characters](https://img.shields.io/badge/rascals-8-yellow) ![modes](https://img.shields.io/badge/modes-4-orange) ![multiplayer](https://img.shields.io/badge/multiplayer-local%20%2B%20online-red)
+
+## 🕹 Game modes
+
+- **🌴 Adventure** — the classic: 15 stages, beat the clock, reach the goal gate.
+- **🎯 Sky Target** (Monkey-Target-style) — roll down a mega launch ramp, your ball splits
+  open into wings, and you glide over the ocean grabbing air bananas & power-ups
+  (🚀 Rocket, 🪶 Feather, ✖2 Double Score, 🍯 Sticky Ball), fighting per-round **wind**,
+  then land on floating dartboard targets — your ball rolls out with real physics and the
+  ring it *stops* on is what you score. 3 flights per game; every rascal gets an
+  air-adapted signature skill (Stall Stomp, Sonic Boost, Puff Up, Wind Shield, Zap Magnet,
+  Dive Bomb, Parasol Lift, and Chrono Chomp slow-mo).
+- **🍌 Banana Rush** — 60-second arena collect-athon: respawning bananas, timed golden
+  bunches, combo chains, and 🧲/🚀/⏰ arena power-ups. Best haul is saved, and everything
+  you grab banks to the shop.
+- **⚔️ Duel (multiplayer!)**
+  - **Local** — 2 players, one device, one arena: P1 on WASD (+Space/Shift), P2 on
+    Arrows (+Enter/Right-Shift), or two gamepads. Real ball-vs-ball bumping (heavier
+    rascals shove harder), falls scatter your bananas back into the arena, most bananas wins.
+  - **Online** — host a room, share the 4-letter code, and battle a friend: parallel
+    arenas on a shared clock, with your rival rendered live as a translucent ghost and a
+    live score race in the HUD. Disconnects count as forfeits.
+
+### Online duel setup
+
+The duel relay is a tiny WebSocket room server (`server/relay.js` — no game logic, ~80 lines).
+
+```bash
+npm run host    # builds & serves the game AND the relay on :8080
+```
+
+Share `http://<your-ip>:8080` with player 2 — room codes work immediately (LAN, or the
+internet if you forward the port / host it anywhere). For development, `npm run relay`
+alongside `npm run dev` works too (vite proxies `/ws`). The Windows/Android builds can
+join any relay by pasting its `ws://` URL in the Duel menu.
 
 ## ✨ Features
 
@@ -97,6 +131,12 @@ src/audio.js          procedural WebAudio SFX + chiptune sequencer
 src/input.js          keyboard / gamepad / touch / tilt input
 src/ui.js             DOM menus (title, select, shop, results…)
 src/save.js           localStorage persistence
+src/flight.js         Sky Target mode (flight model, targets, air skills)
+src/rush.js           Banana Rush mode (arena, spawner/director)
+src/duel.js           duels: ball-vs-ball physics, net ghost, handshake
+src/net.js            WebSocket duel client
+server/relay.js       room-code relay server (npm run relay)
+server/host.js        one-command game+relay host (npm run host)
 desktop/              Electron shell (Windows packaging)
 capacitor.config.json Android (Capacitor) packaging
 ```

@@ -4,7 +4,8 @@ import { Ball, stepBall, BALL_RADIUS } from './physics.js';
 import { Stage } from './stage.js';
 import { LEVELS, WORLDS, starThresholds } from './levels.js';
 import { getCharacter, buildCharacterMesh, animateCharacter } from './characters.js';
-import { pollInput, initTouch, clearInput, onPause } from './input.js';
+import { pollInput, pollInputDuel, initTouch, clearInput, onPause } from './input.js';
+import { collideBalls, Ghost, DuelNet } from './duel.js';
 import { UI } from './ui.js';
 import { getSave, save, addBananas, recordResult, unlockNextLevel } from './save.js';
 import { sfx, playMusic, stopMusic, unlockAudio } from './audio.js';
@@ -47,11 +48,15 @@ resize();
 // ---------------- game state ----------------
 const G = {
   state: 'boot',            // menu | countdown | play | target | paused | goal | fallout | results
-  mode: 'adventure',        // adventure | target | rush
+  mode: 'adventure',        // adventure | target | rush | duel (+ netDuel overlay on rush)
   targetGame: null,
   rushDir: null,
   turboTimer: 0,
   pausedFrom: 'play',
+  afterCountdown: 'play',
+  duel: null,               // local duel: { balls, groups, chars, counts:[a,b] }
+  netDuel: null,            // online duel: { dn, ghost, peerChar, peerBananas, myFinal, peerFinal, sendT, waitT }
+  duelChars: [null, null],
   stage: null,
   ball: new Ball(),
   ballGroup: null,          // transparent shell + character
@@ -149,13 +154,26 @@ function updateConfetti(dt) {
 // ---------------- stage loading ----------------
 function disposeModes() {
   if (G.targetGame) { G.targetGame.dispose(); G.targetGame = null; }
+  if (G.duel) {
+    for (const g of G.duel.groups) if (g) scene.remove(g.group);
+    G.duel = null;
+  }
+  if (G.netDuel) {
+    if (G.netDuel.ghost) scene.remove(G.netDuel.ghost.group.group);
+    if (G.netDuel.dn) G.netDuel.dn.close();
+    G.netDuel = null;
+  }
   G.rushDir = null;
   G.turboTimer = 0;
   UI.setExtra('');
 }
 
-function loadStage(index, { resetLives = false } = {}) {
+function loadStage(index, { resetLives = false, keepNet = false } = {}) {
+  const netKeep = keepNet ? G.netDuel : null;
+  if (keepNet) G.netDuel = null;
   disposeModes();
+  if (netKeep) G.netDuel = netKeep;
+  G.afterCountdown = 'play';
   if (G.stage) G.stage.dispose();
   G.levelIndex = index;
   const level = index === -1 ? RUSH_LEVEL : LEVELS[index];
@@ -266,21 +284,22 @@ function charPhysics() {
 }
 
 // ---------------- abilities ----------------
-function useAbility() {
-  if (G.abilityCooldown > 0) return;
-  const ab = G.char.ability;
-  const b = G.ball;
+// Works on any ball/char pair so duels can have per-player skills.
+// ctx: { camYaw, setMagnet(sec), freezeTimer(sec), flash(msg) }
+function performAbility(ball, char, ctx) {
+  const ab = char.ability;
+  const b = ball;
   let used = true;
   switch (ab.id) {
     case 'stomp':
       if (b.onGroundLast) { b.vel.y = 13; }
-      else { b.vel.y = -26; G.stompArmed = true; }
+      else { b.vel.y = -26; b.stompArmed = true; }
       sfx.ability();
       break;
     case 'dash': {
       const hs = Math.hypot(b.vel.x, b.vel.z);
       if (hs > 1) { const k = (hs + 15) / hs; b.vel.x *= k; b.vel.z *= k; }
-      else { b.vel.x -= Math.sin(G.camYaw) * 15; b.vel.z -= Math.cos(G.camYaw) * 15; }
+      else { b.vel.x -= Math.sin(ctx.camYaw) * 15; b.vel.z -= Math.cos(ctx.camYaw) * 15; }
       sfx.dash();
       break;
     }
@@ -293,35 +312,46 @@ function useAbility() {
       b.vel.multiplyScalar(0.05);
       b.shielded = 2;
       sfx.ability();
-      UI.flashMessage('SHIELD!', 700);
+      ctx.flash('SHIELD!', 700);
       break;
     case 'magnet':
-      G.magnetTimer = 4;
+      ctx.setMagnet(4);
       sfx.ability();
-      UI.flashMessage('BANANA MAGNET!', 900);
+      ctx.flash('BANANA MAGNET!', 900);
       break;
     case 'pound':
       if (!b.onGroundLast) b.vel.y = -26;
       b.gripBoost = 3;
       sfx.dash();
-      UI.flashMessage('KONG QUAKE!', 900);
+      ctx.flash('KONG QUAKE!', 900);
       break;
     case 'glide':
       b.slowFall = 3.5;
       b.vel.y = Math.max(b.vel.y, 4);
-      b.vel.x -= Math.sin(G.camYaw) * 5;
-      b.vel.z -= Math.cos(G.camYaw) * 5;
+      b.vel.x -= Math.sin(ctx.camYaw) * 5;
+      b.vel.z -= Math.cos(ctx.camYaw) * 5;
       sfx.glide();
-      UI.flashMessage('GLIDE!', 700);
+      ctx.flash('GLIDE!', 700);
       break;
     case 'chomp':
-      G.timerFrozen = 4;
+      ctx.freezeTimer(4);
       sfx.ability();
-      UI.flashMessage('TIME FROZEN!', 1000);
+      ctx.flash('TIME FROZEN!', 1000);
       break;
     default: used = false;
   }
-  if (used) G.abilityCooldown = ab.cooldown;
+  return used;
+}
+
+function useAbility() {
+  if (G.abilityCooldown > 0) return;
+  const used = performAbility(G.ball, G.char, {
+    camYaw: G.camYaw,
+    setMagnet: (s) => { G.magnetTimer = s; },
+    freezeTimer: (s) => { G.timerFrozen = s; },
+    flash: (m, ms) => UI.flashMessage(m, ms)
+  });
+  if (used) G.abilityCooldown = G.char.ability.cooldown;
 }
 
 // ---------------- level end ----------------
@@ -379,6 +409,284 @@ function finishFallOut() {
   }
 }
 
+// ---------------- LOCAL DUEL (two players, one device) ----------------
+function startDuelLocal() {
+  G.mode = 'duel';
+  disposeModes();
+  if (G.stage) G.stage.dispose();
+  G.stage = new Stage(scene, RUSH_LEVEL, WORLDS[0]);
+  if (G.ballGroup) { scene.remove(G.ballGroup.group); G.ballGroup = null; }
+
+  const chars = [getCharacter(G.duelChars[0]), getCharacter(G.duelChars[1])];
+  const balls = [new Ball(), new Ball()];
+  const groups = [makeBallGroup(chars[0]), makeBallGroup(chars[1])];
+  balls[0].reset([-2.5, 1, 6]);
+  balls[1].reset([2.5, 1, 6]);
+  for (const g of groups) scene.add(g.group);
+  G.duel = { balls, groups, chars, counts: [0, 0], cds: [0, 0] };
+
+  G.timeLeft = RUSH_TIME;
+  G.timerFrozen = 0;
+  G.bananasGot = 0;
+  G.score = 0;
+  G.camYaw = 0;
+  G.rushDir = new RushDirector({
+    stage: G.stage, ui: UI,
+    addTime: (s) => { G.timeLeft += s; },
+    setTurbo: (s, i) => { G.duel.balls[i].turboT = s; },
+    setMagnet: (s, i) => { G.duel.balls[i].magnetT = s; }
+  });
+  clearInput();
+  playMusic('jungle');
+  UI.clear();
+  UI.hudVisible(true);
+  UI.flashMessage('READY...', 0);
+  sfx.ready();
+  G.afterCountdown = 'duel';
+  setState('countdown');
+  G.countdownT = 2.2;
+}
+
+function duelPhysFor(char, ball) {
+  const st = char.stats;
+  const phys = {
+    accel: (15 + st.speed * 1.7) * (ball.turboT > 0 ? 1.65 : 1),
+    traction: 0.9 + st.traction * 0.27,
+    jumpVel: 6.4 + st.jump * 0.55,
+    weightFactor: st.weight / 10
+  };
+  return phys;
+}
+
+function duelCameraAndSync(dt, t, inputs) {
+  const [b0, b1] = G.duel.balls;
+  const mx = (b0.pos.x + b1.pos.x) / 2, mz = (b0.pos.z + b1.pos.z) / 2;
+  const sep = b0.pos.distanceTo(b1.pos);
+  const dist = Math.max(11, sep * 0.75 + 8);
+  camera.position.lerp(camTarget.set(mx, dist * 0.72, mz + dist), Math.min(1, dt * 5));
+  camera.lookAt(mx, 0.5, mz);
+  sun.position.set(mx + 18, 30, mz + 14);
+  sun.target.position.set(mx, 0, mz);
+  for (let i = 0; i < 2; i++) {
+    const ball = G.duel.balls[i], bg = G.duel.groups[i];
+    bg.group.position.copy(ball.pos);
+    const spinLen = ball.spin.length();
+    if (spinLen > 0.01) {
+      spinAxis.copy(ball.spin).normalize();
+      spinQ.setFromAxisAngle(spinAxis, spinLen * dt);
+      bg.shell.quaternion.premultiply(spinQ);
+    }
+    const hs = Math.hypot(ball.vel.x, ball.vel.z);
+    if (hs > 1.2) {
+      const yaw = Math.atan2(ball.vel.x, ball.vel.z);
+      let d = yaw - bg.built.group.rotation.y;
+      while (d > Math.PI) d -= Math.PI * 2;
+      while (d < -Math.PI) d += Math.PI * 2;
+      bg.built.group.rotation.y += d * Math.min(1, dt * 8);
+    }
+    const mode = G.state === 'results' ? 'win' : (!ball.onGroundLast ? 'air' : hs > 1.5 ? 'roll' : 'idle');
+    animateCharacter(bg.built, t + i * 1.7, mode, hs);
+  }
+}
+
+function updateDuel(dt, t) {
+  const inputs = pollInputDuel();
+  const d = G.duel;
+  events.length = 0;
+
+  for (let i = 0; i < 2; i++) {
+    const ball = d.balls[i], char = d.chars[i], input = inputs[i];
+    ball.turboT = Math.max(0, (ball.turboT || 0) - dt);
+    ball.magnetT = Math.max(0, (ball.magnetT || 0) - dt);
+    d.cds[i] = Math.max(0, d.cds[i] - dt);
+    if (input.ability && d.cds[i] <= 0) {
+      const used = performAbility(ball, char, {
+        camYaw: 0,
+        setMagnet: (s) => { ball.magnetT = s; },
+        freezeTimer: (s) => { G.timerFrozen = s; },
+        flash: (m, ms) => UI.flashMessage(`P${i + 1} ${m}`, ms)
+      });
+      if (used) d.cds[i] = char.ability.cooldown;
+    }
+    stepBall(ball, Math.min(dt, 1 / 30), {
+      solids: G.stage.solids, bumpers: G.stage.bumpers,
+      input, camYaw: 0, events, ...duelPhysFor(char, ball)
+    });
+    if (ball.stompArmed && ball.onGround) {
+      ball.vel.y = 16;
+      ball.stompArmed = false;
+      sfx.bounce();
+    }
+    // magnet pull toward this player
+    if (ball.magnetT > 0) {
+      for (const bn of G.stage.bananas) {
+        if (bn.taken) continue;
+        const dist = bn.pos.distanceTo(ball.pos);
+        if (dist < 7 && dist > 0.1) { bn.pos.lerp(ball.pos, Math.min(1, dt * 5)); bn.mesh.position.copy(bn.pos); }
+      }
+    }
+    // pickups
+    for (const bn of G.stage.bananas) {
+      if (bn.taken) continue;
+      if (bn.pos.distanceTo(ball.pos) < bn.r) {
+        bn.taken = true;
+        bn.mesh.visible = false;
+        d.counts[i] += bn.value;
+        G.rushDir.onBananaCollected(bn, i);
+        if (bn.value > 1) { sfx.bunch(); UI.flashMessage(`P${i + 1} BUNCH! +10`, 700); }
+        else sfx.banana();
+      }
+    }
+    // fell off: respawn & drop some loot back into the arena
+    if (ball.pos.y < G.stage.fallY) {
+      const dropped = Math.min(3, d.counts[i]);
+      d.counts[i] -= dropped;
+      for (let k = 0; k < dropped; k++) G.rushDir.spawnBanana();
+      ball.reset([i === 0 ? -2.5 : 2.5, 1, 6]);
+      sfx.fall();
+      UI.flashMessage(`P${i + 1} FELL! -${dropped} 🍌`, 900);
+    }
+  }
+
+  // ball-vs-ball bumping
+  if (collideBalls(d.balls[0], d.balls[1], d.chars[0].stats.weight / 10, d.chars[1].stats.weight / 10)) {
+    sfx.bumper();
+  }
+  for (const e of events) if (e.type === 'bumper') sfx.bumper();
+
+  G.rushDir.update(dt, [d.balls[0].pos, d.balls[1].pos]);
+
+  // timer
+  if (G.timerFrozen > 0) G.timerFrozen -= dt;
+  else {
+    G.timeLeft -= dt;
+    if (G.timeLeft <= 0) { G.timeLeft = 0; endDuelLocal(); return; }
+  }
+
+  G.stage.root.rotation.x = 0; G.stage.root.rotation.z = 0;
+  duelCameraAndSync(dt, t, inputs);
+
+  UI.updateHUD({
+    time: G.timeLeft, bananas: d.counts[0], lives: 2, score: d.counts[1],
+    speed: Math.hypot(d.balls[0].vel.x, d.balls[0].vel.z),
+    abilityReady: d.cds[0] <= 0 || d.cds[1] <= 0,
+    abilityName: `P1 ${d.cds[0] <= 0 ? '✓' : '…'} · P2 ${d.cds[1] <= 0 ? '✓' : '…'}`,
+    timerFrozen: G.timerFrozen > 0
+  });
+  UI.setExtra(`🔴 ${d.chars[0].name} ${d.counts[0]} — ${d.counts[1]} ${d.chars[1].name} 🔵`);
+}
+
+function endDuelLocal() {
+  const d = G.duel;
+  stopMusic();
+  sfx.goal();
+  addBananas(Math.max(d.counts[0], d.counts[1]));   // winner's haul goes to the shared bank
+  const winner = d.counts[0] === d.counts[1] ? null : (d.counts[0] > d.counts[1] ? 0 : 1);
+  setState('results');
+  UI.hudVisible(false);
+  UI.showModeResults({
+    title: winner === null ? 'DRAW!' : `P${winner + 1} WINS!`,
+    subtitle: winner === null ? 'Perfectly balanced.' : `${d.chars[winner].name} takes the crown 👑`,
+    newBest: false,
+    lines: [
+      [`P1 — ${d.chars[0].name}`, `🍌 ${d.counts[0]}`],
+      [`P2 — ${d.chars[1].name}`, `🍌 ${d.counts[1]}`],
+      ['Banked to Shop', `🍌 +${Math.max(d.counts[0], d.counts[1])}`]
+    ]
+  });
+}
+
+// ---------------- ONLINE DUEL ----------------
+function relayUrl() {
+  const custom = (getSave().settings.relayUrl || '').trim();
+  return custom || undefined;   // undefined -> same-origin /ws
+}
+
+function beginOnlineDuel(asHost, code) {
+  G.mode = 'netduel';
+  const myCharId = getSave().selectedChar;
+  const dn = new DuelNet({
+    myCharId,
+    onCode: (roomCode) => UI.showHostWait(roomCode),
+    onStart: (peerCharId) => startDuelOnlinePlay(peerCharId),
+    onState: (m) => {
+      if (!G.netDuel) return;
+      G.netDuel.ghost && G.netDuel.ghost.push(m.p);
+      G.netDuel.peerBananas = m.b;
+    },
+    onEnd: (m) => {
+      if (!G.netDuel) return;
+      G.netDuel.peerFinal = m.b;
+      if (G.state === 'netwait') showNetDuelResults();
+    },
+    onPeerLeft: () => {
+      if (!G.netDuel) return;
+      if (G.state === 'play' || G.state === 'countdown' || G.state === 'netwait') {
+        G.netDuel.peerFinal = G.netDuel.peerBananas || 0;
+        G.netDuel.forfeit = true;
+        UI.flashMessage('RIVAL LEFT!', 1200);
+        endRushOnline();
+      } else {
+        UI.showNetError('Your rival disconnected.');
+      }
+    },
+    onError: (reason) => { disposeModes(); UI.showNetError(reason); }
+  });
+  G.netDuel = { dn, ghost: null, peerChar: null, peerBananas: 0, peerFinal: null, sendT: 0, waitT: 0, forfeit: false };
+  const url = relayUrl();
+  const p = asHost ? dn.host(url) : dn.join(url, code);
+  p.catch((e) => { disposeModes(); UI.showNetError(e.message || 'Could not connect'); });
+  UI.showConnecting(asHost ? 'Creating room…' : `Joining ${code}…`);
+}
+
+function startDuelOnlinePlay(peerCharId) {
+  const nd = G.netDuel;
+  nd.peerChar = getCharacter(peerCharId || 'marco');
+  G.mode = 'netduel';
+  loadStage(-1, { resetLives: true, keepNet: true });
+  // ghost rival (no collision — parallel arenas, same clock)
+  nd.ghost = new Ghost(makeBallGroup(nd.peerChar));
+  nd.ghost.group.group.traverse(o => { if (o.material) { o.material.transparent = true; o.material.opacity = Math.min(o.material.opacity ?? 1, 0.5); } });
+  scene.add(nd.ghost.group.group);
+}
+
+function endRushOnline() {
+  const nd = G.netDuel;
+  addBananas(G.bananasGot);
+  nd.dn.sendEnd(G.bananasGot);
+  nd.myFinal = G.bananasGot;
+  if (nd.peerFinal !== null || nd.forfeit) showNetDuelResults();
+  else {
+    setState('netwait');
+    nd.waitT = 6;
+    UI.flashMessage('WAITING FOR RIVAL…', 0);
+  }
+}
+
+function showNetDuelResults() {
+  const nd = G.netDuel;
+  if (!nd) return;
+  stopMusic();
+  sfx.goal();
+  const mine = nd.myFinal ?? G.bananasGot;
+  const theirs = nd.peerFinal ?? nd.peerBananas ?? 0;
+  const win = nd.forfeit || mine > theirs;
+  const draw = !nd.forfeit && mine === theirs;
+  setState('results');
+  UI.hudVisible(false);
+  UI.showModeResults({
+    title: draw ? 'DRAW!' : win ? 'YOU WIN! 🏆' : 'YOU LOSE…',
+    subtitle: nd.forfeit ? 'Rival fled the arena!' : `${G.char.name} vs ${nd.peerChar ? nd.peerChar.name : '???'}`,
+    newBest: false,
+    lines: [
+      ['You', `🍌 ${mine}`],
+      ['Rival', `🍌 ${theirs}`],
+      ['Banked to Shop', `🍌 +${mine}`]
+    ]
+  });
+  nd.dn.close();
+}
+
 // ---------------- camera ----------------
 const camTarget = new THREE.Vector3();
 function updateCamera(dt, input) {
@@ -425,9 +733,9 @@ function updatePlay(dt, t) {
   });
 
   // stomp landing mega-bounce
-  if (G.stompArmed && G.ball.onGround) {
+  if (G.ball.stompArmed && G.ball.onGround) {
     G.ball.vel.y = 16;
-    G.stompArmed = false;
+    G.ball.stompArmed = false;
     sfx.bounce();
     UI.flashMessage('BOING!', 600);
   }
@@ -480,8 +788,16 @@ function updatePlay(dt, t) {
 
   // rush director: spawns, power-ups, combo decay
   if (G.rushDir) {
-    G.rushDir.update(dt, G.ball.pos);
-    UI.setExtra(G.rushDir.combo >= 2 ? `🔥 COMBO ×${G.rushDir.combo}` : (G.turboTimer > 0 ? '🚀 TURBO' : ''));
+    G.rushDir.update(dt, [G.ball.pos]);
+    if (G.netDuel) {
+      const nd = G.netDuel;
+      nd.sendT -= dt;
+      if (nd.sendT <= 0) { nd.sendT = 1 / 12; nd.dn.sendState(G.ball.pos, G.bananasGot); }
+      if (nd.ghost) nd.ghost.update(dt);
+      UI.setExtra(`YOU 🍌${G.bananasGot} — 🍌${nd.peerBananas} ${nd.peerChar ? nd.peerChar.name.toUpperCase() : 'RIVAL'}`);
+    } else {
+      UI.setExtra(G.rushDir.combo >= 2 ? `🔥 COMBO ×${G.rushDir.combo}` : (G.turboTimer > 0 ? '🚀 TURBO' : ''));
+    }
   }
 
   // goal / fall / timer
@@ -502,7 +818,7 @@ function updatePlay(dt, t) {
     if (G.timeLeft <= 10 && Math.ceil(before) !== Math.ceil(G.timeLeft)) sfx.tick();
     if (G.timeLeft <= 0) {
       G.timeLeft = 0;
-      if (G.rushDir) { endRush(); } else { onFallOut('time'); }
+      if (G.netDuel) { endRushOnline(); } else if (G.rushDir) { endRush(); } else { onFallOut('time'); }
       return;
     }
   }
@@ -578,14 +894,18 @@ function tick() {
       break;
     case 'countdown': {
       G.countdownT -= dt;
-      updateCamera(dt, { x: 0, y: 0 });
-      syncBallVisual(t, dt, null);
-      UI.updateHUD({
-        time: G.timeLeft, bananas: G.bananasGot, lives: G.lives, score: G.score, speed: 0,
-        abilityReady: true, abilityName: G.char.ability.name, timerFrozen: false
-      });
+      if (G.duel) {
+        duelCameraAndSync(dt, t, null);
+      } else {
+        updateCamera(dt, { x: 0, y: 0 });
+        syncBallVisual(t, dt, null);
+        UI.updateHUD({
+          time: G.timeLeft, bananas: G.bananasGot, lives: G.lives, score: G.score, speed: 0,
+          abilityReady: true, abilityName: G.char.ability.name, timerFrozen: false
+        });
+      }
       if (G.countdownT <= 0.7 && G.countdownT + dt > 0.7) { UI.flashMessage('GO!!', 700); sfx.go(); }
-      if (G.countdownT <= 0) { setState('play'); clearInput(); }
+      if (G.countdownT <= 0) { setState(G.afterCountdown); clearInput(); }
       break;
     }
     case 'play':
@@ -593,6 +913,16 @@ function tick() {
       break;
     case 'target':
       if (G.targetGame) G.targetGame.update(dt, t, pollInput());
+      break;
+    case 'duel':
+      if (G.duel) updateDuel(dt, t);
+      break;
+    case 'netwait':
+      if (G.netDuel) {
+        if (G.netDuel.ghost) G.netDuel.ghost.update(dt);
+        G.netDuel.waitT -= dt;
+        if (G.netDuel.waitT <= 0) showNetDuelResults();   // rival timed out — score as last known
+      }
       break;
     case 'goal':
       syncBallVisual(t, dt, null);
@@ -621,11 +951,27 @@ function showMenuBackdrop() {
   setState('menu');
 }
 
-UI.on('modeChosen', (mode) => { G.mode = mode; UI.showCharSelect(mode); });
+UI.on('modeChosen', (mode) => {
+  if (mode === 'duel') { UI.showDuelMenu(); return; }
+  G.mode = mode;
+  UI.showCharSelect(mode);
+});
+UI.on('duelLocal', () => UI.showCharSelect('duel-p1'));
+UI.on('duelHost', () => UI.showCharSelect('duel-host'));
+UI.on('duelJoin', (code) => { G.pendingJoinCode = code; UI.showCharSelect('duel-join'); });
 UI.on('charChosen', (mode) => {
+  const sv = getSave();
   if (mode === 'adventure') UI.showLevelSelect();
   else if (mode === 'target') startTargetMode();
   else if (mode === 'rush') startRushMode();
+  else if (mode === 'duel-p1') { G.duelChars[0] = sv.selectedChar; UI.showCharSelect('duel-p2'); }
+  else if (mode === 'duel-p2') {
+    G.duelChars[1] = sv.selectedChar;
+    sv.selectedChar = G.duelChars[0];   // P2's pick shouldn't hijack P1's saved rascal
+    startDuelLocal();
+  }
+  else if (mode === 'duel-host') beginOnlineDuel(true);
+  else if (mode === 'duel-join') beginOnlineDuel(false, G.pendingJoinCode);
 });
 UI.on('shop', () => UI.showShop());
 UI.on('startLevel', (i) => { G.mode = 'adventure'; loadStage(i, { resetLives: true }); });
@@ -633,6 +979,8 @@ UI.on('resume', () => { setState(G.pausedFrom); G.clock.getDelta(); });
 UI.on('retry', () => {
   if (G.mode === 'target') startTargetMode();
   else if (G.mode === 'rush') startRushMode();
+  else if (G.mode === 'duel') startDuelLocal();
+  else if (G.mode === 'netduel') { disposeModes(); UI.hudVisible(false); UI.showDuelMenu(); }
   else loadStage(G.levelIndex, { resetLives: G.state === 'results' && G.lives === 3 });
 });
 UI.on('quit', () => {
@@ -650,7 +998,8 @@ UI.on('next', () => {
 });
 
 onPause(() => {
-  if (G.state === 'play' || G.state === 'target') {
+  if (G.netDuel) return;   // no pausing an online duel — the rival's clock keeps running
+  if (G.state === 'play' || G.state === 'target' || G.state === 'duel') {
     G.pausedFrom = G.state;
     setState('paused');
     UI.showPause();

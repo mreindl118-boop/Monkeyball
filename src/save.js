@@ -13,7 +13,7 @@ const DEFAULTS = {
   stars: {},                  // levelId -> 0..3
   targetBest: 0,              // Sky Target mode best total
   rushBest: 0,                // Banana Rush mode best haul
-  settings: { music: true, sfx: true, tilt: false, camAssist: true }
+  settings: { music: true, sfx: true, tilt: false, camAssist: true, relayUrl: '' }
 };
 
 let state = load();

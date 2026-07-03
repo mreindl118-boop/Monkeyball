@@ -7,10 +7,13 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "relay": "node server/relay.js",
+    "host": "npm run build && node server/host.js",
     "cap:sync": "npx cap sync android"
   },
   "dependencies": {
-    "three": "^0.166.1"
+    "three": "^0.166.1",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@capacitor/android": "^6.1.0",

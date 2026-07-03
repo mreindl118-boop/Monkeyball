@@ -66,8 +66,8 @@ export class RushDirector {
     this.nextGold = 8;
     this.nextPower = 5;
     this.powerups = [];
-    this.combo = 0;
-    this.comboT = 0;
+    this.combos = [0, 0];
+    this.comboTs = [0, 0];
     // seed the arena
     for (let i = 0; i < 14; i++) this.spawnBanana();
   }
@@ -130,11 +130,16 @@ export class RushDirector {
     this.powerups.push({ def, pos: new THREE.Vector3(...p), mesh: g, taken: false, life: 10 });
   }
 
-  // called by main every play frame during rush
-  update(dt, ballPos) {
+  get combo() { return this.combos[0]; }
+
+  // called by main every play frame during rush; positions = one Vector3 per player
+  update(dt, positions) {
+    if (!Array.isArray(positions)) positions = [positions];
     this.t += dt;
-    this.comboT = Math.max(0, this.comboT - dt);
-    if (this.comboT <= 0) this.combo = 0;
+    for (let i = 0; i < this.combos.length; i++) {
+      this.comboTs[i] = Math.max(0, this.comboTs[i] - dt);
+      if (this.comboTs[i] <= 0) this.combos[i] = 0;
+    }
 
     if (this.t >= this.nextGold) {
       this.nextGold += 9;
@@ -157,25 +162,29 @@ export class RushDirector {
       u.life -= dt;
       u.mesh.rotation.y += dt * 2;
       if (u.life <= 0) { u.taken = true; u.mesh.visible = false; continue; }
-      if (u.pos.distanceTo(ballPos) < 1.4) {
-        u.taken = true; u.mesh.visible = false;
-        sfx.bunch();
-        this.ctx.ui.flashMessage(u.def.name + '!', 900);
-        if (u.def.id === 'magnet') this.ctx.setMagnet(u.def.dur);
-        if (u.def.id === 'turbo') this.ctx.setTurbo(u.def.dur);
-        if (u.def.id === 'clock') this.ctx.addTime(5);
+      for (let i = 0; i < positions.length; i++) {
+        if (u.pos.distanceTo(positions[i]) < 1.4) {
+          u.taken = true; u.mesh.visible = false;
+          sfx.bunch();
+          this.ctx.ui.flashMessage(`${positions.length > 1 ? 'P' + (i + 1) + ' ' : ''}${u.def.name}!`, 900);
+          if (u.def.id === 'magnet') this.ctx.setMagnet(u.def.dur, i);
+          if (u.def.id === 'turbo') this.ctx.setTurbo(u.def.dur, i);
+          if (u.def.id === 'clock') this.ctx.addTime(5, i);
+          break;
+        }
       }
     }
   }
 
   // called by main when a banana is collected during rush -> returns bonus points
-  onBananaCollected(banana) {
-    this.combo++;
-    this.comboT = 2.5;
+  onBananaCollected(banana, player = 0) {
+    this.combos[player]++;
+    this.comboTs[player] = 2.5;
     // respawn a regular banana shortly after (keep the floor stocked)
     if (banana.value === 1) this.spawnBanana();
-    const comboBonus = this.combo >= 4 ? this.combo : 0;
-    if (comboBonus) this.ctx.ui.flashMessage(`COMBO ×${this.combo}!`, 500);
+    const combo = this.combos[player];
+    const comboBonus = combo >= 4 ? combo : 0;
+    if (comboBonus) this.ctx.ui.flashMessage(`COMBO ×${combo}!`, 500);
     return comboBonus;
   }
 }

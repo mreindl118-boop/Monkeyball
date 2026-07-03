@@ -95,6 +95,11 @@ export const UI = {
         id: 'rush', emoji: '🍌', name: 'Banana Rush',
         desc: '60 seconds, endless bananas. Chase golden bunches, chain combos, hoard the shop currency!',
         best: `Best haul: 🍌 ${sv.rushBest || 0}`
+      },
+      {
+        id: 'duel', emoji: '⚔️', name: 'Duel',
+        desc: 'Multiplayer! Local: 2 players, one screen, one arena. Online: room-code battles against a friend.',
+        best: 'Local & Online'
       }
     ];
     for (const m of modes) {
@@ -119,7 +124,10 @@ export const UI = {
     this.clear();
     const sv = getSave();
     const s = el('div', 'screen menu-bg');
-    s.appendChild(el('h1', 'title', 'PICK YOUR RASCAL'));
+    const heading = mode === 'duel-p1' ? '🔴 PLAYER 1 — PICK!'
+      : mode === 'duel-p2' ? '🔵 PLAYER 2 — PICK!'
+      : 'PICK YOUR RASCAL';
+    s.appendChild(el('h1', 'title', heading));
     const row = el('div', '', '');
     row.id = 'char-row';
     const detail = el('div', '', '');
@@ -164,11 +172,15 @@ export const UI = {
     s.appendChild(detail);
     renderDetail(CHARACTERS.find(c => c.id === sv.selectedChar) || CHARACTERS[0]);
 
-    const goLabel = mode === 'adventure' ? 'CHOOSE LEVEL ▶' : mode === 'target' ? 'TAKE FLIGHT ▶' : 'START RUSH ▶';
+    const goLabel = {
+      adventure: 'CHOOSE LEVEL ▶', target: 'TAKE FLIGHT ▶', rush: 'START RUSH ▶',
+      'duel-p1': 'NEXT: PLAYER 2 ▶', 'duel-p2': 'FIGHT! ▶',
+      'duel-host': 'CREATE ROOM ▶', 'duel-join': 'JOIN BATTLE ▶'
+    }[mode] || 'GO ▶';
     const go = el('button', 'btn', goLabel);
     go.onclick = () => { sfx.select(); this.emit('charChosen', mode); };
     const back = el('button', 'btn secondary', '◀ BACK');
-    back.onclick = () => { sfx.menu(); this.showModeSelect(); };
+    back.onclick = () => { sfx.menu(); mode.startsWith('duel') ? this.showDuelMenu() : this.showModeSelect(); };
     const btnRow = el('div');
     btnRow.appendChild(back); btnRow.appendChild(go);
     s.appendChild(btnRow);
@@ -203,6 +215,105 @@ export const UI = {
     const back = el('button', 'btn secondary', '◀ CHARACTERS');
     back.onclick = () => { sfx.menu(); this.showCharSelect('adventure'); };
     s.appendChild(back);
+    screens.appendChild(s);
+  },
+
+  // ---------------- DUEL MENU ----------------
+  showDuelMenu() {
+    this.clear();
+    const sv = getSave();
+    const s = el('div', 'screen menu-bg');
+    s.appendChild(el('h1', 'title', '⚔️ DUEL'));
+    const col = el('div', 'scroll-col');
+
+    const mkRow = (title, desc, btnLabel, cb) => {
+      const item = el('div', 'shop-item');
+      item.appendChild(el('div', 'info', `<h3>${title}</h3><p>${desc}</p>`));
+      const btn = el('button', 'btn', btnLabel);
+      btn.style.padding = '8px 20px';
+      btn.style.fontSize = '15px';
+      btn.onclick = cb;
+      item.appendChild(btn);
+      col.appendChild(item);
+      return item;
+    };
+
+    mkRow('🎮 Local Duel', 'Two players, one device, one arena. P1: WASD + Space/Shift · P2: Arrows + Enter/RShift (gamepads work too).',
+      'PLAY', () => { sfx.select(); this.emit('duelLocal'); });
+
+    mkRow('🌐 Host Online', 'Create a room and share the 4-letter code with a friend.',
+      'HOST', () => { sfx.select(); this.emit('duelHost'); });
+
+    // join row with inline code input
+    const joinItem = el('div', 'shop-item');
+    joinItem.appendChild(el('div', 'info', `<h3>🔑 Join Online</h3><p>Enter your friend's room code.</p>`));
+    const codeInput = el('input');
+    codeInput.maxLength = 4;
+    codeInput.placeholder = 'CODE';
+    codeInput.style.cssText = 'width:90px;text-align:center;font-size:20px;font-weight:900;text-transform:uppercase;border-radius:10px;border:2px solid #7ec8ff;background:rgba(255,255,255,.1);color:#fff;padding:8px;pointer-events:auto;';
+    const joinBtn = el('button', 'btn secondary', 'JOIN');
+    joinBtn.style.padding = '8px 20px';
+    joinBtn.style.fontSize = '15px';
+    joinBtn.onclick = () => {
+      const code = codeInput.value.trim().toUpperCase();
+      if (code.length !== 4) { sfx.denied(); codeInput.focus(); return; }
+      sfx.select();
+      this.emit('duelJoin', code);
+    };
+    joinItem.appendChild(codeInput);
+    joinItem.appendChild(joinBtn);
+    col.appendChild(joinItem);
+
+    // relay server (advanced)
+    const relayItem = el('div', 'shop-item');
+    relayItem.appendChild(el('div', 'info', `<h3>📡 Relay Server</h3><p>Leave empty to use this page's own server (works with <b>npm run host</b>). Or paste a ws:// URL.</p>`));
+    const relayInput = el('input');
+    relayInput.placeholder = 'same origin /ws';
+    relayInput.value = sv.settings.relayUrl || '';
+    relayInput.style.cssText = 'width:200px;font-size:13px;border-radius:10px;border:2px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;padding:8px;pointer-events:auto;';
+    relayInput.onchange = () => { sv.settings.relayUrl = relayInput.value.trim(); save(); };
+    relayItem.appendChild(relayInput);
+    col.appendChild(relayItem);
+
+    s.appendChild(col);
+    const back = el('button', 'btn secondary', '◀ BACK');
+    back.onclick = () => { sfx.menu(); this.showModeSelect(); };
+    s.appendChild(back);
+    screens.appendChild(s);
+  },
+
+  showConnecting(text) {
+    this.clear();
+    const s = el('div', 'screen menu-bg');
+    s.appendChild(el('h1', 'title', '📡'));
+    s.appendChild(el('div', 'subtitle', text));
+    const cancel = el('button', 'btn secondary', 'CANCEL');
+    cancel.onclick = () => { sfx.menu(); this.emit('quit'); };
+    s.appendChild(cancel);
+    screens.appendChild(s);
+  },
+
+  showHostWait(code) {
+    this.clear();
+    const s = el('div', 'screen menu-bg');
+    s.appendChild(el('h1', 'title', code));
+    s.appendChild(el('div', 'subtitle', 'Share this room code with your rival.<br>The duel starts the moment they join!'));
+    const cancel = el('button', 'btn secondary', 'CANCEL');
+    cancel.onclick = () => { sfx.menu(); this.emit('quit'); };
+    s.appendChild(cancel);
+    screens.appendChild(s);
+  },
+
+  showNetError(reason) {
+    this.clear();
+    const s = el('div', 'screen menu-bg');
+    s.appendChild(el('h1', 'title', '📡❌'));
+    s.appendChild(el('div', 'subtitle', reason || 'Connection problem'));
+    const back = el('button', 'btn', 'BACK TO DUEL MENU');
+    back.onclick = () => { sfx.menu(); this.showDuelMenu(); };
+    const menu = el('button', 'btn secondary', 'MAIN MENU');
+    menu.onclick = () => { sfx.menu(); this.emit('quit'); };
+    s.appendChild(back); s.appendChild(menu);
     screens.appendChild(s);
   },
 
