@@ -111,6 +111,22 @@ cp -r dist desktop/dist
 cd desktop && npm install && npx electron-builder --win
 ```
 
+## 🔄 Auto-updates
+
+Every CI build is published as a **GitHub Release** (`build-<N>`) with the APK and Windows
+exes attached. On startup, the Android app (and the Windows build) checks the latest release
+and shows an **UPDATE** banner when a newer build exists — one tap downloads the new APK and
+Android's installer upgrades in place (saves are kept). Sideloaded apps can't install fully
+silently — Android always asks for the final confirmation tap.
+
+The APK is signed with a fixed key committed at `signing/debug.keystore` so upgrades install
+over the top instead of demanding an uninstall. (That key is for casual sideloading only —
+use a private keystore if you ever publish to a store.)
+
+Easiest install for players: grab the `.apk` from the
+[latest release](https://github.com/mreindl118-boop/Monkeyball/releases/latest) — no GitHub
+login needed, unlike Actions artifacts.
+
 ## 🤖 Android APK
 
 Built automatically by GitHub Actions (**android** job) — download the

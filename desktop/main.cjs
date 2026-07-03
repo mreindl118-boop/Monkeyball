@@ -1,5 +1,5 @@
 // Electron shell for the Windows build.
-const { app, BrowserWindow, Menu } = require('electron');
+const { app, BrowserWindow, Menu, shell } = require('electron');
 const path = require('path');
 
 function createWindow() {
@@ -17,6 +17,11 @@ function createWindow() {
     }
   });
   Menu.setApplicationMenu(null);
+  // update downloads & external links go to the system browser
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('http')) shell.openExternal(url);
+    return { action: 'deny' };
+  });
   win.loadFile(path.join(__dirname, 'dist', 'index.html'));
 
   // F11 fullscreen toggle

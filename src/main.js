@@ -13,6 +13,7 @@ import { TargetMode } from './flight.js';
 import { RUSH_LEVEL, RushDirector, RUSH_TIME } from './rush.js';
 import { MenuScene } from './menuscene.js';
 import { Atmosphere } from './atmosphere.js';
+import { checkForUpdate, BUILD } from './updater.js';
 
 // ---------------- renderer & scene ----------------
 const canvas = document.getElementById('game-canvas');
@@ -1041,6 +1042,7 @@ window.__CAM = camera;
 window.__SCENE = scene;
 
 // boot
+checkForUpdate((info) => UI.showUpdatePrompt(info));
 initTouch();
 showMenuBackdrop();
 UI.showTitle();

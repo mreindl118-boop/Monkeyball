@@ -535,6 +535,26 @@ export const UI = {
     this.actionBar(back);
   },
 
+  // ---------------- UPDATE PROMPT ----------------
+  showUpdatePrompt({ latest, current, install }) {
+    // non-blocking banner over whatever screen is showing
+    const old = document.getElementById('update-banner');
+    if (old) old.remove();
+    const bar = el('div', 'pop');
+    bar.id = 'update-banner';
+    bar.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);left:50%;transform:translateX(-50%);z-index:60;background:rgba(10,8,30,.92);border:2px solid #ffe14d;border-radius:14px;padding:10px 14px;display:flex;align-items:center;gap:10px;color:#fff;font-size:13px;max-width:94vw;pointer-events:auto;box-shadow:0 8px 24px rgba(0,0,0,.5);';
+    bar.appendChild(el('div', '', `🚀 <b style="color:#ffe14d">Update available!</b> Build ${latest} (you have ${current})`));
+    const go = el('button', 'btn', 'UPDATE');
+    go.style.cssText = 'padding:6px 14px;font-size:13px;margin:0;';
+    go.onclick = () => { sfx.select(); install(); };
+    const later = el('button', 'btn secondary', '✕');
+    later.style.cssText = 'padding:6px 10px;font-size:13px;margin:0;';
+    later.onclick = () => { sfx.menu(); bar.remove(); };
+    bar.appendChild(go);
+    bar.appendChild(later);
+    document.body.appendChild(bar);
+  },
+
   // ---------------- PAUSE ----------------
   showPause() {
     this.clear();
