@@ -12,6 +12,7 @@ import { sfx, playMusic, stopMusic, unlockAudio } from './audio.js';
 import { TargetMode } from './flight.js';
 import { RUSH_LEVEL, RushDirector, RUSH_TIME } from './rush.js';
 import { MenuScene } from './menuscene.js';
+import { Atmosphere } from './atmosphere.js';
 
 // ---------------- renderer & scene ----------------
 const canvas = document.getElementById('game-canvas');
@@ -23,19 +24,10 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#120b2e');
-const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 1400);
 
-const sun = new THREE.DirectionalLight(0xfff4e0, 2.6);
-sun.position.set(18, 30, 14);
-sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.left = -45; sun.shadow.camera.right = 45;
-sun.shadow.camera.top = 45; sun.shadow.camera.bottom = -45;
-sun.shadow.camera.far = 120;
-scene.add(sun, sun.target);
-scene.add(new THREE.AmbientLight(0x8899cc, 1.1));
-const hemi = new THREE.HemisphereLight(0xbfe6ff, 0x3a2a10, 0.8);
-scene.add(hemi);
+// dynamic time-of-day lighting rig (sun/moon, sky dome, stars, fog, exposure, env reflections)
+const atmosphere = new Atmosphere(scene, renderer);
 
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
@@ -180,7 +172,7 @@ function loadStage(index, { resetLives = false, keepNet = false } = {}) {
   G.levelIndex = index;
   const level = index === -1 ? RUSH_LEVEL : LEVELS[index];
   const world = WORLDS[level.world];
-  G.stage = new Stage(scene, level, world);
+  G.stage = new Stage(scene, level, world, atmosphere);
   const sv = getSave();
   G.timeLeft = level.time + sv.upgrades.time * 3;
   G.timerFrozen = 0;
@@ -227,7 +219,7 @@ function startTargetMode() {
   UI.clear();
   UI.hudVisible(true);
   G.targetGame = new TargetMode({
-    scene, camera, char: G.char, ui: UI,
+    scene, camera, atmosphere, char: G.char, ui: UI,
     onFinish: (res) => {
       setState('results');
       UI.hudVisible(false);
@@ -416,7 +408,7 @@ function startDuelLocal() {
   G.mode = 'duel';
   disposeModes();
   if (G.stage) G.stage.dispose();
-  G.stage = new Stage(scene, RUSH_LEVEL, WORLDS[0]);
+  G.stage = new Stage(scene, RUSH_LEVEL, WORLDS[0], atmosphere);
   if (G.ballGroup) { scene.remove(G.ballGroup.group); G.ballGroup = null; }
 
   const chars = [getCharacter(G.duelChars[0]), getCharacter(G.duelChars[1])];
@@ -467,8 +459,6 @@ function duelCameraAndSync(dt, t, inputs) {
   const dist = Math.max(11, sep * 0.75 + 8);
   camera.position.lerp(camTarget.set(mx, dist * 0.72, mz + dist), Math.min(1, dt * 5));
   camera.lookAt(mx, 0.5, mz);
-  sun.position.set(mx + 18, 30, mz + 14);
-  sun.target.position.set(mx, 0, mz);
   for (let i = 0; i < 2; i++) {
     const ball = G.duel.balls[i], bg = G.duel.groups[i];
     bg.group.position.copy(ball.pos);
@@ -708,9 +698,6 @@ function updateCamera(dt, input) {
   const cy = b.pos.y + height;
   camera.position.lerp(camTarget.set(cx, cy, cz), Math.min(1, dt * 7));
   camera.lookAt(b.pos.x, b.pos.y + 0.8, b.pos.z);
-  // keep sun & shadows near the action
-  sun.position.set(b.pos.x + 18, b.pos.y + 30, b.pos.z + 14);
-  sun.target.position.copy(b.pos);
 }
 
 // ---------------- per-frame gameplay ----------------
@@ -884,6 +871,16 @@ function tick() {
   if (G.stage) G.stage.update(t, dt);
   updateConfetti(dt);
 
+  // atmosphere follows the action (shadows, sky dome, celestial bodies)
+  let focus = null;
+  if (G.duel) {
+    const [b0, b1] = G.duel.balls;
+    focus = camTarget.set((b0.pos.x + b1.pos.x) / 2, 0, (b0.pos.z + b1.pos.z) / 2);
+  } else if (G.targetGame) focus = G.targetGame.ball.pos;
+  else if (G.state !== 'menu') focus = G.ball.pos;
+  else focus = camTarget.set(0, 0, 0);
+  atmosphere.update(dt, focus);
+
   switch (G.state) {
     case 'menu':
       if (G.menuScene) G.menuScene.update(dt, t, camera, G.menuOrbit);
@@ -945,6 +942,8 @@ function showMenuBackdrop() {
   if (G.stage) { G.stage.dispose(); G.stage = null; }
   if (G.ballGroup) { scene.remove(G.ballGroup.group); G.ballGroup = null; }
   G.menuScene = new MenuScene(scene);
+  atmosphere.enableCycle(90, 0.36);   // menus showcase a full day/night cycle
+  atmosphere.setFogRange(55, 190);
   setState('menu');
 }
 

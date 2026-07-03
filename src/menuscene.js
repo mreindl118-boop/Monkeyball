@@ -3,7 +3,7 @@
 // dizzy, chasing a runaway banana. Plays behind all menu screens.
 import * as THREE from 'three';
 import { CHARACTERS, buildCharacterMesh, animateCharacter } from './characters.js';
-import { jungleTexture, checkerTexture, skyTexture, dotTexture } from './textures.js';
+import { jungleTexture, checkerTexture, dotTexture } from './textures.js';
 import { BALL_RADIUS } from './physics.js';
 
 const _v = new THREE.Vector3();
@@ -32,14 +32,6 @@ export class MenuScene {
     this.t0 = 0;
     this.actors = [];
     this.focusId = null;
-
-    // sky & fog
-    this.sky = new THREE.Mesh(
-      new THREE.SphereGeometry(260, 24, 16),
-      new THREE.MeshBasicMaterial({ map: skyTexture('#2b1d5e', '#7a5fd0', '#ffb6d9'), side: THREE.BackSide, fog: false })
-    );
-    scene.add(this.sky);
-    scene.fog = new THREE.Fog(new THREE.Color('#5b48a8'), 55, 190);
 
     // main island
     const ground = new THREE.Mesh(
@@ -263,8 +255,7 @@ export class MenuScene {
   }
 
   dispose() {
-    this.scene.remove(this.root, this.sky);
-    this.scene.fog = null;
+    this.scene.remove(this.root);
     this.root.traverse(o => {
       if (o.geometry) o.geometry.dispose();
       if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.dispose());

@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { Ball, stepBall, BALL_RADIUS } from './physics.js';
 import { buildCharacterMesh, animateCharacter } from './characters.js';
-import { targetTexture, waterTexture, iconSprite, checkerTexture, gridTexture, skyTexture } from './textures.js';
+import { targetTexture, waterTexture, iconSprite, checkerTexture, gridTexture } from './textures.js';
 import { sfx } from './audio.js';
 import { getSave, save, addBananas } from './save.js';
 
@@ -66,12 +66,7 @@ export class TargetMode {
   // ---------------- world ----------------
   buildWorld() {
     const scene = this.ctx.scene;
-    this.sky = new THREE.Mesh(
-      new THREE.SphereGeometry(600, 24, 16),
-      new THREE.MeshBasicMaterial({ map: skyTexture('#2a7fd4', '#8fd0ff', '#ffedbd'), side: THREE.BackSide, fog: false })
-    );
-    scene.add(this.sky);
-    scene.fog = new THREE.Fog(new THREE.Color('#9fd4ff'), 150, 550);
+    if (this.ctx.atmosphere) this.ctx.atmosphere.setFogRange(150, 560);
 
     const water = new THREE.Mesh(
       new THREE.PlaneGeometry(1400, 1400),
@@ -243,6 +238,11 @@ export class TargetMode {
     this.cooldown = 0;
     this.magnet = 0; this.feather = 0; this.superLift = 0; this.windShield = 0; this.slowmo = 0;
     this.ball.reset([0, 76, 42]);
+    // each flight happens later in the day: dawn -> sunset -> night
+    if (this.ctx.atmosphere) {
+      this.ctx.atmosphere.setPreset(['morning', 'sunset', 'night'][this.round - 1] || 'night');
+      this.ctx.atmosphere.setFogRange(150, 560);
+    }
     this.yaw = 0;               // yaw convention: forward = (-sin(yaw), 0, -cos(yaw)); 0 faces -z
     this.airVel = new THREE.Vector3(0, 0, 0);
     this.setWings(0);
@@ -558,8 +558,7 @@ export class TargetMode {
   storeTurn(x) { this.lastTurn = x; }
 
   dispose() {
-    this.ctx.scene.remove(this.root, this.sky, this.flyer);
-    this.ctx.scene.fog = null;
+    this.ctx.scene.remove(this.root, this.flyer);
     this.root.traverse(o => {
       if (o.geometry) o.geometry.dispose();
       if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.dispose());

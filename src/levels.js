@@ -24,9 +24,9 @@ function bananaRow(x, y, z, n, dz = 1.6) {
 }
 
 export const WORLDS = [
-  { id: 'jungle', name: 'Banana Jungle', music: 'jungle', sky: ['#7ec8ff', '#bfe6ff', '#e8ffd8'], fog: '#bfe6ff', floorTex: 'jungle' },
-  { id: 'sky', name: 'Sky Kingdom', music: 'sky', sky: ['#2b1d5e', '#7a5fd0', '#ffb6d9'], fog: '#8f7ad6', floorTex: 'dots' },
-  { id: 'volcano', name: 'Mt. Kaboom', music: 'volcano', sky: ['#1a0505', '#5e1414', '#ff7b1c'], fog: '#4a1010', floorTex: 'lava' }
+  { id: 'jungle', name: 'Banana Jungle', music: 'jungle', tod: 'noon', sky: ['#7ec8ff', '#bfe6ff', '#e8ffd8'], fog: '#bfe6ff', floorTex: 'jungle' },
+  { id: 'sky', name: 'Sky Kingdom', music: 'sky', tod: 'sunset', sky: ['#2b1d5e', '#7a5fd0', '#ffb6d9'], fog: '#8f7ad6', floorTex: 'dots' },
+  { id: 'volcano', name: 'Mt. Kaboom', music: 'volcano', tod: 'night', sky: ['#1a0505', '#5e1414', '#ff7b1c'], fog: '#4a1010', floorTex: 'lava' }
 ];
 
 export const LEVELS = [

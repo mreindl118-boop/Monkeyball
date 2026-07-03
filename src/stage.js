@@ -21,10 +21,11 @@ function texFor(kind, world) {
 }
 
 export class Stage {
-  constructor(scene, level, world) {
+  constructor(scene, level, world, atmosphere) {
     this.scene = scene;
     this.level = level;
     this.world = world;
+    this.atmosphere = atmosphere;
     this.root = new THREE.Group();       // tilts visually with input
     scene.add(this.root);
     this.solids = [];
@@ -39,7 +40,7 @@ export class Stage {
     this.buildBumpers();
     this.buildPads();
     this.buildGoal();
-    this.buildSky();
+    this.applyAtmosphere();
     this.buildDecor();
   }
 
@@ -47,6 +48,12 @@ export class Stage {
     for (const part of this.level.parts) {
       const tex = texFor(part.tex || 'floor', this.world);
       const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.75, metalness: 0.05 });
+      if (this.world.id === 'volcano') {
+        // the course glows in the volcanic night so it stays readable
+        mat.emissive = new THREE.Color(0xffffff);
+        mat.emissiveMap = tex;
+        mat.emissiveIntensity = (part.tex || 'floor') === 'floor' ? 0.85 : 0.45;
+      }
       let mesh, half;
       const s = part.s;
       if (part.shape === 'disc') {
@@ -207,15 +214,10 @@ export class Stage {
     return Math.abs(lx) < 1.9 && Math.abs(lz) < 0.75 && _v.y > -0.5 && _v.y < 3.2;
   }
 
-  buildSky() {
-    const [top, mid, bot] = this.world.sky;
-    const dome = new THREE.Mesh(
-      new THREE.SphereGeometry(220, 24, 16),
-      new THREE.MeshBasicMaterial({ map: skyTexture(top, mid, bot), side: THREE.BackSide, fog: false })
-    );
-    this.scene.add(dome);
-    this.skyDome = dome;
-    this.scene.fog = new THREE.Fog(new THREE.Color(this.world.fog), 60, 200);
+  applyAtmosphere() {
+    if (!this.atmosphere) return;
+    this.atmosphere.setPreset(this.world.tod || 'noon');
+    this.atmosphere.setFogRange(60, 210);
   }
 
   buildDecor() {
@@ -263,6 +265,15 @@ export class Stage {
       lava.position.y = -16;
       this.decor.add(lava);
       this.lavaMat = lava.material;
+      // flickering lava uplights along the course
+      this.flickers = [];
+      const span = this.level.goal.p[2];
+      for (let i = 0; i < 3; i++) {
+        const pl = new THREE.PointLight(0xff6a1c, 2.2, 55, 1.6);
+        pl.position.set(0, 2.5, (span / 3) * i - 4);
+        this.decor.add(pl);
+        this.flickers.push({ light: pl, seed: i * 2.7 });
+      }
       for (let i = 0; i < 12; i++) {
         const a = rng(i + 2, 100) * Math.PI * 2;
         const r = 50 + rng(i + 6, 100) * 70;
@@ -325,13 +336,16 @@ export class Stage {
     // clouds drift
     if (this.clouds) for (const c of this.clouds) c.mesh.position.x += Math.sin(t * 0.1) * c.speed * dt;
     if (this.lavaMat) this.lavaMat.map.offset.set(Math.sin(t * 0.08) * 0.3, t * 0.006);
+    if (this.flickers) {
+      for (const f of this.flickers) {
+        f.light.intensity = 2.0 + Math.sin(t * 9 + f.seed) * 0.5 + Math.sin(t * 23 + f.seed * 3) * 0.3;
+      }
+    }
   }
 
   dispose() {
     this.scene.remove(this.root);
     this.scene.remove(this.decor);
-    this.scene.remove(this.skyDome);
-    this.scene.fog = null;
     this.root.traverse(o => {
       if (o.geometry) o.geometry.dispose();
       if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.dispose());

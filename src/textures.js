@@ -9,6 +9,48 @@ function makeCanvas(size) {
   return [c, c.getContext('2d')];
 }
 
+
+// deterministic hash noise (no Math.random -> stable textures)
+function hash(n) {
+  const x = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+// film-grain style speckle overlay for material realism
+function grain(ctx, size, amount = 0.06, scale = 2) {
+  const cells = size / scale;
+  for (let y = 0; y < cells; y++) {
+    for (let x = 0; x < cells; x++) {
+      const v = hash(x * 391 + y * 23 + 7);
+      if (v < 0.5) continue;
+      ctx.fillStyle = v > 0.75 ? `rgba(255,255,255,${(v - 0.75) * amount * 4})` : `rgba(0,0,0,${(v - 0.5) * amount * 4})`;
+      ctx.fillRect(x * scale, y * scale, scale, scale);
+    }
+  }
+}
+
+// darkened edges = cheap baked ambient occlusion
+function edgeAO(ctx, size, strength = 0.28, width = 0.1) {
+  const w = size * width;
+  const g1 = ctx.createLinearGradient(0, 0, 0, size);
+  g1.addColorStop(0, `rgba(0,0,0,${strength})`); g1.addColorStop(width, 'rgba(0,0,0,0)');
+  g1.addColorStop(1 - width, 'rgba(0,0,0,0)'); g1.addColorStop(1, `rgba(0,0,0,${strength})`);
+  ctx.fillStyle = g1; ctx.fillRect(0, 0, size, size);
+  const g2 = ctx.createLinearGradient(0, 0, size, 0);
+  g2.addColorStop(0, `rgba(0,0,0,${strength})`); g2.addColorStop(width, 'rgba(0,0,0,0)');
+  g2.addColorStop(1 - width, 'rgba(0,0,0,0)'); g2.addColorStop(1, `rgba(0,0,0,${strength})`);
+  ctx.fillStyle = g2; ctx.fillRect(0, 0, size, size);
+}
+
+// per-tile bevel: light top-left, dark bottom-right
+function bevelTile(ctx, x, y, w, h, strength = 0.22) {
+  const b = Math.max(2, w * 0.06);
+  ctx.fillStyle = `rgba(255,255,255,${strength})`;
+  ctx.fillRect(x, y, w, b); ctx.fillRect(x, y, b, h);
+  ctx.fillStyle = `rgba(0,0,0,${strength})`;
+  ctx.fillRect(x, y + h - b, w, b); ctx.fillRect(x + w - b, y, b, h);
+}
+
 function toTexture(canvas, repeat = 1) {
   const tex = new THREE.CanvasTexture(canvas);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
@@ -21,16 +63,21 @@ function toTexture(canvas, repeat = 1) {
 export function checkerTexture(colA = '#ff9a3d', colB = '#ffd23d', repeat = 4) {
   const key = `chk${colA}${colB}${repeat}`;
   if (cache.has(key)) return cache.get(key);
-  const [c, ctx] = makeCanvas(256);
+  const [c, ctx] = makeCanvas(512);
   for (let y = 0; y < 2; y++)
     for (let x = 0; x < 2; x++) {
+      const px = x * 256, py = y * 256;
       ctx.fillStyle = (x + y) % 2 ? colA : colB;
-      ctx.fillRect(x * 128, y * 128, 128, 128);
+      ctx.fillRect(px, py, 256, 256);
+      // soft radial sheen per tile
+      const sh = ctx.createRadialGradient(px + 88, py + 88, 12, px + 128, py + 128, 240);
+      sh.addColorStop(0, 'rgba(255,255,255,0.16)');
+      sh.addColorStop(1, 'rgba(0,0,0,0.10)');
+      ctx.fillStyle = sh;
+      ctx.fillRect(px, py, 256, 256);
+      bevelTile(ctx, px, py, 256, 256, 0.14);
     }
-  // subtle inner glow lines for arcade feel
-  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-  ctx.lineWidth = 4;
-  ctx.strokeRect(2, 2, 252, 252);
+  grain(ctx, 512, 0.05, 2);
   const t = toTexture(c, repeat);
   cache.set(key, t);
   return t;
@@ -49,6 +96,8 @@ export function stripeTexture(colA = '#e34242', colB = '#ffffff', repeat = 6) {
     ctx.lineTo(i + 288, 0); ctx.lineTo(i + 32, 256);
     ctx.closePath(); ctx.fill();
   }
+  edgeAO(ctx, 256, 0.3, 0.09);
+  grain(ctx, 256, 0.06, 2);
   const t = toTexture(c, repeat);
   cache.set(key, t);
   return t;
@@ -60,13 +109,23 @@ export function dotTexture(base = '#3a8fd6', dot = '#9fd0ff', repeat = 4) {
   const [c, ctx] = makeCanvas(256);
   ctx.fillStyle = base;
   ctx.fillRect(0, 0, 256, 256);
-  ctx.fillStyle = dot;
   for (let y = 0; y < 4; y++)
     for (let x = 0; x < 4; x++) {
+      const cx = x * 64 + (y % 2 ? 32 : 0) + 16, cy = y * 64 + 16;
+      const g = ctx.createRadialGradient(cx - 4, cy - 5, 2, cx, cy, 15);
+      g.addColorStop(0, '#ffffff');
+      g.addColorStop(0.35, dot);
+      g.addColorStop(1, dot);
+      ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.arc(x * 64 + (y % 2 ? 32 : 0) + 16, y * 64 + 16, 14, 0, Math.PI * 2);
+      ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.18)';
+      ctx.beginPath();
+      ctx.arc(cx + 2, cy + 3, 14, Math.PI * 0.15, Math.PI * 0.85);
       ctx.fill();
     }
+  grain(ctx, 256, 0.05, 2);
   const t = toTexture(c, repeat);
   cache.set(key, t);
   return t;
@@ -97,13 +156,28 @@ export function lavaTexture(repeat = 3) {
   g.addColorStop(1, '#a31700');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, 256, 256);
-  ctx.fillStyle = 'rgba(60,5,0,0.55)';
-  for (let i = 0; i < 26; i++) {
+  // dark crust plates with glowing cracks between them
+  for (let i = 0; i < 34; i++) {
+    const x = (i * 97) % 256, y = (i * 61 + 40) % 256, r = 10 + (i * 13) % 28;
+    const g = ctx.createRadialGradient(x, y, r * 0.2, x, y, r);
+    g.addColorStop(0, 'rgba(40,6,2,0.9)');
+    g.addColorStop(0.75, 'rgba(60,8,2,0.75)');
+    g.addColorStop(1, 'rgba(255,140,30,0.0)');
+    ctx.fillStyle = g;
     ctx.beginPath();
-    const x = (i * 97) % 256, y = (i * 61 + 40) % 256, r = 8 + (i * 13) % 26;
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
   }
+  // white-hot pinpoints
+  for (let i = 0; i < 14; i++) {
+    const x = hash(i * 5 + 3) * 256, y = hash(i * 9 + 4) * 256;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, 7);
+    g.addColorStop(0, 'rgba(255,250,210,0.95)');
+    g.addColorStop(1, 'rgba(255,150,40,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(x - 8, y - 8, 16, 16);
+  }
+  grain(ctx, 256, 0.08, 2);
   const t = toTexture(c, repeat);
   cache.set('lava', t);
   return t;
@@ -111,16 +185,29 @@ export function lavaTexture(repeat = 3) {
 
 export function jungleTexture(repeat = 4) {
   if (cache.has('jungle')) return cache.get('jungle');
-  const [c, ctx] = makeCanvas(256);
-  ctx.fillStyle = '#2c8a3e';
-  ctx.fillRect(0, 0, 256, 256);
-  for (let i = 0; i < 60; i++) {
-    const x = (i * 83) % 256, y = (i * 47) % 256;
-    ctx.fillStyle = i % 2 ? '#37a44c' : '#237334';
+  const [c, ctx] = makeCanvas(512);
+  const base = ctx.createLinearGradient(0, 0, 512, 512);
+  base.addColorStop(0, '#2f9143');
+  base.addColorStop(0.5, '#2c8a3e');
+  base.addColorStop(1, '#268038');
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, 512, 512);
+  // layered leaf clumps with lit tops and shadowed bases
+  for (let i = 0; i < 220; i++) {
+    const x = hash(i * 3 + 1) * 512, y = hash(i * 7 + 2) * 512;
+    const rx = 18 + hash(i * 11) * 26, ry = 7 + hash(i * 13) * 10;
+    const rot = hash(i * 17) * Math.PI;
+    const shade = hash(i * 19);
+    ctx.fillStyle = shade > 0.66 ? '#3cb254' : shade > 0.33 ? '#2f9a45' : '#1f6b30';
     ctx.beginPath();
-    ctx.ellipse(x, y, 20, 9, (i * 0.7) % Math.PI, 0, Math.PI * 2);
+    ctx.ellipse(x, y, rx, ry, rot, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,240,0.10)';
+    ctx.beginPath();
+    ctx.ellipse(x - rx * 0.2, y - ry * 0.45, rx * 0.7, ry * 0.45, rot, 0, Math.PI * 2);
     ctx.fill();
   }
+  grain(ctx, 512, 0.07, 2);
   const t = toTexture(c, repeat);
   cache.set('jungle', t);
   return t;
@@ -168,17 +255,33 @@ export function targetTexture() {
 export function waterTexture(repeat = 20) {
   if (cache.has('water')) return cache.get('water');
   const [c, ctx] = makeCanvas(256);
-  ctx.fillStyle = '#1b5fa8';
+  const deep = ctx.createLinearGradient(0, 0, 256, 256);
+  deep.addColorStop(0, '#1d66b4');
+  deep.addColorStop(0.5, '#175a9e');
+  deep.addColorStop(1, '#134f8e');
+  ctx.fillStyle = deep;
   ctx.fillRect(0, 0, 256, 256);
-  ctx.strokeStyle = 'rgba(180,225,255,0.35)';
-  ctx.lineWidth = 5;
-  for (let i = 0; i < 10; i++) {
+  // dark undertow bands
+  ctx.strokeStyle = 'rgba(8,30,64,0.35)';
+  ctx.lineWidth = 9;
+  for (let i = 0; i < 8; i++) {
+    ctx.beginPath();
+    const y = (i * 73 + 20) % 256;
+    ctx.moveTo(0, y);
+    ctx.bezierCurveTo(80, y + 16, 176, y - 16, 256, y);
+    ctx.stroke();
+  }
+  // bright caustic crests
+  ctx.strokeStyle = 'rgba(190,230,255,0.4)';
+  ctx.lineWidth = 4;
+  for (let i = 0; i < 12; i++) {
     ctx.beginPath();
     const y = (i * 61) % 256;
     ctx.moveTo(0, y);
     ctx.bezierCurveTo(64, y - 14, 128, y + 14, 256, y);
     ctx.stroke();
   }
+  grain(ctx, 256, 0.05, 2);
   const t = toTexture(c, repeat);
   cache.set('water', t);
   return t;
