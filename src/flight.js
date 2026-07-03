@@ -14,14 +14,16 @@ const SEA_Y = 0;
 const _v = new THREE.Vector3();
 
 // Flight tuning derived from the rascal's ground stats.
+// Monkey-Target-style: ball OPEN = kinematic glider (stable, can't stall-spiral),
+// ball CLOSED = ballistic dive. JUMP toggles between them any time.
 function flightStats(char) {
   const s = char.stats;
   return {
-    lift: 0.62 + s.jump * 0.022 - s.weight * 0.018,   // fraction of gravity cancelled at speed
-    turn: 1.25 + s.traction * 0.09,                    // yaw rate
-    diveGain: 10 + s.weight * 0.9 + s.speed * 0.35,    // how hard diving accelerates you
-    drag: 0.10 + s.weight * 0.004,
-    launch: 26 + s.speed * 1.1                         // ramp exit speed
+    cruise: 14 + s.speed * 0.5,                       // natural glide airspeed
+    sink: Math.max(0.7, 2.3 - s.jump * 0.14 + s.weight * 0.09), // base descent while gliding level
+    diveGain: 11 + s.weight * 0.7,                    // nose-down acceleration
+    turn: 1.35 + s.traction * 0.09,                   // yaw rate (open)
+    launch: 26 + s.speed * 1.1                        // ramp exit speed
   };
 }
 
@@ -216,6 +218,36 @@ export class TargetMode {
     g.add(this.built.group);
     this.flyer = g;
     this.ctx.scene.add(g);
+
+    // landing shadow marker — shows where you are over the sea/boards
+    const mk = new THREE.Group();
+    const dot = new THREE.Mesh(
+      new THREE.CircleGeometry(0.55, 20),
+      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.4, depthWrite: false })
+    );
+    dot.rotation.x = -Math.PI / 2;
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.8, 1.05, 24),
+      new THREE.MeshBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false })
+    );
+    ring.rotation.x = -Math.PI / 2;
+    mk.add(dot, ring);
+    mk.renderOrder = 5;
+    this.root.add(mk);
+    this.marker = mk;
+  }
+
+  updateMarker() {
+    if (this.phase !== 'fly') { this.marker.visible = false; return; }
+    this.marker.visible = true;
+    const b = this.ball.pos;
+    let y = SEA_Y + 0.06;
+    for (const tg of this.targets) {
+      if (Math.hypot(b.x - tg.pos.x, b.z - tg.pos.z) <= tg.R) { y = tg.pos.y + 0.62; break; }
+    }
+    this.marker.position.set(b.x, y, b.z);
+    const alt = Math.max(1, b.y - y);
+    this.marker.scale.setScalar(THREE.MathUtils.clamp(1 + alt * 0.02, 1, 2.2));
   }
 
   setWings(open) { // 0 = closed ball, 1 = spread wings
@@ -245,6 +277,10 @@ export class TargetMode {
     }
     this.yaw = 0;               // yaw convention: forward = (-sin(yaw), 0, -cos(yaw)); 0 faces -z
     this.airVel = new THREE.Vector3(0, 0, 0);
+    this.open = false;          // launch closed, like Monkey Target — JUMP pops the wings
+    this.pitch = 0;             // radians; negative = nose down
+    this.speed = 0;             // airspeed while gliding
+    this.hintShown = false;
     this.setWings(0);
     // per-round wind
     const wa = Math.random() * Math.PI * 2;
@@ -263,15 +299,36 @@ export class TargetMode {
     this.cooldown = this.skill.cooldown;
     sfx.ability();
     switch (id) {
-      case 'stomp': this.airVel.x *= 0.25; this.airVel.z *= 0.25; this.airVel.y = Math.min(this.airVel.y, -6); break;
-      case 'dash': {
-        const f = this.forward(); this.airVel.addScaledVector(f, 14); sfx.dash(); break;
-      }
-      case 'float': this.airVel.y = Math.max(this.airVel.y + 9, 7); break;
-      case 'shield': this.windShield = 4; this.airVel.multiplyScalar(0.55); break;
+      case 'stomp':   // brake hard & drop straight — bullseye sniping
+        this.open = false;
+        this.airVel.x *= 0.15; this.airVel.z *= 0.15;
+        this.airVel.y = Math.min(this.airVel.y, -6);
+        break;
+      case 'dash':
+        if (this.open) this.speed = Math.min(this.speed + 13, 38);
+        else this.airVel.addScaledVector(this.forward(), 13);
+        sfx.dash();
+        break;
+      case 'float':   // balloon up and hang there
+        this.open = true;
+        this.pitch = 0.3;
+        this.speed = Math.max(this.speed, this.fs.cruise);
+        this.superLift = Math.max(this.superLift, 2);
+        this.airVel.y = Math.max(this.airVel.y, 6);
+        this.ball.pos.y += 2.5;
+        break;
+      case 'shield':
+        this.windShield = 4;
+        if (this.open) this.speed = Math.max(9, this.speed * 0.6);
+        break;
       case 'magnet': this.magnet = 6; break;
-      case 'pound': this.airVel.y = -26; this.sticky = true; this.ctx.ui.flashMessage('DIVE BOMB!', 800); break;
-      case 'glide': this.superLift = 4; break;
+      case 'pound':   // tuck & plummet, stick the landing
+        this.open = false;
+        this.airVel.y = -28;
+        this.sticky = true;
+        this.ctx.ui.flashMessage('DIVE BOMB!', 800);
+        break;
+      case 'glide': this.open = true; this.superLift = 4; break;
       case 'chomp': this.slowmo = 3; this.ctx.ui.flashMessage('SLOW-MO!', 800); break;
     }
   }
@@ -312,6 +369,7 @@ export class TargetMode {
     }
 
     this.syncVisual(t, realDt);
+    this.updateMarker();
     this.updateCamera(realDt);
     this.updateHUD();
   }
@@ -336,51 +394,75 @@ export class TargetMode {
       }
       this.yaw = Math.atan2(-this.airVel.x, -this.airVel.z);
       sfx.launch();
-      this.ctx.ui.flashMessage('WINGS OUT!', 900);
+      this.ctx.ui.flashMessage(document.body.classList.contains('touch') ? 'TAP JUMP = WINGS!' : 'SPACE = WINGS!', 1600);
     }
     if (this.ball.pos.y < 30) { // fell off the ramp somehow
       this.phase = 'fly'; this.airVel.copy(this.ball.vel);
     }
   }
 
+  toggleWings() {
+    this.open = !this.open;
+    if (this.open) {
+      // ball pops open: convert motion into stable airspeed & pitch
+      const hs = Math.hypot(this.airVel.x, this.airVel.z);
+      this.speed = THREE.MathUtils.clamp(Math.hypot(hs, Math.max(-this.airVel.y * 0.45, 0)), 12, 32);
+      this.pitch = THREE.MathUtils.clamp(Math.atan2(this.airVel.y, Math.max(hs, 2)), -0.55, 0.12);
+      sfx.glide();
+    } else {
+      // tuck back into the ball: keep current velocity, gravity takes over
+      sfx.bounce();
+    }
+  }
+
   updateFly(dt, input) {
-    // open wings over ~0.4s
-    this.setWings(Math.min(1, (this.wingOpen || 0) + dt * 3));
+    if (input.jump) this.toggleWings();
+    // wings animate toward state
+    const target = this.open ? 1 : 0;
+    this.setWings(this.wingOpen + (target - this.wingOpen) * Math.min(1, dt * 8));
 
-    // steering
-    this.yaw -= input.x * this.fs.turn * dt;
-    this.lastTurn = input.x;
-    const f = this.forward();
-    const hs = Math.hypot(this.airVel.x, this.airVel.z);
-
-    // pitch input: dive (y>0 = stick down? our input y: up=-1) — up-stick dives like Monkey Target
-    let dive = -input.y;   // push up on stick = nose down = speed
-    if (getSave().settings.invertPitch) dive = -dive;
-    if (dive > 0.05) {
-      this.airVel.addScaledVector(f, dive * this.fs.diveGain * dt);
-      this.airVel.y -= dive * this.fs.diveGain * 0.8 * dt;
-    } else if (dive < -0.05) {
-      // flare: trade speed for lift
-      const brake = Math.min(hs * 0.5, -dive * 9) * dt;
-      this.airVel.x -= f.x * brake * 4; this.airVel.z -= f.z * brake * 4;
-      this.airVel.y += -dive * Math.min(hs * 0.35, 7.5) * dt;
+    // remind stragglers about the wings (once)
+    if (!this.open && !this.hintShown && this.phaseT > 1.6) {
+      this.hintShown = true;
+      this.ctx.ui.flashMessage(document.body.classList.contains('touch') ? 'JUMP = WINGS!' : 'SPACE = WINGS!', 1200);
     }
 
-    // steer velocity toward heading (banking)
-    const targetVx = f.x * hs, targetVz = f.z * hs;
-    this.airVel.x += (targetVx - this.airVel.x) * Math.min(1, dt * 3.2);
-    this.airVel.z += (targetVz - this.airVel.z) * Math.min(1, dt * 3.2);
+    // steering — banking turns; the closed ball barely steers
+    this.yaw -= input.x * this.fs.turn * (this.open ? 1 : 0.4) * dt;
+    this.lastTurn = input.x;
+    const f = this.forward();
 
-    // gravity vs lift
-    let lift = this.fs.lift + (this.feather > 0 ? 0.25 : 0);
-    if (this.superLift > 0) lift = 1.02;
-    const liftFrac = Math.min(1.05, lift * (hs / 18));
-    this.airVel.y -= 20 * (1 - liftFrac) * dt;
-    // drag
-    const drag = Math.exp(-this.fs.drag * dt);
-    this.airVel.x *= drag; this.airVel.z *= drag;
-    // wind
-    if (this.windShield <= 0) this.airVel.addScaledVector(this.wind, dt * 0.55);
+    if (this.open) {
+      // ---- kinematic glider: stable & readable, no stall spirals ----
+      let dive = -input.y;                    // stick up = nose down, like Monkey Target
+      if (getSave().settings.invertPitch) dive = -dive;
+      // nose down up to ~35°, nose up to ~20°
+      let pitchTarget = dive > 0 ? -dive * 0.62 : -dive * 0.34;
+      // low airspeed gently forces the nose down instead of stalling out
+      if (this.speed < 13) pitchTarget = Math.min(pitchTarget, (this.speed - 13) * 0.1);
+      this.pitch += (pitchTarget - this.pitch) * Math.min(1, dt * 3.2);
+
+      // airspeed: diving accelerates, climbing bleeds, level relaxes to cruise
+      const accel = -Math.sin(this.pitch) * this.fs.diveGain - (this.speed - this.fs.cruise) * 0.45;
+      this.speed = THREE.MathUtils.clamp(this.speed + accel * dt, 9, 38);
+
+      // sink: gliding always descends a little (abilities can cancel it)
+      let sink = this.fs.sink;
+      if (this.superLift > 0) sink = 0;
+      else if (this.feather > 0) sink *= 0.35;
+
+      const horiz = this.speed * Math.cos(this.pitch);
+      this.airVel.set(f.x * horiz, this.speed * Math.sin(this.pitch) - sink, f.z * horiz);
+    } else {
+      // ---- closed ball: ballistic dive, fast & heavy ----
+      this.airVel.y -= 24 * dt;
+      const hs = Math.hypot(this.airVel.x, this.airVel.z) * Math.exp(-0.03 * dt);
+      this.airVel.x = f.x * hs;
+      this.airVel.z = f.z * hs;
+    }
+
+    // wind drifts you (open wings catch much more of it)
+    if (this.windShield <= 0) this.ball.pos.addScaledVector(this.wind, dt * (this.open ? 0.55 : 0.18));
 
     this.feather = Math.max(0, this.feather - dt);
     this.superLift = Math.max(0, this.superLift - dt);
@@ -408,7 +490,7 @@ export class TargetMode {
           sfx.bunch();
           this.ctx.ui.flashMessage(gd.def.name + '!', 900);
           switch (gd.def.id) {
-            case 'rocket': { const fw = this.forward(); this.airVel.addScaledVector(fw, 13); break; }
+            case 'rocket': this.open ? this.speed = Math.min(this.speed + 12, 38) : this.airVel.addScaledVector(this.forward(), 12); break;
             case 'feather': this.feather = 4; break;
             case 'x2': this.multiplier = 2; break;
             case 'sticky': this.sticky = true; break;
@@ -429,6 +511,7 @@ export class TargetMode {
       if (this.ball.pos.y <= tg.pos.y + 0.6 + BALL_RADIUS && this.ball.pos.y > tg.pos.y - 1 &&
           Math.hypot(dx, dz) < tg.R + 0.5 && this.airVel.y < 0) {
         this.phase = 'landed'; this.phaseT = 0;
+        this.open = false;
         this.ball.vel.copy(this.airVel);
         if (this.sticky) { this.ball.vel.multiplyScalar(0.06); this.ctx.ui.flashMessage('STUCK IT!', 900); }
         else this.ball.vel.y = Math.max(this.ball.vel.y * -0.2, -2);
@@ -504,12 +587,19 @@ export class TargetMode {
   syncVisual(t, dt) {
     this.flyer.position.copy(this.ball.pos);
     if (this.phase === 'fly') {
-      // bank & pitch the flyer with motion
       const hs = Math.hypot(this.airVel.x, this.airVel.z);
       this.flyer.rotation.y = this.yaw + Math.PI;   // model faces +z at identity
-      this.flyer.rotation.z += ((-this.lastTurn || 0) * 0.7 - this.flyer.rotation.z) * Math.min(1, dt * 5);
-      this.flyer.rotation.x = Math.atan2(-this.airVel.y, Math.max(hs, 4)) * 0.55;
-      animateCharacter(this.built, t, 'air', hs);
+      if (this.open) {
+        // glider: bank into turns, nose follows pitch
+        this.flyer.rotation.z += ((-this.lastTurn || 0) * 0.7 - this.flyer.rotation.z) * Math.min(1, dt * 5);
+        this.flyer.rotation.x += ((-this.pitch * 0.9) - this.flyer.rotation.x) * Math.min(1, dt * 6);
+        animateCharacter(this.built, t, 'air', hs);
+      } else {
+        // closed ball: tumbles forward as it dives
+        this.flyer.rotation.z *= 0.9;
+        this.flyer.rotation.x += dt * (4 + hs * 0.15);
+        animateCharacter(this.built, t, 'roll', hs);
+      }
     } else if (this.phase === 'ramp' || this.phase === 'landed') {
       this.flyer.rotation.x *= 0.9; this.flyer.rotation.z *= 0.9;
       animateCharacter(this.built, t, 'roll', this.ball.vel.length());
@@ -527,8 +617,10 @@ export class TargetMode {
     let px, py, pz, lx, ly, lz;
     if (this.phase === 'fly') {
       const f = this.forward();
-      px = b.x - f.x * 10; py = b.y + 3.2; pz = b.z - f.z * 10;
-      lx = b.x + f.x * 8; ly = b.y - 1; lz = b.z + f.z * 8;
+      // when diving (nose down / closed ball), camera rises for a better view of the boards
+      const divey = this.open ? THREE.MathUtils.clamp(-this.pitch, 0, 0.7) : 0.55;
+      px = b.x - f.x * (10 - divey * 2.5); py = b.y + 3.2 + divey * 5; pz = b.z - f.z * (10 - divey * 2.5);
+      lx = b.x + f.x * 9; ly = b.y - 1.5 - divey * 7; lz = b.z + f.z * 9;
     } else if (this.phase === 'ramp') {
       // offset to the side so we never clip through the launch tower
       px = b.x + 7; py = b.y + 4.5; pz = b.z + 9;
@@ -553,7 +645,8 @@ export class TargetMode {
       abilityName: this.skill.name,
       timerFrozen: this.slowmo > 0
     });
-    this.ctx.ui.setExtra(`${this.windText}${this.multiplier > 1 ? ' · ×2 ARMED' : ''}${this.sticky ? ' · 🍯' : ''}`);
+    const wings = this.phase === 'fly' ? (this.open ? ' · 🪽 OPEN' : ' · ⚫ CLOSED (JUMP)') : '';
+    this.ctx.ui.setExtra(`${this.windText}${wings}${this.multiplier > 1 ? ' · ×2 ARMED' : ''}${this.sticky ? ' · 🍯' : ''}`);
   }
 
   storeTurn(x) { this.lastTurn = x; }

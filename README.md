@@ -82,9 +82,16 @@ join any relay by pasting its `ws://` URL in the Duel menu.
 | Pause | P / Esc | Start | ⏸ button |
 
 Local Duel: P1 = WASD + Space/Left-Shift (or gamepad 1), P2 = Arrows + Enter/Right-Shift
-(or gamepad 2). Sky Target flight: stick/WASD steers & pitches (push up to dive — invert in
-Settings), skill button fires your air ability. Every mode works with keyboard, gamepad and
-touch; menus are point-and-click/tap.
+(or gamepad 2).
+
+**Sky Target flight (Monkey Target rules)**: you launch as a **closed ball** — press
+**JUMP (Space / A / JUMP button) to pop the ball open into wings**, and press it again to
+tuck back in. Open = stable glide: stick up pitches the nose down to dive for speed, stick
+back flares to stretch the glide, left/right banks the turn, and the wind drags you around.
+Closed = fast ballistic dive that mostly ignores wind — close it over your target to drop
+in. A shadow marker under your ball shows exactly what you're flying over, and your skill
+button fires your character's air ability. Invert pitch in Settings if you prefer flight-sim
+controls. Every mode works with keyboard, gamepad and touch; menus are point-and-click/tap.
 
 ## 🚀 Run locally
 
