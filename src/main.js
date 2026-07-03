@@ -8,7 +8,7 @@ import { pollInput, pollInputDuel, initTouch, clearInput, onPause, onRestart, re
 import { collideBalls, Ghost, DuelNet } from './duel.js';
 import { UI } from './ui.js';
 import { getSave, save, addBananas, recordResult, unlockNextLevel } from './save.js';
-import { sfx, playMusic, stopMusic, unlockAudio } from './audio.js';
+import { sfx, playMusic, stopMusic, unlockAudio, suspendAudio, resumeAudio } from './audio.js';
 import { TargetMode } from './flight.js';
 import { RUSH_LEVEL, RushDirector, RUSH_TIME } from './rush.js';
 import { MenuScene } from './menuscene.js';
@@ -30,13 +30,19 @@ const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 1400);
 // dynamic time-of-day lighting rig (sun/moon, sky dome, stars, fog, exposure, env reflections)
 const atmosphere = new Atmosphere(scene, renderer);
 
+let lastW = 0, lastH = 0;
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
+  if (!w || !h) return;
+  lastW = w; lastH = h;
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
+  window.scrollTo(0, 0);   // shake off residual WebView scroll (keyboard/rotation)
 }
 window.addEventListener('resize', resize);
+window.addEventListener('orientationchange', () => setTimeout(resize, 60));
+if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
 resize();
 
 // ---------------- game state ----------------
@@ -870,6 +876,7 @@ function syncBallVisual(t, dt, input) {
 // ---------------- main loop ----------------
 function tick() {
   requestAnimationFrame(tick);
+  if (window.innerWidth !== lastW || window.innerHeight !== lastH) resize();
   const dt = Math.min(G.clock.getDelta(), 0.05);
   G.simT += dt;
   const t = G.simT;
@@ -1019,16 +1026,28 @@ UI.on('tiltToggled', async () => {
   if (!ok) UI.flashMessage('TILT PERMISSION DENIED', 1500);
 });
 
-onPause(() => {
+function togglePause(forcePause = false) {
   if (G.netDuel) return;   // no pausing an online duel — the rival's clock keeps running
   if (G.state === 'play' || G.state === 'target' || G.state === 'duel') {
     G.pausedFrom = G.state;
     setState('paused');
     UI.showPause();
-  } else if (G.state === 'paused') {
+  } else if (G.state === 'paused' && !forcePause) {
     UI.clear();
     setState(G.pausedFrom);
     G.clock.getDelta();
+  }
+}
+onPause(() => togglePause());
+
+// minimize / switch-app: pause gameplay and silence audio; resume audio on return
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    togglePause(true);       // no-op in menus; pauses any live game
+    suspendAudio();
+  } else {
+    resumeAudio();
+    G.clock.getDelta();      // don't integrate the time we were away
   }
 });
 

@@ -65,14 +65,16 @@ export const UI = {
     this.hudVisible(false);
     this.emit('previewChar', null);
     const s = el('div', 'screen menu-bg');
-    // banana rain
+    // banana rain (clipped layer — doesn't affect scroll size)
+    const rain = el('div', 'rain-wrap');
     for (let i = 0; i < 8; i++) {
       const b = el('div', 'banana-rain', '🍌');
       b.style.left = (4 + i * 12.5) + '%';
       b.style.animationDuration = (5 + (i % 4) * 1.7) + 's';
       b.style.animationDelay = (i * 0.8) + 's';
-      s.appendChild(b);
+      rain.appendChild(b);
     }
+    s.appendChild(rain);
     // letter-by-letter bouncing logo
     const logo = el('div', 'intro-logo');
     [..."ROLLIN' RASCALS"].forEach((ch, i) => {

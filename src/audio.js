@@ -170,6 +170,18 @@ export function stopMusic() {
   curTheme = null;
 }
 
+// backgrounding: silence everything when the app is minimized
+let pausedTheme = null;
+export function suspendAudio() {
+  pausedTheme = curTheme;
+  stopMusic();
+  if (ctx && ctx.state === 'running') ctx.suspend();
+}
+export function resumeAudio() {
+  if (ctx && ctx.state === 'suspended') ctx.resume();
+  if (pausedTheme) { playMusic(pausedTheme); pausedTheme = null; }
+}
+
 export function refreshMusic() {
   // toggle handling: restart or stop based on settings
   const t = curTheme;

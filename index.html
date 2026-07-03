@@ -8,7 +8,9 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍌</text></svg>" />
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a1a; font-family: 'Trebuchet MS', 'Segoe UI', sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a1a; font-family: 'Trebuchet MS', 'Segoe UI', sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; overscroll-behavior: none; }
+  /* pin the page: WebViews can otherwise leave residual scroll after keyboard/rotation */
+  body { position: fixed; inset: 0; }
   #game-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
   .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; z-index: 10; overflow-y: auto; overflow-x: hidden; touch-action: pan-y; padding: 8px 10px calc(env(safe-area-inset-bottom, 0px) + 86px); }
@@ -28,6 +30,8 @@
   @keyframes pressPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.08); opacity: .65; } }
   #press-start { margin-top: 30px; font-size: clamp(20px, 4.5vw, 40px); font-weight: 900; color: #fff; letter-spacing: 4px; text-shadow: 0 3px 0 #144e80, 0 8px 22px rgba(0,0,0,.7); animation: pressPulse 1.15s ease-in-out infinite; }
   @keyframes bananaFall { 0% { transform: translateY(-12vh) rotate(0); } 100% { transform: translateY(112vh) rotate(360deg); } }
+  /* rain lives in its own clipped fixed layer so it can NEVER grow the scroll area */
+  .rain-wrap { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 1; }
   .banana-rain { position: absolute; top: 0; font-size: 34px; animation: bananaFall linear infinite; pointer-events: none; }
 
   /* compact layout for phones / short windows */
