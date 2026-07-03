@@ -6,8 +6,10 @@ import { LEVELS, WORLDS, starThresholds } from './levels.js';
 import { getCharacter, buildCharacterMesh, animateCharacter } from './characters.js';
 import { pollInput, initTouch, clearInput, onPause } from './input.js';
 import { UI } from './ui.js';
-import { getSave, addBananas, recordResult, unlockNextLevel } from './save.js';
+import { getSave, save, addBananas, recordResult, unlockNextLevel } from './save.js';
 import { sfx, playMusic, stopMusic, unlockAudio } from './audio.js';
+import { TargetMode } from './flight.js';
+import { RUSH_LEVEL, RushDirector, RUSH_TIME } from './rush.js';
 
 // ---------------- renderer & scene ----------------
 const canvas = document.getElementById('game-canvas');
@@ -19,7 +21,7 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#120b2e');
-const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 500);
+const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 1000);
 
 const sun = new THREE.DirectionalLight(0xfff4e0, 2.6);
 sun.position.set(18, 30, 14);
@@ -44,7 +46,12 @@ resize();
 
 // ---------------- game state ----------------
 const G = {
-  state: 'boot',            // menu | countdown | play | paused | goal | fallout | results
+  state: 'boot',            // menu | countdown | play | target | paused | goal | fallout | results
+  mode: 'adventure',        // adventure | target | rush
+  targetGame: null,
+  rushDir: null,
+  turboTimer: 0,
+  pausedFrom: 'play',
   stage: null,
   ball: new Ball(),
   ballGroup: null,          // transparent shell + character
@@ -140,10 +147,18 @@ function updateConfetti(dt) {
 }
 
 // ---------------- stage loading ----------------
+function disposeModes() {
+  if (G.targetGame) { G.targetGame.dispose(); G.targetGame = null; }
+  G.rushDir = null;
+  G.turboTimer = 0;
+  UI.setExtra('');
+}
+
 function loadStage(index, { resetLives = false } = {}) {
+  disposeModes();
   if (G.stage) G.stage.dispose();
   G.levelIndex = index;
-  const level = LEVELS[index];
+  const level = index === -1 ? RUSH_LEVEL : LEVELS[index];
   const world = WORLDS[level.world];
   G.stage = new Stage(scene, level, world);
   const sv = getSave();
@@ -166,6 +181,74 @@ function loadStage(index, { resetLives = false } = {}) {
   UI.hudVisible(true);
   UI.flashMessage('READY...', 0);
   sfx.ready();
+  if (level.isRush) {
+    G.rushDir = new RushDirector({
+      stage: G.stage, ui: UI,
+      addTime: (s) => { G.timeLeft += s; },
+      setTurbo: (s) => { G.turboTimer = s; },
+      setMagnet: (s) => { G.magnetTimer = Math.max(G.magnetTimer, s); }
+    });
+  }
+}
+
+function startRushMode() {
+  G.mode = 'rush';
+  loadStage(-1, { resetLives: true });
+}
+
+function startTargetMode() {
+  G.mode = 'target';
+  disposeModes();
+  if (G.stage) { G.stage.dispose(); G.stage = null; }
+  if (G.ballGroup) { scene.remove(G.ballGroup.group); G.ballGroup = null; }
+  G.char = getCharacter(getSave().selectedChar);
+  clearInput();
+  playMusic('sky');
+  UI.clear();
+  UI.hudVisible(true);
+  G.targetGame = new TargetMode({
+    scene, camera, char: G.char, ui: UI,
+    onFinish: (res) => {
+      setState('results');
+      UI.hudVisible(false);
+      stopMusic();
+      const sv = getSave();
+      UI.showModeResults({
+        title: 'FLIGHT OVER!',
+        subtitle: `${G.char.name} — Sky Target`,
+        newBest: res.total > 0 && res.total >= (sv.targetBest || 0),
+        lines: [
+          ['Total Score', `⭐ ${res.total}`],
+          ['Air Bananas', `🍌 ${res.bananas}`],
+          ['Banana Reward', `🍌 +${res.bananas + Math.floor(res.total / 25)}`],
+          ['Best Ever', `⭐ ${sv.targetBest || 0}`]
+        ]
+      });
+    }
+  });
+  setState('target');
+}
+
+function endRush() {
+  const sv = getSave();
+  addBananas(G.bananasGot);
+  const newBest = G.bananasGot > 0 && G.bananasGot >= (sv.rushBest || 0);
+  if (G.bananasGot > (sv.rushBest || 0)) { sv.rushBest = G.bananasGot; save(); }
+  setState('results');
+  UI.hudVisible(false);
+  stopMusic();
+  sfx.goal();
+  UI.showModeResults({
+    title: "TIME'S UP!",
+    subtitle: `${G.char.name} — Banana Rush`,
+    newBest,
+    lines: [
+      ['Bananas Hoarded', `🍌 ${G.bananasGot}`],
+      ['Score', `⭐ ${G.score}`],
+      ['Banked to Shop', `🍌 +${G.bananasGot}`],
+      ['Best Haul', `🍌 ${sv.rushBest || 0}`]
+    ]
+  });
 }
 
 function setState(s) { G.state = s; G.stateT = 0; }
@@ -325,6 +408,7 @@ const events = [];
 function updatePlay(dt, t) {
   const input = pollInput();
   const phys = charPhysics();
+  if (G.turboTimer > 0) { G.turboTimer -= dt; phys.accel *= 1.65; }
   events.length = 0;
 
   // passive glide for the floaty rascals
@@ -388,20 +472,39 @@ function updatePlay(dt, t) {
       bn.mesh.visible = false;
       G.bananasGot += bn.value;
       G.score += bn.value * 10;
+      if (G.rushDir) G.score += G.rushDir.onBananaCollected(bn);
       if (bn.value > 1) { sfx.bunch(); UI.flashMessage('BUNCH! +10 🍌', 700); }
       else sfx.banana();
     }
   }
 
+  // rush director: spawns, power-ups, combo decay
+  if (G.rushDir) {
+    G.rushDir.update(dt, G.ball.pos);
+    UI.setExtra(G.rushDir.combo >= 2 ? `🔥 COMBO ×${G.rushDir.combo}` : (G.turboTimer > 0 ? '🚀 TURBO' : ''));
+  }
+
   // goal / fall / timer
-  if (G.stage.checkGoal(G.ball.pos)) { onGoal(); return; }
-  if (G.ball.pos.y < G.stage.fallY) { onFallOut('fall'); return; }
+  if (!G.rushDir && G.stage.checkGoal(G.ball.pos)) { onGoal(); return; }
+  if (G.ball.pos.y < G.stage.fallY) {
+    if (G.rushDir) {
+      // rush: no lives — respawn at center with a time penalty
+      G.ball.reset(RUSH_LEVEL.start.p);
+      G.timeLeft = Math.max(0, G.timeLeft - 3);
+      sfx.fall();
+      UI.flashMessage('OOPS! -3s', 900);
+    } else { onFallOut('fall'); return; }
+  }
   if (G.timerFrozen > 0) G.timerFrozen -= dt;
   else {
     const before = G.timeLeft;
     G.timeLeft -= dt;
     if (G.timeLeft <= 10 && Math.ceil(before) !== Math.ceil(G.timeLeft)) sfx.tick();
-    if (G.timeLeft <= 0) { G.timeLeft = 0; onFallOut('time'); return; }
+    if (G.timeLeft <= 0) {
+      G.timeLeft = 0;
+      if (G.rushDir) { endRush(); } else { onFallOut('time'); }
+      return;
+    }
   }
 
   // visual stage tilt (cosmetic, monkey-ball flavor)
@@ -488,6 +591,9 @@ function tick() {
     case 'play':
       updatePlay(dt, t);
       break;
+    case 'target':
+      if (G.targetGame) G.targetGame.update(dt, t, pollInput());
+      break;
     case 'goal':
       syncBallVisual(t, dt, null);
       updateCamera(dt, { x: 0, y: 0 });
@@ -515,26 +621,54 @@ function showMenuBackdrop() {
   setState('menu');
 }
 
-UI.on('play', () => UI.showCharSelect());
-UI.on('levelSelect', () => UI.showLevelSelect());
+UI.on('modeChosen', (mode) => { G.mode = mode; UI.showCharSelect(mode); });
+UI.on('charChosen', (mode) => {
+  if (mode === 'adventure') UI.showLevelSelect();
+  else if (mode === 'target') startTargetMode();
+  else if (mode === 'rush') startRushMode();
+});
 UI.on('shop', () => UI.showShop());
-UI.on('startLevel', (i) => loadStage(i, { resetLives: true }));
-UI.on('resume', () => { setState('play'); G.clock.getDelta(); });
-UI.on('retry', () => loadStage(G.levelIndex, { resetLives: G.state === 'results' && G.lives === 3 }));
-UI.on('quit', () => { UI.hudVisible(false); stopMusic(); playMusic('menu'); showMenuBackdrop(); UI.showTitle(); });
+UI.on('startLevel', (i) => { G.mode = 'adventure'; loadStage(i, { resetLives: true }); });
+UI.on('resume', () => { setState(G.pausedFrom); G.clock.getDelta(); });
+UI.on('retry', () => {
+  if (G.mode === 'target') startTargetMode();
+  else if (G.mode === 'rush') startRushMode();
+  else loadStage(G.levelIndex, { resetLives: G.state === 'results' && G.lives === 3 });
+});
+UI.on('quit', () => {
+  disposeModes();
+  G.mode = 'adventure';
+  UI.hudVisible(false);
+  stopMusic();
+  playMusic('menu');
+  showMenuBackdrop();
+  UI.showTitle();
+});
 UI.on('next', () => {
   const next = Math.min(G.levelIndex + 1, LEVELS.length - 1);
   loadStage(next);
 });
 
 onPause(() => {
-  if (G.state === 'play') { setState('paused'); UI.showPause(); }
-  else if (G.state === 'paused') { UI.clear(); setState('play'); G.clock.getDelta(); }
+  if (G.state === 'play' || G.state === 'target') {
+    G.pausedFrom = G.state;
+    setState('paused');
+    UI.showPause();
+  } else if (G.state === 'paused') {
+    UI.clear();
+    setState(G.pausedFrom);
+    G.clock.getDelta();
+  }
 });
 
 window.addEventListener('pointerdown', unlockAudio, { once: true });
 window.addEventListener('keydown', unlockAudio, { once: true });
 window.addEventListener('touchstart', unlockAudio, { once: true });
+
+// debug/testing handle (harmless in production)
+window.__G = G;
+window.__CAM = camera;
+window.__SCENE = scene;
 
 // boot
 initTouch();

@@ -11,6 +11,8 @@ const DEFAULTS = {
   bestTimes: {},              // levelId -> seconds remaining (higher = better)
   bestScores: {},             // levelId -> score
   stars: {},                  // levelId -> 0..3
+  targetBest: 0,              // Sky Target mode best total
+  rushBest: 0,                // Banana Rush mode best haul
   settings: { music: true, sfx: true, tilt: false, camAssist: true }
 };
 

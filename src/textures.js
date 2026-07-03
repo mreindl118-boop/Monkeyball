@@ -139,6 +139,74 @@ export function goalTexture() {
   return t;
 }
 
+// Concentric dartboard rings for Sky Target mode
+export function targetTexture() {
+  if (cache.has('target')) return cache.get('target');
+  const [c, ctx] = makeCanvas(512);
+  const rings = [
+    [1.0, '#1c2f52'], [0.66, '#e8f0ff'], [0.44, '#e34242'], [0.22, '#ffd23d'], [0.09, '#e34242']
+  ];
+  for (const [r, col] of rings) {
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(256, 256, 254 * r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+  ctx.lineWidth = 4;
+  for (const [r] of rings) {
+    ctx.beginPath();
+    ctx.arc(256, 256, 254 * r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  const t = toTexture(c, 1);
+  t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
+  cache.set('target', t);
+  return t;
+}
+
+export function waterTexture(repeat = 20) {
+  if (cache.has('water')) return cache.get('water');
+  const [c, ctx] = makeCanvas(256);
+  ctx.fillStyle = '#1b5fa8';
+  ctx.fillRect(0, 0, 256, 256);
+  ctx.strokeStyle = 'rgba(180,225,255,0.35)';
+  ctx.lineWidth = 5;
+  for (let i = 0; i < 10; i++) {
+    ctx.beginPath();
+    const y = (i * 61) % 256;
+    ctx.moveTo(0, y);
+    ctx.bezierCurveTo(64, y - 14, 128, y + 14, 256, y);
+    ctx.stroke();
+  }
+  const t = toTexture(c, repeat);
+  cache.set('water', t);
+  return t;
+}
+
+// Emoji/text sprite for power-up icons
+export function iconSprite(text, bg = 'rgba(10,10,30,0.85)') {
+  const key = `icon${text}${bg}`;
+  if (cache.has(key)) return cache.get(key);
+  const [c, ctx] = makeCanvas(128);
+  ctx.fillStyle = bg;
+  ctx.beginPath();
+  ctx.arc(64, 64, 60, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+  ctx.lineWidth = 6;
+  ctx.stroke();
+  ctx.font = '64px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#fff';
+  ctx.fillText(text, 64, 70);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  cache.set(key, t);
+  return t;
+}
+
 // Sky: big gradient dome texture per world theme
 export function skyTexture(topCol, midCol, botCol) {
   const key = `sky${topCol}${midCol}${botCol}`;

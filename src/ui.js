@@ -1,5 +1,6 @@
 // DOM-based menus & HUD. main.js wires the callbacks.
 import { CHARACTERS } from './characters.js';
+import { AIR_SKILLS } from './flight.js';
 import { LEVELS, WORLDS } from './levels.js';
 import { getSave, save, spendBananas, unlockChar, resetSave } from './save.js';
 import { sfx, refreshMusic } from './audio.js';
@@ -38,6 +39,11 @@ export const UI = {
     ab.style.opacity = abilityReady ? 1 : 0.45;
   },
 
+  setExtra(text) {
+    const e = $('hud-extra-text');
+    if (e && e.textContent !== text) e.textContent = text || '';
+  },
+
   flashMessage(text, ms = 1200) {
     const m = $('hud-msg');
     m.textContent = text;
@@ -54,7 +60,7 @@ export const UI = {
     s.appendChild(el('h1', 'title', "ROLLIN' RASCALS"));
     s.appendChild(el('div', 'subtitle', 'A totally-not-suspicious ball-rolling adventure 🍌'));
     const play = el('button', 'btn', '▶ PLAY');
-    play.onclick = () => { sfx.select(); this.emit('play'); };
+    play.onclick = () => { sfx.select(); this.showModeSelect(); };
     const shop = el('button', 'btn secondary', '🍌 BANANA SHOP');
     shop.onclick = () => { sfx.menu(); this.emit('shop'); };
     const settings = el('button', 'btn secondary', '⚙ SETTINGS');
@@ -66,8 +72,50 @@ export const UI = {
     screens.appendChild(s);
   },
 
+  // ---------------- MODE SELECT ----------------
+  showModeSelect() {
+    this.clear();
+    const sv = getSave();
+    const s = el('div', 'screen menu-bg');
+    s.appendChild(el('h1', 'title', 'GAME MODES'));
+    const row = el('div');
+    row.id = 'mode-row';
+    const modes = [
+      {
+        id: 'adventure', emoji: '🌴', name: 'Adventure',
+        desc: '15 stages across 3 worlds. Beat the clock, grab bananas, reach the goal gate.',
+        best: `Total score: ⭐ ${sv.totalScore}`
+      },
+      {
+        id: 'target', emoji: '🎯', name: 'Sky Target',
+        desc: 'Launch off a mega-ramp, split your ball into wings, and glide onto floating dartboards. 3 flights, ride the wind!',
+        best: `Best: ⭐ ${sv.targetBest || 0}`
+      },
+      {
+        id: 'rush', emoji: '🍌', name: 'Banana Rush',
+        desc: '60 seconds, endless bananas. Chase golden bunches, chain combos, hoard the shop currency!',
+        best: `Best haul: 🍌 ${sv.rushBest || 0}`
+      }
+    ];
+    for (const m of modes) {
+      const card = el('div', 'mode-card');
+      card.appendChild(el('div', 'emoji', m.emoji));
+      card.appendChild(el('h3', '', m.name));
+      card.appendChild(el('p', '', m.desc));
+      card.appendChild(el('div', 'best', m.best));
+      card.onclick = () => { sfx.select(); this.emit('modeChosen', m.id); };
+      row.appendChild(card);
+    }
+    s.appendChild(row);
+    const back = el('button', 'btn secondary', '◀ BACK');
+    back.style.marginTop = '22px';
+    back.onclick = () => { sfx.menu(); this.showTitle(); };
+    s.appendChild(back);
+    screens.appendChild(s);
+  },
+
   // ---------------- CHARACTER SELECT ----------------
-  showCharSelect() {
+  showCharSelect(mode = 'adventure') {
     this.clear();
     const sv = getSave();
     const s = el('div', 'screen menu-bg');
@@ -78,7 +126,12 @@ export const UI = {
     detail.id = 'char-detail';
 
     const renderDetail = (c) => {
-      detail.innerHTML = `<b>${c.name}</b> — ${c.bio}<br><b>${c.ability.name}:</b> ${c.ability.desc}`;
+      if (mode === 'target') {
+        const air = AIR_SKILLS[c.ability.id];
+        detail.innerHTML = `<b>${c.name}</b> — ${c.bio}<br><b>✈ ${air.name}:</b> ${air.desc}`;
+      } else {
+        detail.innerHTML = `<b>${c.name}</b> — ${c.bio}<br><b>${c.ability.name}:</b> ${c.ability.desc}`;
+      }
     };
 
     for (const c of CHARACTERS) {
@@ -111,10 +164,11 @@ export const UI = {
     s.appendChild(detail);
     renderDetail(CHARACTERS.find(c => c.id === sv.selectedChar) || CHARACTERS[0]);
 
-    const go = el('button', 'btn', 'CHOOSE LEVEL ▶');
-    go.onclick = () => { sfx.select(); this.emit('levelSelect'); };
+    const goLabel = mode === 'adventure' ? 'CHOOSE LEVEL ▶' : mode === 'target' ? 'TAKE FLIGHT ▶' : 'START RUSH ▶';
+    const go = el('button', 'btn', goLabel);
+    go.onclick = () => { sfx.select(); this.emit('charChosen', mode); };
     const back = el('button', 'btn secondary', '◀ BACK');
-    back.onclick = () => { sfx.menu(); this.showTitle(); };
+    back.onclick = () => { sfx.menu(); this.showModeSelect(); };
     const btnRow = el('div');
     btnRow.appendChild(back); btnRow.appendChild(go);
     s.appendChild(btnRow);
@@ -147,7 +201,7 @@ export const UI = {
     });
     s.appendChild(grid);
     const back = el('button', 'btn secondary', '◀ CHARACTERS');
-    back.onclick = () => { sfx.menu(); this.showCharSelect(); };
+    back.onclick = () => { sfx.menu(); this.showCharSelect('adventure'); };
     s.appendChild(back);
     screens.appendChild(s);
   },
@@ -258,6 +312,30 @@ export const UI = {
     const quit = el('button', 'btn secondary', '✕ QUIT TO MENU');
     quit.onclick = () => { sfx.menu(); this.emit('quit'); };
     s.appendChild(resume); s.appendChild(retry); s.appendChild(quit);
+    screens.appendChild(s);
+  },
+
+  // ---------------- MODE RESULTS (target / rush) ----------------
+  showModeResults({ title, subtitle, lines, newBest }) {
+    this.clear();
+    const s = el('div', 'screen');
+    s.style.background = 'rgba(5,5,20,.78)';
+    const t = el('div', '', title);
+    t.id = 'result-title';
+    s.appendChild(t);
+    if (newBest) s.appendChild(el('div', 'subtitle', '🏆 NEW RECORD! 🏆'));
+    if (subtitle) s.appendChild(el('div', 'subtitle', subtitle));
+    for (const [label, val] of lines) {
+      s.appendChild(el('div', 'result-line', `<span>${label}</span><b>${val}</b>`));
+    }
+    const btnRow = el('div');
+    btnRow.style.marginTop = '22px';
+    const again = el('button', 'btn', '↻ PLAY AGAIN');
+    again.onclick = () => { sfx.select(); this.emit('retry'); };
+    const quit = el('button', 'btn secondary', 'MENU');
+    quit.onclick = () => { sfx.menu(); this.emit('quit'); };
+    btnRow.appendChild(again); btnRow.appendChild(quit);
+    s.appendChild(btnRow);
     screens.appendChild(s);
   },
 
