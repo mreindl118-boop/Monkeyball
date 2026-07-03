@@ -4,6 +4,7 @@ import { AIR_SKILLS } from './flight.js';
 import { LEVELS, WORLDS } from './levels.js';
 import { getSave, save, spendBananas, unlockChar, resetSave } from './save.js';
 import { sfx, refreshMusic } from './audio.js';
+import { BUILD } from './updater.js';
 
 const screens = document.getElementById('screens');
 const hud = document.getElementById('hud');
@@ -85,7 +86,7 @@ export const UI = {
     ps.id = 'press-start';
     s.appendChild(ps);
     const sv = getSave();
-    s.appendChild(el('div', 'footnote', `Bank 🍌 ${sv.bananaBank} · Total Score ⭐ ${sv.totalScore}`));
+    s.appendChild(el('div', 'footnote', `Bank 🍌 ${sv.bananaBank} · Total Score ⭐ ${sv.totalScore} · Build ${BUILD || 'dev'}`));
     let started = false;
     const go = () => {
       if (started) return;
@@ -543,7 +544,7 @@ export const UI = {
     const bar = el('div', 'pop');
     bar.id = 'update-banner';
     bar.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);left:50%;transform:translateX(-50%);z-index:60;background:rgba(10,8,30,.92);border:2px solid #ffe14d;border-radius:14px;padding:10px 14px;display:flex;align-items:center;gap:10px;color:#fff;font-size:13px;max-width:94vw;pointer-events:auto;box-shadow:0 8px 24px rgba(0,0,0,.5);';
-    bar.appendChild(el('div', '', `🚀 <b style="color:#ffe14d">Update available!</b> Build ${latest} (you have ${current})`));
+    bar.appendChild(el('div', '', `🚀 <b style="color:#ffe14d">Update available!</b> Build ${latest} (you have ${current})<br><span style="font-size:11px;color:#9ab">If Android says "App not installed", uninstall the old app once — updates flow normally after that.</span>`));
     const go = el('button', 'btn', 'UPDATE');
     go.style.cssText = 'padding:6px 14px;font-size:13px;margin:0;';
     go.onclick = () => { sfx.select(); install(); };
