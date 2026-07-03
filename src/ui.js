@@ -21,9 +21,15 @@ export const UI = {
   on(name, cb) { this.callbacks[name] = cb; },
   emit(name, ...args) { this.callbacks[name] && this.callbacks[name](...args); },
 
-  clear() { screens.innerHTML = ''; },
+  clear() {
+    screens.innerHTML = '';
+    if (this._startKey) { window.removeEventListener('keydown', this._startKey); this._startKey = null; }
+  },
 
-  hudVisible(v) { hud.classList.toggle('hidden', !v); },
+  hudVisible(v) {
+    hud.classList.toggle('hidden', !v);
+    document.body.classList.toggle('playing', v);   // touch buttons only in-game
+  },
 
   updateHUD({ time, bananas, lives, score, speed, abilityReady, abilityName, timerFrozen }) {
     const timer = $('hud-timer');
@@ -52,25 +58,52 @@ export const UI = {
     if (ms > 0) this._msgT = setTimeout(() => { m.style.opacity = 0; m.textContent = ''; }, ms);
   },
 
-  // ---------------- TITLE ----------------
+  // ---------------- INTRO / TITLE ----------------
   showTitle() {
     this.clear();
     this.hudVisible(false);
-    const s = el('div', 'screen menu-bg');
-    s.appendChild(el('h1', 'title', "ROLLIN' RASCALS"));
-    s.appendChild(el('div', 'subtitle', 'A totally-not-suspicious ball-rolling adventure 🍌'));
-    const play = el('button', 'btn', '▶ PLAY');
-    play.onclick = () => { sfx.select(); this.showModeSelect(); };
-    const shop = el('button', 'btn secondary', '🍌 BANANA SHOP');
-    shop.onclick = () => { sfx.menu(); this.emit('shop'); };
-    const settings = el('button', 'btn secondary', '⚙ SETTINGS');
-    settings.onclick = () => { sfx.menu(); this.showSettings(); };
-    s.appendChild(play); s.appendChild(shop); s.appendChild(settings);
-    const sv = getSave();
-    s.appendChild(el('div', 'subtitle', `Bank: <span class="banana-count">🍌 ${sv.bananaBank}</span> &nbsp;·&nbsp; Total Score: ⭐ ${sv.totalScore}`));
-    s.appendChild(el('div', 'footnote', 'WASD/Arrows/Stick roll · SPACE jump · SHIFT/F skill · Q/E camera · R restart · P pause · Gamepad & touch supported'));
     this.emit('previewChar', null);
+    const s = el('div', 'screen menu-bg');
+    // banana rain
+    for (let i = 0; i < 8; i++) {
+      const b = el('div', 'banana-rain', '🍌');
+      b.style.left = (4 + i * 12.5) + '%';
+      b.style.animationDuration = (5 + (i % 4) * 1.7) + 's';
+      b.style.animationDelay = (i * 0.8) + 's';
+      s.appendChild(b);
+    }
+    // letter-by-letter bouncing logo
+    const logo = el('div', 'intro-logo');
+    [..."ROLLIN' RASCALS"].forEach((ch, i) => {
+      const sp = el('span', ch === ' ' ? 'space' : '', ch === ' ' ? '&nbsp;' : ch);
+      sp.style.animationDelay = (0.06 * i) + 's';
+      logo.appendChild(sp);
+    });
+    s.appendChild(logo);
+    s.appendChild(el('div', 'subtitle', 'A totally-not-suspicious ball-rolling adventure 🍌'));
+    const ps = el('div', '', ('ontouchstart' in window) ? 'TAP TO START' : 'PRESS START');
+    ps.id = 'press-start';
+    s.appendChild(ps);
+    const sv = getSave();
+    s.appendChild(el('div', 'footnote', `Bank 🍌 ${sv.bananaBank} · Total Score ⭐ ${sv.totalScore}`));
+    let started = false;
+    const go = () => {
+      if (started) return;
+      started = true;
+      sfx.goal();   // fanfare!
+      // defer a tick so this tap's click can't fall through onto the next screen
+      setTimeout(() => this.emit('start'), 30);
+    };
+    s.addEventListener('click', go);
+    this._startKey = (e) => { if (e.code === 'Enter' || e.code === 'Space' || e.code === 'KeyS') go(); };
+    window.addEventListener('keydown', this._startKey);
     screens.appendChild(s);
+  },
+
+  actionBar(...buttons) {
+    const bar = el('div', 'action-bar');
+    for (const b of buttons) bar.appendChild(b);
+    screens.appendChild(bar);
   },
 
   // ---------------- MODE SELECT ----------------
@@ -94,13 +127,8 @@ export const UI = {
       },
       {
         id: 'rush', emoji: '🍌', name: 'Banana Rush',
-        desc: '60 seconds, endless bananas. Chase golden bunches, chain combos, hoard the shop currency!',
-        best: `Best haul: 🍌 ${sv.rushBest || 0}`
-      },
-      {
-        id: 'duel', emoji: '⚔️', name: 'Duel',
-        desc: 'Multiplayer! Local: 2 players, one screen, one arena. Online: room-code battles against a friend.',
-        best: 'Local & Online'
+        desc: '60 seconds, endless bananas. Golden bunches, combos, power-ups — solo or 2-player duels (local & online)!',
+        best: `Best haul: 🍌 ${sv.rushBest || 0} · ⚔️ multiplayer`
       }
     ];
     modes.forEach((m, i) => {
@@ -115,11 +143,19 @@ export const UI = {
     });
     this.emit('previewChar', null);
     s.appendChild(row);
-    const back = el('button', 'btn secondary', '◀ BACK');
-    back.style.marginTop = '22px';
-    back.onclick = () => { sfx.menu(); this.showTitle(); };
-    s.appendChild(back);
+    const extras = el('div');
+    extras.style.marginTop = '18px';
+    const shop = el('button', 'btn secondary', '🍌 SHOP');
+    shop.onclick = () => { sfx.menu(); this.emit('shop'); };
+    const settings = el('button', 'btn secondary', '⚙ SETTINGS');
+    settings.onclick = () => { sfx.menu(); this.showSettings(); };
+    extras.appendChild(shop); extras.appendChild(settings);
+    s.appendChild(extras);
+    s.appendChild(el('div', 'subtitle', `Bank: <span class="banana-count">🍌 ${sv.bananaBank}</span>`));
     screens.appendChild(s);
+    const back = el('button', 'btn secondary', '◀ TITLE');
+    back.onclick = () => { sfx.menu(); this.showTitle(); };
+    this.actionBar(back);
   },
 
   // ---------------- CHARACTER SELECT ----------------
@@ -183,14 +219,17 @@ export const UI = {
       'duel-p1': 'NEXT: PLAYER 2 ▶', 'duel-p2': 'FIGHT! ▶',
       'duel-host': 'CREATE ROOM ▶', 'duel-join': 'JOIN BATTLE ▶'
     }[mode] || 'GO ▶';
+    screens.appendChild(s);
     const go = el('button', 'btn', goLabel);
     go.onclick = () => { sfx.select(); this.emit('charChosen', mode); };
     const back = el('button', 'btn secondary', '◀ BACK');
-    back.onclick = () => { sfx.menu(); mode.startsWith('duel') ? this.showDuelMenu() : this.showModeSelect(); };
-    const btnRow = el('div');
-    btnRow.appendChild(back); btnRow.appendChild(go);
-    s.appendChild(btnRow);
-    screens.appendChild(s);
+    back.onclick = () => {
+      sfx.menu();
+      if (mode === 'duel-p2') this.showCharSelect('duel-p1');
+      else if (mode.startsWith('duel')) this.showPlayers('rush');
+      else this.showPlayers(mode);
+    };
+    this.actionBar(back, go);
   },
 
   flashDetailMsg(node, msg) {
@@ -219,14 +258,85 @@ export const UI = {
     });
     s.appendChild(grid);
     this.emit('previewChar', null);
+    screens.appendChild(s);
     const back = el('button', 'btn secondary', '◀ CHARACTERS');
     back.onclick = () => { sfx.menu(); this.showCharSelect('adventure'); };
-    s.appendChild(back);
-    screens.appendChild(s);
+    this.actionBar(back);
   },
 
-  // ---------------- DUEL MENU ----------------
-  showDuelMenu() {
+  // ---------------- PLAYERS ----------------
+  showPlayers(mode) {
+    this.clear();
+    this.emit('previewChar', null);
+    const sv = getSave();
+    const s = el('div', 'screen menu-bg');
+    s.appendChild(el('h1', 'title', 'PLAYERS'));
+    const col = el('div', 'scroll-col');
+
+    const mkRow = (title, desc, btnLabel, cb, secondary = false) => {
+      const item = el('div', 'shop-item pop');
+      item.appendChild(el('div', 'info', `<h3>${title}</h3><p>${desc}</p>`));
+      const btn = el('button', 'btn' + (secondary ? ' secondary' : ''), btnLabel);
+      btn.style.padding = '8px 20px';
+      btn.style.fontSize = '15px';
+      btn.onclick = cb;
+      item.appendChild(btn);
+      col.appendChild(item);
+      return item;
+    };
+
+    mkRow('👤 1 Player', 'Solo — chase the high score.', 'GO ▶', () => { sfx.select(); this.emit('players1', mode); });
+
+    if (mode === 'rush') {
+      const isTouch = document.body.classList.contains('touch');
+      mkRow('👥 2 Players — Same Device', 'One arena, real bumping! P1: WASD+Space/Shift · P2: Arrows+Enter/RShift, or two gamepads.' + (isTouch ? ' <b>Needs a keyboard or 2 gamepads.</b>' : ''),
+        'GO ▶', () => { sfx.select(); this.emit('duelLocal'); });
+      mkRow('🌐 2 Players — Host Online', 'Create a room and share the 4-letter code with a friend.',
+        'HOST', () => { sfx.select(); this.emit('duelHost'); }, true);
+      // join row with inline code input
+      const joinItem = el('div', 'shop-item pop');
+      joinItem.appendChild(el('div', 'info', `<h3>🔑 2 Players — Join Online</h3><p>Enter your friend's room code.</p>`));
+      const codeInput = el('input');
+      codeInput.maxLength = 4;
+      codeInput.placeholder = 'CODE';
+      codeInput.style.cssText = 'width:84px;text-align:center;font-size:19px;font-weight:900;text-transform:uppercase;border-radius:10px;border:2px solid #7ec8ff;background:rgba(255,255,255,.1);color:#fff;padding:8px;pointer-events:auto;';
+      const joinBtn = el('button', 'btn secondary', 'JOIN');
+      joinBtn.style.padding = '8px 18px';
+      joinBtn.style.fontSize = '15px';
+      joinBtn.onclick = () => {
+        const code = codeInput.value.trim().toUpperCase();
+        if (code.length !== 4) { sfx.denied(); codeInput.focus(); return; }
+        sfx.select();
+        this.emit('duelJoin', code);
+      };
+      joinItem.appendChild(codeInput);
+      joinItem.appendChild(joinBtn);
+      col.appendChild(joinItem);
+      // relay server (advanced)
+      const relayItem = el('div', 'shop-item pop');
+      relayItem.appendChild(el('div', 'info', `<h3>📡 Relay Server</h3><p>Empty = this page's own server (works with <b>npm run host</b>), or paste a ws:// URL.</p>`));
+      const relayInput = el('input');
+      relayInput.placeholder = 'same origin /ws';
+      relayInput.value = sv.settings.relayUrl || '';
+      relayInput.style.cssText = 'width:180px;font-size:12px;border-radius:10px;border:2px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;padding:8px;pointer-events:auto;';
+      relayInput.onchange = () => { sv.settings.relayUrl = relayInput.value.trim(); save(); };
+      relayItem.appendChild(relayInput);
+      col.appendChild(relayItem);
+    } else {
+      col.appendChild(el('div', 'subtitle', '⚔️ 2-player duels live in <b>Banana Rush</b>!'));
+    }
+
+    s.appendChild(col);
+    screens.appendChild(s);
+    const back = el('button', 'btn secondary', '◀ BACK');
+    back.onclick = () => { sfx.menu(); this.showModeSelect(); };
+    this.actionBar(back);
+  },
+
+  // legacy alias (used after online duels end)
+  showDuelMenu() { this.showPlayers('rush'); },
+
+  _oldDuelMenu() {
     this.clear();
     this.emit('previewChar', null);
     const sv = getSave();
@@ -383,10 +493,10 @@ export const UI = {
     }
 
     s.appendChild(col);
-    const back = el('button', 'btn secondary', '◀ BACK');
-    back.onclick = () => { sfx.menu(); this.showTitle(); };
-    s.appendChild(back);
     screens.appendChild(s);
+    const back = el('button', 'btn secondary', '◀ BACK');
+    back.onclick = () => { sfx.menu(); this.showModeSelect(); };
+    this.actionBar(back);
   },
 
   // ---------------- SETTINGS ----------------
@@ -419,10 +529,10 @@ export const UI = {
     reset.onclick = () => { if (confirm('Wipe all progress?')) { resetSave(); sfx.denied(); this.showTitle(); } };
     col.appendChild(reset);
     s.appendChild(col);
-    const back = el('button', 'btn secondary', '◀ BACK');
-    back.onclick = () => { sfx.menu(); this.showTitle(); };
-    s.appendChild(back);
     screens.appendChild(s);
+    const back = el('button', 'btn secondary', '◀ BACK');
+    back.onclick = () => { sfx.menu(); this.showModeSelect(); };
+    this.actionBar(back);
   },
 
   // ---------------- PAUSE ----------------

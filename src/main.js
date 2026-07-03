@@ -953,11 +953,12 @@ function showMenuBackdrop() {
   setState('menu');
 }
 
+UI.on('start', () => { playMusic('menu'); UI.showModeSelect(); });
 UI.on('modeChosen', (mode) => {
-  if (mode === 'duel') { UI.showDuelMenu(); return; }
   G.mode = mode;
-  UI.showCharSelect(mode);
+  UI.showPlayers(mode);
 });
+UI.on('players1', (mode) => UI.showCharSelect(mode));
 UI.on('previewChar', (id) => { if (G.menuScene) G.menuScene.focusCharacter(id); });
 UI.on('duelLocal', () => UI.showCharSelect('duel-p1'));
 UI.on('duelHost', () => UI.showCharSelect('duel-host'));
@@ -993,7 +994,7 @@ UI.on('quit', () => {
   stopMusic();
   playMusic('menu');
   showMenuBackdrop();
-  UI.showTitle();
+  UI.showModeSelect();   // back to the hub, not all the way out to the intro
 });
 UI.on('next', () => {
   const next = Math.min(G.levelIndex + 1, LEVELS.length - 1);

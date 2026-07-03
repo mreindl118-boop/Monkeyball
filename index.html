@@ -11,8 +11,46 @@
   html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a1a; font-family: 'Trebuchet MS', 'Segoe UI', sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; }
   #game-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
-  .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; }
+  .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; z-index: 10; overflow-y: auto; overflow-x: hidden; touch-action: pan-y; padding: 8px 10px calc(env(safe-area-inset-bottom, 0px) + 86px); }
+  /* flexible spacers center short content but allow tall content to scroll */
+  .screen::before, .screen::after { content: ''; flex: 1 0 6px; }
   .hidden { display: none !important; }
+
+  /* always-reachable bottom action bar (BACK / GO) */
+  .action-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; justify-content: center; gap: 10px; padding: 10px 12px calc(env(safe-area-inset-bottom, 0px) + 10px); background: linear-gradient(transparent, rgba(5,3,18,.9) 55%); pointer-events: none; }
+  .action-bar .btn { pointer-events: auto; margin: 0; }
+
+  /* ---------- intro ---------- */
+  @keyframes letterDrop { 0% { opacity: 0; transform: translateY(-90px) rotate(-14deg) scale(1.6); } 60% { opacity: 1; transform: translateY(10px) rotate(3deg); } 100% { opacity: 1; transform: translateY(0) rotate(0); } }
+  .intro-logo { display: flex; flex-wrap: wrap; justify-content: center; margin-bottom: 4px; }
+  .intro-logo span { display: inline-block; font-size: clamp(38px, 10vw, 110px); font-weight: 900; color: #ffe14d; text-shadow: 0 5px 0 #c47b00, 0 10px 30px rgba(0,0,0,.8); animation: letterDrop .7s cubic-bezier(.34,1.56,.64,1) both; }
+  .intro-logo span.space { width: .4em; }
+  @keyframes pressPulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.08); opacity: .65; } }
+  #press-start { margin-top: 30px; font-size: clamp(20px, 4.5vw, 40px); font-weight: 900; color: #fff; letter-spacing: 4px; text-shadow: 0 3px 0 #144e80, 0 8px 22px rgba(0,0,0,.7); animation: pressPulse 1.15s ease-in-out infinite; }
+  @keyframes bananaFall { 0% { transform: translateY(-12vh) rotate(0); } 100% { transform: translateY(112vh) rotate(360deg); } }
+  .banana-rain { position: absolute; top: 0; font-size: 34px; animation: bananaFall linear infinite; pointer-events: none; }
+
+  /* compact layout for phones / short windows */
+  @media (max-width: 820px), (max-height: 560px) {
+    .char-card { width: 102px; padding: 6px; border-width: 2px; }
+    .char-swatch { width: 40px; height: 40px; }
+    .char-card h3 { font-size: 12px; margin: 4px 0 1px; }
+    .char-card .tagline { font-size: 8.5px; height: 20px; }
+    .stat-label { font-size: 7.5px; margin-top: 2px; }
+    .statbar { height: 4px; margin: 2px 0; }
+    #char-row { gap: 7px; }
+    #char-detail { font-size: 11px; min-height: 0; padding: 6px 10px; margin: 8px 6px; }
+    .mode-card { width: min(200px, 44vw); padding: 10px 8px; }
+    .mode-card p { font-size: 10.5px; min-height: 40px; }
+    .mode-card .emoji { font-size: 30px; }
+    .mode-card h3 { font-size: 15px; }
+    .level-tile { width: 68px; height: 68px; }
+    .level-tile .num { font-size: 19px; }
+    .shop-item { padding: 8px 12px; gap: 8px; }
+    .shop-item h3 { font-size: 14px; }
+    .shop-item p { font-size: 10.5px; }
+    h1.title { margin-top: 6px; }
+  }
 
   /* ---------- HUD ---------- */
   #hud { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
@@ -93,7 +131,7 @@
 
   /* touch controls */
   #touch-ui { position: absolute; inset: 0; z-index: 6; pointer-events: none; display: none; }
-  body.touch #touch-ui { display: block; }
+  body.touch.playing #touch-ui { display: block; }
   #joy-zone { position: absolute; left: 0; bottom: 0; width: 45%; height: 55%; pointer-events: auto; }
   #joy-base { position: absolute; width: 130px; height: 130px; border-radius: 50%; border: 3px solid rgba(255,255,255,.35); background: rgba(255,255,255,.08); display: none; }
   #joy-stick { position: absolute; width: 58px; height: 58px; border-radius: 50%; background: rgba(255,225,77,.75); border: 3px solid rgba(255,255,255,.6); display: none; }
