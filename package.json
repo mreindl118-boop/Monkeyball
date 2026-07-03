@@ -1,0 +1,22 @@
+{
+  "name": "rollin-rascals",
+  "version": "1.0.0",
+  "description": "Rollin' Rascals — a Super Monkey Ball inspired 3D roll-em-up with parody characters",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "cap:sync": "npx cap sync android"
+  },
+  "dependencies": {
+    "three": "^0.166.1"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.1.0",
+    "@capacitor/cli": "^6.1.0",
+    "@capacitor/core": "^6.1.0",
+    "playwright-core": "^1.61.1",
+    "vite": "^5.4.0"
+  }
+}

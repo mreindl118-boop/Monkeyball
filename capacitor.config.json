@@ -1,0 +1,9 @@
+{
+  "appId": "com.rollinrascals.game",
+  "appName": "Rollin Rascals",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#0a0a1a",
+    "allowMixedContent": false
+  }
+}

@@ -1,0 +1,80 @@
+name: Build Game
+
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+
+jobs:
+  web:
+    name: Web build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rollin-rascals-web
+          path: dist/
+
+  windows:
+    name: Windows exe
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Copy web build into desktop shell
+        run: Copy-Item -Recurse -Force dist desktop/dist
+        shell: pwsh
+      - name: Install desktop deps
+        run: npm install
+        working-directory: desktop
+      - name: Package Windows builds (installer + portable)
+        run: npx electron-builder --win --x64 --publish never
+        working-directory: desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rollin-rascals-windows
+          path: |
+            desktop/release/*.exe
+            desktop/release/*.blockmap
+
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+      - run: npm run build
+      - name: Generate Android project
+        run: npx cap add android
+      - name: Sync web assets
+        run: npx cap sync android
+      - name: Force landscape orientation
+        run: |
+          sed -i 's/<activity/<activity android:screenOrientation="sensorLandscape"/' android/app/src/main/AndroidManifest.xml
+      - name: Build debug APK
+        run: ./gradlew assembleDebug
+        working-directory: android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rollin-rascals-android
+          path: android/app/build/outputs/apk/debug/app-debug.apk

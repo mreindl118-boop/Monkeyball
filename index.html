@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="mobile-web-app-capable" content="yes" />
+<title>Rollin' Rascals</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍌</text></svg>" />
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a1a; font-family: 'Trebuchet MS', 'Segoe UI', sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; }
+  #game-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  .screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10; }
+  .hidden { display: none !important; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+  .hud-top { position: absolute; top: env(safe-area-inset-top, 8px); left: 0; right: 0; display: flex; justify-content: space-between; padding: 10px 16px; }
+  .hud-pill { background: rgba(10,10,30,.65); border: 2px solid rgba(255,255,255,.25); border-radius: 24px; padding: 6px 16px; color: #fff; font-weight: bold; font-size: clamp(14px, 2.5vw, 22px); text-shadow: 0 2px 4px rgba(0,0,0,.6); backdrop-filter: blur(4px); }
+  #hud-timer { font-size: clamp(22px, 4.5vw, 40px); min-width: 110px; text-align: center; color: #ffe14d; }
+  #hud-timer.danger { color: #ff5252; animation: pulse .5s infinite alternate; }
+  @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.12); } }
+  #hud-speed { position: absolute; bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); right: 16px; }
+  #hud-ability { position: absolute; bottom: calc(env(safe-area-inset-bottom, 0px) + 60px); right: 16px; font-size: 13px; }
+  #hud-msg { position: absolute; top: 22%; left: 0; right: 0; text-align: center; font-size: clamp(30px, 8vw, 72px); font-weight: 900; color: #ffe14d; text-shadow: 0 4px 0 #c47b00, 0 8px 22px rgba(0,0,0,.6); letter-spacing: 2px; }
+
+  /* ---------- Menus ---------- */
+  .menu-bg { background: radial-gradient(circle at 50% 30%, #2b1d5e 0%, #120b2e 60%, #060414 100%); }
+  h1.title { font-size: clamp(40px, 9vw, 96px); font-weight: 900; color: #ffe14d; text-shadow: 0 5px 0 #c47b00, 0 10px 30px rgba(0,0,0,.8); letter-spacing: 3px; transform: rotate(-3deg); margin-bottom: 6px; }
+  .subtitle { color: #9fd0ff; font-size: clamp(14px, 2.5vw, 22px); margin-bottom: 34px; font-style: italic; }
+  .btn { pointer-events: auto; cursor: pointer; background: linear-gradient(#ffd23d, #f5a623); border: 3px solid #8a5a00; border-radius: 16px; color: #4a2f00; font-size: clamp(16px, 3vw, 26px); font-weight: 900; padding: 12px 42px; margin: 8px; box-shadow: 0 6px 0 #8a5a00, 0 10px 18px rgba(0,0,0,.5); transition: transform .08s, box-shadow .08s; letter-spacing: 1px; font-family: inherit; }
+  .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #8a5a00; }
+  .btn.secondary { background: linear-gradient(#7ec8ff, #3a8fd6); border-color: #144e80; color: #06304f; box-shadow: 0 6px 0 #144e80, 0 10px 18px rgba(0,0,0,.5); }
+  .btn.secondary:active { box-shadow: 0 2px 0 #144e80; }
+  .btn:disabled { filter: grayscale(1) brightness(.7); cursor: default; }
+
+  /* character select */
+  #char-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; max-width: 950px; padding: 0 10px; }
+  .char-card { pointer-events: auto; cursor: pointer; width: 140px; background: rgba(255,255,255,.07); border: 3px solid rgba(255,255,255,.2); border-radius: 14px; padding: 10px; text-align: center; color: #fff; transition: transform .12s, border-color .12s; }
+  .char-card:hover { transform: translateY(-4px); }
+  .char-card.selected { border-color: #ffe14d; background: rgba(255,225,77,.15); box-shadow: 0 0 22px rgba(255,225,77,.35); }
+  .char-card.locked { filter: grayscale(1) brightness(.55); }
+  .char-card h3 { font-size: 15px; margin: 6px 0 2px; color: #ffe14d; }
+  .char-card .tagline { font-size: 10px; color: #bcd; height: 26px; }
+  .char-swatch { width: 60px; height: 60px; margin: 0 auto; border-radius: 50%; border: 3px solid rgba(255,255,255,.5); }
+  .statbar { height: 6px; background: rgba(255,255,255,.15); border-radius: 3px; margin: 3px 0; overflow: hidden; }
+  .statbar > div { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #7ec8ff, #ffe14d); }
+  .stat-label { font-size: 9px; color: #9ab; text-align: left; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+  #char-detail { color: #cfe0ff; text-align: center; max-width: 620px; margin: 14px 10px; font-size: clamp(12px, 2vw, 16px); min-height: 44px; }
+  #char-detail b { color: #ffe14d; }
+
+  /* level select */
+  #level-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-width: 760px; }
+  .level-tile { pointer-events: auto; cursor: pointer; width: 92px; height: 92px; border-radius: 14px; border: 3px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 900; transition: transform .1s; font-family: inherit; }
+  .level-tile:hover { transform: scale(1.06); }
+  .level-tile.locked { filter: grayscale(1) brightness(.5); cursor: default; }
+  .level-tile .num { font-size: 26px; color: #ffe14d; }
+  .level-tile .world { font-size: 10px; color: #9fd0ff; }
+  .level-tile .stars { font-size: 12px; color: #ffd23d; }
+
+  /* shop */
+  .shop-item { pointer-events: auto; display: flex; align-items: center; gap: 14px; background: rgba(255,255,255,.07); border: 2px solid rgba(255,255,255,.2); border-radius: 14px; padding: 12px 18px; margin: 6px; width: min(520px, 92vw); color: #fff; }
+  .shop-item .info { flex: 1; text-align: left; }
+  .shop-item h3 { color: #ffe14d; font-size: 17px; }
+  .shop-item p { font-size: 12px; color: #bcd; }
+  .shop-item .lvl { color: #7ec8ff; font-weight: bold; font-size: 13px; }
+
+  /* results */
+  .result-line { color: #fff; font-size: clamp(16px, 3vw, 26px); margin: 4px; display: flex; justify-content: space-between; width: min(420px, 88vw); }
+  .result-line b { color: #ffe14d; }
+  #result-title { font-size: clamp(36px, 8vw, 80px); font-weight: 900; color: #ffe14d; text-shadow: 0 5px 0 #c47b00, 0 10px 30px rgba(0,0,0,.8); margin-bottom: 18px; }
+
+  /* touch controls */
+  #touch-ui { position: absolute; inset: 0; z-index: 6; pointer-events: none; display: none; }
+  body.touch #touch-ui { display: block; }
+  #joy-zone { position: absolute; left: 0; bottom: 0; width: 45%; height: 55%; pointer-events: auto; }
+  #joy-base { position: absolute; width: 130px; height: 130px; border-radius: 50%; border: 3px solid rgba(255,255,255,.35); background: rgba(255,255,255,.08); display: none; }
+  #joy-stick { position: absolute; width: 58px; height: 58px; border-radius: 50%; background: rgba(255,225,77,.75); border: 3px solid rgba(255,255,255,.6); display: none; }
+  .touch-btn { position: absolute; pointer-events: auto; width: 74px; height: 74px; border-radius: 50%; border: 3px solid rgba(255,255,255,.4); background: rgba(255,255,255,.14); color: #fff; font-weight: 900; font-size: 15px; display: flex; align-items: center; justify-content: center; text-shadow: 0 2px 3px rgba(0,0,0,.6); }
+  #btn-jump { right: 24px; bottom: calc(env(safe-area-inset-bottom, 0px) + 110px); }
+  #btn-ability { right: 110px; bottom: calc(env(safe-area-inset-bottom, 0px) + 40px); background: rgba(126,200,255,.25); }
+  #btn-pause { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 64px); right: 16px; width: 46px; height: 46px; font-size: 18px; pointer-events: auto; border-radius: 12px; border: 2px solid rgba(255,255,255,.4); background: rgba(255,255,255,.14); color: #fff; }
+
+  .footnote { position: absolute; bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); color: rgba(255,255,255,.45); font-size: 11px; text-align: center; width: 100%; }
+  .banana-count { color: #ffe14d; font-weight: 900; }
+  .scroll-col { max-height: 62vh; overflow-y: auto; display: flex; flex-direction: column; align-items: center; pointer-events: auto; }
+</style>
+</head>
+<body>
+  <canvas id="game-canvas"></canvas>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div class="hud-top">
+      <div class="hud-pill">🍌 <span id="hud-bananas">0</span></div>
+      <div class="hud-pill" id="hud-timer">60.00</div>
+      <div class="hud-pill">👤 <span id="hud-lives">3</span> &nbsp; ⭐ <span id="hud-score">0</span></div>
+    </div>
+    <div class="hud-pill" id="hud-speed">0 km/h</div>
+    <div class="hud-pill" id="hud-ability">ABILITY READY</div>
+    <div id="hud-msg"></div>
+  </div>
+
+  <!-- Touch controls -->
+  <div id="touch-ui">
+    <div id="joy-zone"></div>
+    <div id="joy-base"></div>
+    <div id="joy-stick"></div>
+    <div class="touch-btn" id="btn-jump">JUMP</div>
+    <div class="touch-btn" id="btn-ability">SKILL</div>
+    <button id="btn-pause">⏸</button>
+  </div>
+
+  <!-- Screens are generated by ui.js -->
+  <div id="screens"></div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

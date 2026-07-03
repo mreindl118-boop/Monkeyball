@@ -1,0 +1,37 @@
+{
+  "name": "rollin-rascals-desktop",
+  "version": "1.0.0",
+  "description": "Rollin' Rascals — desktop build",
+  "main": "main.cjs",
+  "author": "Rollin Rascals Team",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^31.3.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.rollinrascals.game",
+    "productName": "Rollin Rascals",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.cjs",
+      "dist/**/*"
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}
