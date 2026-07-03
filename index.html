@@ -30,16 +30,24 @@
 
   /* mode select */
   #mode-row { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; padding: 0 12px; }
-  .mode-card { pointer-events: auto; cursor: pointer; width: min(240px, 84vw); background: rgba(255,255,255,.07); border: 3px solid rgba(255,255,255,.22); border-radius: 18px; padding: 18px 16px; text-align: center; color: #fff; transition: transform .12s, border-color .12s; }
+  .mode-card { pointer-events: auto; cursor: pointer; width: min(240px, 84vw); background: rgba(14,10,36,.55); border: 3px solid rgba(255,255,255,.22); border-radius: 18px; padding: 18px 16px; text-align: center; color: #fff; transition: transform .12s, border-color .12s; backdrop-filter: blur(3px); }
+  .mode-card .emoji { animation: titleFloat 2.6s ease-in-out infinite; display: inline-block; }
   .mode-card:hover { transform: translateY(-5px); border-color: #ffe14d; }
   .mode-card .emoji { font-size: 44px; }
   .mode-card h3 { color: #ffe14d; margin: 8px 0 6px; font-size: 20px; }
   .mode-card p { font-size: 12.5px; color: #bcd; min-height: 52px; }
   .mode-card .best { font-size: 12px; color: #7ec8ff; font-weight: bold; margin-top: 8px; }
 
-  /* ---------- Menus ---------- */
-  .menu-bg { background: radial-gradient(circle at 50% 30%, #2b1d5e 0%, #120b2e 60%, #060414 100%); }
-  h1.title { font-size: clamp(40px, 9vw, 96px); font-weight: 900; color: #ffe14d; text-shadow: 0 5px 0 #c47b00, 0 10px 30px rgba(0,0,0,.8); letter-spacing: 3px; transform: rotate(-3deg); margin-bottom: 6px; }
+  /* ---------- Menus (translucent — the animated 3D diorama shows through) ---------- */
+  .menu-bg { background: radial-gradient(ellipse at 50% 38%, rgba(20,12,50,.30) 0%, rgba(12,7,34,.55) 62%, rgba(4,2,14,.78) 100%); animation: screenIn .35s ease-out; }
+  @keyframes screenIn { from { opacity: 0; transform: scale(1.03); } to { opacity: 1; transform: scale(1); } }
+  @keyframes titleFloat {
+    0%, 100% { transform: rotate(-3deg) translateY(0); }
+    50% { transform: rotate(-2deg) translateY(-8px); }
+  }
+  h1.title { font-size: clamp(40px, 9vw, 96px); font-weight: 900; color: #ffe14d; text-shadow: 0 5px 0 #c47b00, 0 10px 30px rgba(0,0,0,.8); letter-spacing: 3px; transform: rotate(-3deg); margin-bottom: 6px; animation: titleFloat 3.2s ease-in-out infinite; }
+  @keyframes popIn { from { opacity: 0; transform: translateY(18px) scale(.92); } to { opacity: 1; transform: translateY(0) scale(1); } }
+  .pop { animation: popIn .4s cubic-bezier(.34,1.56,.64,1) both; }
   .subtitle { color: #9fd0ff; font-size: clamp(14px, 2.5vw, 22px); margin-bottom: 34px; font-style: italic; }
   .btn { pointer-events: auto; cursor: pointer; background: linear-gradient(#ffd23d, #f5a623); border: 3px solid #8a5a00; border-radius: 16px; color: #4a2f00; font-size: clamp(16px, 3vw, 26px); font-weight: 900; padding: 12px 42px; margin: 8px; box-shadow: 0 6px 0 #8a5a00, 0 10px 18px rgba(0,0,0,.5); transition: transform .08s, box-shadow .08s; letter-spacing: 1px; font-family: inherit; }
   .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #8a5a00; }
@@ -49,7 +57,7 @@
 
   /* character select */
   #char-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; max-width: 950px; padding: 0 10px; }
-  .char-card { pointer-events: auto; cursor: pointer; width: 140px; background: rgba(255,255,255,.07); border: 3px solid rgba(255,255,255,.2); border-radius: 14px; padding: 10px; text-align: center; color: #fff; transition: transform .12s, border-color .12s; }
+  .char-card { pointer-events: auto; cursor: pointer; width: 140px; background: rgba(14,10,36,.55); border: 3px solid rgba(255,255,255,.2); border-radius: 14px; padding: 10px; text-align: center; color: #fff; transition: transform .12s, border-color .12s; backdrop-filter: blur(3px); }
   .char-card:hover { transform: translateY(-4px); }
   .char-card.selected { border-color: #ffe14d; background: rgba(255,225,77,.15); box-shadow: 0 0 22px rgba(255,225,77,.35); }
   .char-card.locked { filter: grayscale(1) brightness(.55); }
@@ -59,12 +67,12 @@
   .statbar { height: 6px; background: rgba(255,255,255,.15); border-radius: 3px; margin: 3px 0; overflow: hidden; }
   .statbar > div { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #7ec8ff, #ffe14d); }
   .stat-label { font-size: 9px; color: #9ab; text-align: left; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
-  #char-detail { color: #cfe0ff; text-align: center; max-width: 620px; margin: 14px 10px; font-size: clamp(12px, 2vw, 16px); min-height: 44px; }
+  #char-detail { color: #cfe0ff; text-align: center; max-width: 620px; margin: 14px 10px; font-size: clamp(12px, 2vw, 16px); min-height: 44px; background: rgba(10,6,30,.55); border-radius: 12px; padding: 8px 16px; backdrop-filter: blur(3px); }
   #char-detail b { color: #ffe14d; }
 
   /* level select */
   #level-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-width: 760px; }
-  .level-tile { pointer-events: auto; cursor: pointer; width: 92px; height: 92px; border-radius: 14px; border: 3px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 900; transition: transform .1s; font-family: inherit; }
+  .level-tile { pointer-events: auto; cursor: pointer; width: 92px; height: 92px; border-radius: 14px; border: 3px solid rgba(255,255,255,.25); background: rgba(14,10,36,.6); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 900; transition: transform .1s; font-family: inherit; backdrop-filter: blur(3px); }
   .level-tile:hover { transform: scale(1.06); }
   .level-tile.locked { filter: grayscale(1) brightness(.5); cursor: default; }
   .level-tile .num { font-size: 26px; color: #ffe14d; }
@@ -72,7 +80,7 @@
   .level-tile .stars { font-size: 12px; color: #ffd23d; }
 
   /* shop */
-  .shop-item { pointer-events: auto; display: flex; align-items: center; gap: 14px; background: rgba(255,255,255,.07); border: 2px solid rgba(255,255,255,.2); border-radius: 14px; padding: 12px 18px; margin: 6px; width: min(520px, 92vw); color: #fff; }
+  .shop-item { pointer-events: auto; display: flex; align-items: center; gap: 14px; background: rgba(14,10,36,.6); border: 2px solid rgba(255,255,255,.2); border-radius: 14px; padding: 12px 18px; margin: 6px; width: min(520px, 92vw); color: #fff; backdrop-filter: blur(3px); }
   .shop-item .info { flex: 1; text-align: left; }
   .shop-item h3 { color: #ffe14d; font-size: 17px; }
   .shop-item p { font-size: 12px; color: #bcd; }

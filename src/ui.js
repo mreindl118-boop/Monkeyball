@@ -69,6 +69,7 @@ export const UI = {
     const sv = getSave();
     s.appendChild(el('div', 'subtitle', `Bank: <span class="banana-count">🍌 ${sv.bananaBank}</span> &nbsp;·&nbsp; Total Score: ⭐ ${sv.totalScore}`));
     s.appendChild(el('div', 'footnote', 'WASD / Arrows / Stick to roll · SPACE jump · SHIFT skill · P pause'));
+    this.emit('previewChar', null);
     screens.appendChild(s);
   },
 
@@ -102,15 +103,17 @@ export const UI = {
         best: 'Local & Online'
       }
     ];
-    for (const m of modes) {
-      const card = el('div', 'mode-card');
+    modes.forEach((m, i) => {
+      const card = el('div', 'mode-card pop');
+      card.style.animationDelay = (i * 0.07) + 's';
       card.appendChild(el('div', 'emoji', m.emoji));
       card.appendChild(el('h3', '', m.name));
       card.appendChild(el('p', '', m.desc));
       card.appendChild(el('div', 'best', m.best));
       card.onclick = () => { sfx.select(); this.emit('modeChosen', m.id); };
       row.appendChild(card);
-    }
+    });
+    this.emit('previewChar', null);
     s.appendChild(row);
     const back = el('button', 'btn secondary', '◀ BACK');
     back.style.marginTop = '22px';
@@ -142,9 +145,10 @@ export const UI = {
       }
     };
 
-    for (const c of CHARACTERS) {
+    CHARACTERS.forEach((c, ci) => {
       const locked = !sv.unlockedChars.includes(c.id);
-      const card = el('div', 'char-card' + (sv.selectedChar === c.id ? ' selected' : '') + (locked ? ' locked' : ''));
+      const card = el('div', 'char-card pop' + (sv.selectedChar === c.id ? ' selected' : '') + (locked ? ' locked' : ''));
+      card.style.animationDelay = (ci * 0.05) + 's';
       const sw = el('div', 'char-swatch');
       sw.style.background = '#' + c.ballColor.toString(16).padStart(6, '0');
       card.appendChild(sw);
@@ -165,12 +169,14 @@ export const UI = {
         row.querySelectorAll('.char-card').forEach(x => x.classList.remove('selected'));
         card.classList.add('selected');
         renderDetail(c);
+        this.emit('previewChar', c.id);   // spotlight them on the podium
       };
       row.appendChild(card);
-    }
+    });
     s.appendChild(row);
     s.appendChild(detail);
     renderDetail(CHARACTERS.find(c => c.id === sv.selectedChar) || CHARACTERS[0]);
+    this.emit('previewChar', sv.selectedChar);
 
     const goLabel = {
       adventure: 'CHOOSE LEVEL ▶', target: 'TAKE FLIGHT ▶', rush: 'START RUSH ▶',
@@ -212,6 +218,7 @@ export const UI = {
       grid.appendChild(tile);
     });
     s.appendChild(grid);
+    this.emit('previewChar', null);
     const back = el('button', 'btn secondary', '◀ CHARACTERS');
     back.onclick = () => { sfx.menu(); this.showCharSelect('adventure'); };
     s.appendChild(back);
@@ -221,6 +228,7 @@ export const UI = {
   // ---------------- DUEL MENU ----------------
   showDuelMenu() {
     this.clear();
+    this.emit('previewChar', null);
     const sv = getSave();
     const s = el('div', 'screen menu-bg');
     s.appendChild(el('h1', 'title', '⚔️ DUEL'));
@@ -320,6 +328,7 @@ export const UI = {
   // ---------------- SHOP ----------------
   showShop() {
     this.clear();
+    this.emit('previewChar', null);
     const sv = getSave();
     const s = el('div', 'screen menu-bg');
     s.appendChild(el('h1', 'title', 'BANANA SHOP'));
@@ -380,6 +389,7 @@ export const UI = {
   // ---------------- SETTINGS ----------------
   showSettings() {
     this.clear();
+    this.emit('previewChar', null);
     const sv = getSave();
     const s = el('div', 'screen menu-bg');
     s.appendChild(el('h1', 'title', 'SETTINGS'));

@@ -11,6 +11,7 @@ import { getSave, save, addBananas, recordResult, unlockNextLevel } from './save
 import { sfx, playMusic, stopMusic, unlockAudio } from './audio.js';
 import { TargetMode } from './flight.js';
 import { RUSH_LEVEL, RushDirector, RUSH_TIME } from './rush.js';
+import { MenuScene } from './menuscene.js';
 
 // ---------------- renderer & scene ----------------
 const canvas = document.getElementById('game-canvas');
@@ -153,6 +154,7 @@ function updateConfetti(dt) {
 
 // ---------------- stage loading ----------------
 function disposeModes() {
+  if (G.menuScene) { G.menuScene.dispose(); G.menuScene = null; }
   if (G.targetGame) { G.targetGame.dispose(); G.targetGame = null; }
   if (G.duel) {
     for (const g of G.duel.groups) if (g) scene.remove(g.group);
@@ -884,13 +886,7 @@ function tick() {
 
   switch (G.state) {
     case 'menu':
-      // slow orbiting menu backdrop
-      G.menuOrbit += dt * 0.15;
-      if (G.stage) {
-        const c = G.stage.goalPos;
-        camera.position.set(c.x + Math.cos(G.menuOrbit) * 26, 14, c.z + Math.sin(G.menuOrbit) * 26);
-        camera.lookAt(c.x, 0, c.z + 10);
-      }
+      if (G.menuScene) G.menuScene.update(dt, t, camera, G.menuOrbit);
       break;
     case 'countdown': {
       G.countdownT -= dt;
@@ -945,9 +941,10 @@ function tick() {
 
 // ---------------- menu wiring ----------------
 function showMenuBackdrop() {
-  if (G.stage) G.stage.dispose();
-  G.stage = new Stage(scene, LEVELS[0], WORLDS[0]);
+  disposeModes();
+  if (G.stage) { G.stage.dispose(); G.stage = null; }
   if (G.ballGroup) { scene.remove(G.ballGroup.group); G.ballGroup = null; }
+  G.menuScene = new MenuScene(scene);
   setState('menu');
 }
 
@@ -956,6 +953,7 @@ UI.on('modeChosen', (mode) => {
   G.mode = mode;
   UI.showCharSelect(mode);
 });
+UI.on('previewChar', (id) => { if (G.menuScene) G.menuScene.focusCharacter(id); });
 UI.on('duelLocal', () => UI.showCharSelect('duel-p1'));
 UI.on('duelHost', () => UI.showCharSelect('duel-host'));
 UI.on('duelJoin', (code) => { G.pendingJoinCode = code; UI.showCharSelect('duel-join'); });
