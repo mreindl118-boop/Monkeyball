@@ -11,7 +11,7 @@ import { getSave, save, addBananas } from './save.js';
 
 const ROUNDS = 3;
 const SEA_Y = 0;
-const GRAV_AIR = 22;   // one gravity constant: ballistic fall, climb cost & dive gain all match
+const GRAV_AIR = 26;   // one gravity constant: ballistic fall, climb cost & dive gain all match
 const _v = new THREE.Vector3();
 
 // Flight tuning derived from the rascal's ground stats.
@@ -21,7 +21,7 @@ function flightStats(char) {
   const s = char.stats;
   return {
     cruise: 15 + s.speed * 0.55,                      // natural glide airspeed
-    sink: Math.max(0.55, 1.9 - s.jump * 0.13 + s.weight * 0.08), // base descent while gliding level
+    sink: Math.max(0.7, 2.1 - s.jump * 0.13 + s.weight * 0.09), // base descent while gliding level
     diveGain: 13 + s.weight * 0.7,                    // nose-down acceleration
     turn: 1.6 + s.traction * 0.09,                    // yaw rate (open)
     launch: 26 + s.speed * 1.1                        // ramp exit speed
@@ -162,6 +162,20 @@ export class TargetMode {
       this.root.add(ring, spr);
     }
 
+    this.fieldRoot = new THREE.Group();
+    this.root.add(this.fieldRoot);
+  }
+
+  // targets + air goodies live in their own group and are re-rolled for
+  // every ball — no two flights over the same field
+  rebuildField() {
+    for (const c of [...this.fieldRoot.children]) {
+      c.traverse(o => {
+        if (o.geometry) o.geometry.dispose();
+        if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => m.dispose());
+      });
+    }
+    this.fieldRoot.clear();
     this.buildTargets();
     this.buildAirGoodies();
   }
@@ -194,7 +208,7 @@ export class TargetMode {
       g.add(disc);   // cylinder material order: side, top, bottom
       g.position.set(x, SEA_Y + 0.6, z);
       valueTag(g, `${values[0]}`, Math.max(4, R * 0.45));
-      this.root.add(g);
+      this.fieldRoot.add(g);
       const rings = [0.09, 0.22, 0.44, 0.66, 1.0].map((r, i) => ({ r: R * r, v: values[i] }));
       const solid = {
         pos: g.position, quat: new THREE.Quaternion(),
@@ -203,7 +217,7 @@ export class TargetMode {
         velAt: (pt, out) => out.copy(solid.linVel)
       };
       const t = {
-        mesh: g, pos: g.position, baseX: x, R, moving, mult: 1, solids: [solid],
+        mesh: g, pos: g.position, baseX: x, R, type: 'disc', moving, mult: 1, solids: [solid],
         catch: (p) => Math.hypot(p.x - t.pos.x, p.z - t.pos.z) < R + 0.5 && p.y <= t.pos.y + 0.6 + BALL_RADIUS + 0.1,
         surfaceYAt: (px, pz) => Math.hypot(px - t.pos.x, pz - t.pos.z) <= R ? t.pos.y + 0.62 : null,
         scoreAt: (p) => {
@@ -220,7 +234,7 @@ export class TargetMode {
     const mkPyramid = (x, z, S, values) => {
       const g = new THREE.Group();
       g.position.set(x, SEA_Y, z);
-      this.root.add(g);
+      this.fieldRoot.add(g);
       const cols = ['#c98f3d', '#e0b558', '#f0d47a', '#fff0b0'];
       const solids = [], tiers = [];
       const step = 2.1;
@@ -241,7 +255,7 @@ export class TargetMode {
       }
       const R = S + 0.5, apex = tiers[tiers.length - 1];
       const t = {
-        mesh: g, pos: g.position, baseX: x, R, moving: false, mult: 1, solids,
+        mesh: g, pos: g.position, baseX: x, R, type: 'pyramid', moving: false, mult: 1, solids,
         catch: (p) => {
           for (const tr of tiers) {
             if (Math.abs(p.x - x) <= tr.hw + 0.5 && Math.abs(p.z - z) <= tr.hw + 0.5 &&
@@ -272,7 +286,7 @@ export class TargetMode {
     const mkBowl = (x, z, R, vFloor, vWall) => {
       const g = new THREE.Group();
       g.position.set(x, SEA_Y, z);
-      this.root.add(g);
+      this.fieldRoot.add(g);
       const floorR = R * 0.34, rimY = SEA_Y + 3.1, floorTop = SEA_Y + 0.9;
       const solids = [];
       // flat landable floor
@@ -320,7 +334,7 @@ export class TargetMode {
       g.add(rim);
       valueTag(g, `${vFloor}`, rimY - SEA_Y + 3.4, 4.4, 'rgba(160,60,150,0.95)');
       const t = {
-        mesh: g, pos: g.position, baseX: x, R: R + 0.5, moving: false, mult: 1, solids,
+        mesh: g, pos: g.position, baseX: x, R: R + 0.5, type: 'bowl', moving: false, mult: 1, solids,
         catch: (p) => Math.hypot(p.x - x, p.z - z) < R + 0.5 && p.y <= rimY + BALL_RADIUS + 0.1,
         surfaceYAt: (px, pz) => {
           const d = Math.hypot(px - x, pz - z);
@@ -337,19 +351,28 @@ export class TargetMode {
       this.targets.push(t);
     };
 
-    // ---- the corridor: near & big pays pennies, far & tiny pays the pot ----
-    mkDisc(0, -140, 14, [100, 60, 30, 15, 10], false);          // the welcome mat
-    mkDisc(-60, -210, 7, [150, 80, 40, 20, 15], false);
-    mkDisc(65, -235, 7, [150, 80, 40, 20, 15], false);
-    mkDisc(28, -175, 4.5, [200, 120, 80, 40, 25], true);        // moving bonus board
-    mkPyramid(-28, -320, 11, [40, 90, 180, 420]);               // climb the steps
-    mkBowl(42, -370, 9, 260, 90);                               // ride the funnel
-    mkBowl(0, -480, 5.5, 600, 200);                             // the long-shot jackpot
-    // x3 multiplier board — tiny, far, and drifting. The dream landing.
-    mkDisc(-48, -265, 3, [100, 70, 45, 25, 15], true);
+    // ---- the corridor, re-rolled every ball ----
+    // Pay follows difficulty: near & big pays pennies, far & tiny pays the
+    // pot — and BOWLS ARE TRAINING WHEELS: the funnel does the landing for
+    // you, so it pays pocket change. Skill shots are the naked boards.
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    const side = Math.random() < 0.5 ? -1 : 1;
+    mkDisc(rnd(-12, 12), -rnd(130, 160), rnd(12.5, 15), [100, 60, 30, 15, 10], false);   // the welcome mat
+    mkDisc(side * rnd(45, 68), -rnd(185, 225), rnd(6, 7.5), [150, 80, 40, 20, 15], false);
+    mkDisc(-side * rnd(50, 70), -rnd(215, 255), rnd(6, 7.5), [150, 80, 40, 20, 15], false);
+    mkDisc(side * rnd(18, 34), -rnd(160, 195), rnd(4, 5), [200, 120, 80, 40, 25], true); // moving bonus board
+    // easy-mode funnel(s): guaranteed catch, tiny payout
+    mkBowl(-side * rnd(25, 45), -rnd(230, 290), rnd(8, 10), 70, 25);
+    if (Math.random() < 0.5) mkBowl(side * rnd(32, 55), -rnd(300, 350), rnd(7, 9), 90, 30);
+    // the ziggurat: flat tiers, tiny apex pays a fortune
+    mkPyramid(side * rnd(22, 40), -rnd(300, 345), rnd(10, 12), [40, 90, 180, 420]);
+    // x3 multiplier board — tiny, drifting. The dream landing.
+    mkDisc(-side * rnd(35, 55), -rnd(250, 290), rnd(2.6, 3.2), [100, 70, 45, 25, 15], true);
     this.targets[this.targets.length - 1].mult = 3;
     const x3 = this.targets[this.targets.length - 1];
     valueTag(x3.mesh, '×3', 8, 4, 'rgba(180,40,120,0.9)');
+    // THE long shot: a tiny naked board way out — no funnel to save you
+    mkDisc(rnd(-15, 15), -rnd(450, 500), rnd(3.8, 4.5), [600, 320, 160, 80, 50], false);
   }
 
   buildAirGoodies() {
@@ -362,7 +385,7 @@ export class TargetMode {
       );
       body.rotation.z = Math.PI * 0.9;
       body.position.set(x, y, z);
-      this.root.add(body);
+      this.fieldRoot.add(body);
       this.goodies.push({ kind: 'banana', pos: body.position, mesh: body, taken: false, r: 2.2 });
     };
     const addPowerup = (def, x, y, z) => {
@@ -375,29 +398,31 @@ export class TargetMode {
       spr.scale.setScalar(1.6);
       g.add(orb, spr);
       g.position.set(x, y, z);
-      this.root.add(g);
+      this.fieldRoot.add(g);
       this.goodies.push({ kind: 'power', def, pos: g.position, mesh: g, taken: false, r: 2.6 });
     };
     // lines traced along the glide slope the launch actually flies, spread
-    // down the whole corridor instead of bunched at the start
+    // down the whole corridor — jittered per ball to match the fresh targets
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    const sway = rnd(0.5, 0.9), amp = rnd(6, 10), jx = rnd(-8, 8);
     // main line: dead ahead, sagging with the natural glide
-    for (let i = 0; i < 14; i++) addBananaAt(Math.sin(i * 0.7) * 8, 68 - i * 3.1, -80 - i * 24);
-    // left fork peels off toward the pyramid
-    for (let i = 0; i < 7; i++) addBananaAt(-6 - i * 3.4, 58 - i * 3.2, -140 - i * 26);
-    // right fork banks out toward the bowls
-    for (let i = 0; i < 7; i++) addBananaAt(8 + i * 5, 60 - i * 3.4, -150 - i * 32);
+    for (let i = 0; i < 14; i++) addBananaAt(jx + Math.sin(i * sway) * amp, 68 - i * 3.1, -80 - i * 24);
+    // forks peel off toward the side targets
+    const fs = Math.random() < 0.5 ? -1 : 1;
+    for (let i = 0; i < 7; i++) addBananaAt(fs * (6 + i * 3.4), 58 - i * 3.2, -140 - i * 26);
+    for (let i = 0; i < 7; i++) addBananaAt(-fs * (8 + i * 5), 60 - i * 3.4, -150 - i * 32);
     // high line rewarding an early climb
-    for (let i = 0; i < 6; i++) addBananaAt(0, 78, -100 - i * 20);
+    for (let i = 0; i < 6; i++) addBananaAt(jx * 0.5, rnd(74, 82), -100 - i * 20);
     // daredevil skim line over the waves
-    for (let i = 0; i < 6; i++) addBananaAt(-16, 7, -140 - i * 22);
-    // jackpot breadcrumbs down the middle to the far bowl
-    for (let i = 0; i < 5; i++) addBananaAt(0, 40 - i * 4.5, -330 - i * 34);
-    addPowerup(POWERUPS[0], 14, 62, -110);     // rocket
-    addPowerup(POWERUPS[1], -18, 66, -95);     // feather
-    addPowerup(POWERUPS[2], 0, 80, -160);      // x2 (worth the climb)
-    addPowerup(POWERUPS[3], -34, 48, -180);    // sticky
-    addPowerup(POWERUPS[0], 40, 34, -300);     // fuel for the bowl run
-    addPowerup(POWERUPS[1], 4, 30, -380);      // last-gasp lift to the jackpot
+    for (let i = 0; i < 6; i++) addBananaAt(rnd(-20, 20), 7, -140 - i * 22);
+    // jackpot breadcrumbs down the middle to the far board
+    for (let i = 0; i < 5; i++) addBananaAt(jx * 0.4, 40 - i * 4.5, -330 - i * 34);
+    addPowerup(POWERUPS[0], rnd(-20, 20), 62, -rnd(100, 125));      // rocket
+    addPowerup(POWERUPS[1], rnd(-22, 22), 66, -rnd(90, 115));       // feather
+    addPowerup(POWERUPS[2], rnd(-10, 10), rnd(76, 84), -rnd(150, 175)); // x2 (worth the climb)
+    addPowerup(POWERUPS[3], rnd(-36, 36), 48, -rnd(170, 200));      // sticky
+    addPowerup(POWERUPS[0], rnd(-42, 42), 34, -rnd(280, 320));      // fuel for the deep field
+    addPowerup(POWERUPS[1], rnd(-10, 10), 30, -rnd(360, 400));      // last-gasp lift to the jackpot
   }
 
   // ---------------- flyer visuals: ball splits into wings ----------------
@@ -493,7 +518,9 @@ export class TargetMode {
     this.pitch = 0;             // radians; negative = nose down
     this.speed = 0;             // airspeed while gliding
     this.hintShown = false;
+    this.stalled = false;
     this.setWings(0);
+    this.rebuildField();        // fresh randomized target field for every ball
     // per-round wind
     const wa = Math.random() * Math.PI * 2;
     const ws = 1.5 + Math.random() * 4.5;
@@ -697,16 +724,27 @@ export class TargetMode {
     const f = this.forward();
 
     if (this.open) {
-      // ---- kinematic glider: stable & readable, no stall spirals ----
+      // ---- glider with real energy: flare too long and you STALL ----
       // arcade default: stick UP = climb, pull BACK = dive.
       // (invert-pitch setting flips to flight-sim/Monkey-Target style)
       let dive = input.y * Math.abs(input.y);
       if (getSave().settings.invertPitch) dive = -dive;
-      // nose down up to ~35°, nose up to ~20°
-      let pitchTarget = dive > 0 ? -dive * 0.62 : -dive * 0.34;
-      // low airspeed gently forces the nose down instead of stalling out
-      if (this.speed < 13) pitchTarget = Math.min(pitchTarget, (this.speed - 13) * 0.1);
-      this.pitch += (pitchTarget - this.pitch) * Math.min(1, dt * 4.5);
+      // nose down up to ~35°, nose up to ~26°
+      let pitchTarget = dive > 0 ? -dive * 0.62 : -dive * 0.45;
+      // wings only bite while the air is fast. Bleed under stall speed and
+      // the nose PINS down until the swoop rebuilds airspeed (hysteresis:
+      // stall at 12, recover at 19) — flare too long and you stall out, or
+      // pump the cycle on purpose for big Monkey-Target swoops.
+      const authority = THREE.MathUtils.clamp((this.speed - 10.5) / 6.5, 0, 1);
+      if (!this.stalled && this.speed < 12) {
+        this.stalled = true;
+        this.ctx.ui.flashMessage('STALL!', 900);
+        sfx.fall();
+      }
+      if (this.stalled && this.speed > 19) this.stalled = false;
+      if (this.stalled) pitchTarget = Math.min(pitchTarget, -0.6);
+      else pitchTarget = pitchTarget * authority - 0.25 * (1 - authority);   // mushy near the edge
+      this.pitch += (pitchTarget - this.pitch) * Math.min(1, dt * (this.stalled ? 4 : 2.2 + 2.6 * authority));
 
       // energy exchange under consistent gravity: climbing costs speed at
       // exactly g*sin(pitch), diving pays it back — altitude IS speed.

@@ -14,9 +14,10 @@ bananas, dodging bumpers, riding launch pads, and racing the clock to the goal g
   (hold UP for launch speed!), pop your ball open into wings and glide over the ocean
   grabbing air bananas & power-ups, fighting a per-round **wind sock**, then pick your
   landing: stay OPEN and you bounce & roll, or CLOSE the ball to plant like a cannonball
-  right where you aimed. Land on dartboards, climb a stepped **pyramid** (tiny apex pays
-  420) or ride a **funnel bowl** down to its floor — every target flies its point value,
-  and the farther/smaller/trickier it is, the more it pays, out to a 480m jackpot bowl.
+  right where you aimed. The target field **re-rolls for every ball**: dartboards, a
+  stepped **pyramid** (tiny apex pays 420), easy-mode **funnel bowls** that catch you but
+  pay pocket change, and a tiny naked jackpot board ~480m out worth 600 — every target
+  flies its point value, and the harder the landing, the more it pays.
   A drifting ×3 bonus board, distance markers — and between balls, a Deluxe-style
   **item shop** where your flight bananas buy Sticky Ball, Double Score, Turbo Launch or
   a Feather. 3 balls per game; every rascal has an air-adapted signature skill.
@@ -90,10 +91,11 @@ Local Duel: P1 = WASD + Space/Left-Shift (or gamepad 1), P2 = Arrows + Enter/Rig
 **Sky Target flight (Monkey Target rules)**: steer your line left/right down the ramp and
 **hold UP to tuck** for speed. You launch as a **closed ball** — press **JUMP (Space / A /
 JUMP button) to pop the ball open into wings**, and press it again to tuck back in.
-Open = stable glide: **stick up climbs, pull back to dive for speed** (arcade default —
-flip to flight-sim style with Invert Pitch in Settings), left/right banks the turn, and the
-wind drags you around. Closed = fast ballistic dive that mostly ignores wind — close it
-over your target to drop in. A shadow marker under your ball shows exactly what you're
+Open = glide with real energy: **stick up climbs, pull back to dive for speed** (arcade
+default — flip to flight-sim style with Invert Pitch in Settings), left/right banks the
+turn, and the wind drags you around. Flare too long and you **STALL** — the nose drops
+until the swoop rebuilds your airspeed, so pump climbs and dives deliberately. Closed =
+fast ballistic dive that mostly ignores wind — close it over your target to drop in. A shadow marker under your ball shows exactly what you're
 flying over, and your skill button fires your character's air ability. Every mode works with keyboard, gamepad and touch; menus are point-and-click/tap.
 
 ## 🚀 Run locally
