@@ -311,6 +311,40 @@ export const LEVELS = [
   },
 ];
 
+// ---------------- BIG MODE ----------------
+// Uniformly scale every stage up: wider lanes, longer runs, taller drops.
+// A pure similarity transform preserves slopes and geometry exactly; only
+// jump/launch reach doesn't scale, so pads get a boost and clocks get longer.
+const SCALE = 1.35;
+function scaleLevel(lv) {
+  const sp = (p) => p.map(v => v * SCALE);
+  const out = { ...lv, time: Math.round(lv.time * 1.25), par: Math.round(lv.par * 1.25) };
+  out.start = { ...lv.start, p: sp(lv.start.p) };
+  out.goal = { ...lv.goal, p: sp(lv.goal.p) };
+  out.parts = lv.parts.map(part => {
+    const np = { ...part, p: sp(part.p), s: sp(part.s) };
+    if (part.anim) {
+      np.anim = { ...part.anim };
+      if (np.anim.amp) np.anim.amp *= SCALE;
+      if (np.anim.radius) np.anim.radius *= SCALE;
+      if (np.anim.center) np.anim.center = sp(np.anim.center);
+    }
+    return np;
+  });
+  if (lv.bananas) out.bananas = lv.bananas.map(sp);
+  if (lv.bunches) out.bunches = lv.bunches.map(sp);
+  if (lv.bumpers) out.bumpers = lv.bumpers.map(b => ({ ...b, p: sp(b.p), r: b.r * 1.2 }));
+  if (lv.pads) out.pads = lv.pads.map(pd => ({
+    ...pd,
+    p: sp(pd.p),
+    // projectile range scales with v^2 — boost impulse to clear the scaled gaps
+    dir: [pd.dir[0] * Math.sqrt(SCALE), pd.dir[1] * Math.sqrt(SCALE), pd.dir[2] * Math.sqrt(SCALE)],
+    s: [pd.s[0] * SCALE, pd.s[1] * SCALE]
+  }));
+  return out;
+}
+for (let i = 0; i < LEVELS.length; i++) LEVELS[i] = scaleLevel(LEVELS[i]);
+
 export function starThresholds(level) {
   // stars: 1 = clear, 2 = clear with time >= par-ish, 3 = fast + rich
   return { two: level.time - level.par, three: (level.time - level.par) + 8 };

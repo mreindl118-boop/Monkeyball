@@ -10,13 +10,14 @@ bananas, dodging bumpers, riding launch pads, and racing the clock to the goal g
 ## 🕹 Game modes
 
 - **🌴 Adventure** — the classic: 15 stages, beat the clock, reach the goal gate.
-- **🎯 Sky Target** (Monkey-Target-style) — roll down a mega launch ramp, your ball splits
-  open into wings, and you glide over the ocean grabbing air bananas & power-ups
-  (🚀 Rocket, 🪶 Feather, ✖2 Double Score, 🍯 Sticky Ball), fighting per-round **wind**,
-  then land on floating dartboard targets — your ball rolls out with real physics and the
-  ring it *stops* on is what you score. 3 flights per game; every rascal gets an
-  air-adapted signature skill (Stall Stomp, Sonic Boost, Puff Up, Wind Shield, Zap Magnet,
-  Dive Bomb, Parasol Lift, and Chrono Chomp slow-mo).
+- **🎯 Sky Target** (Monkey Target Deluxe-style) — tuck down a giant banked half-pipe
+  (hold UP for launch speed!), pop your ball open into wings and glide over the ocean
+  grabbing air bananas & power-ups, fighting a per-round **wind sock**, then pick your
+  landing: stay OPEN and you bounce & roll, or CLOSE the ball to plant like a cannonball
+  right where you aimed. Dartboard scoring with small high-value boards, a drifting ×3
+  bonus board, a long-shot jackpot, distance markers — and between balls, a Deluxe-style
+  **item shop** where your flight bananas buy Sticky Ball, Double Score, Turbo Launch or
+  a Feather. 3 balls per game; every rascal has an air-adapted signature skill.
 - **🍌 Banana Rush** — 60-second arena collect-athon: respawning bananas, timed golden
   bunches, combo chains, and 🧲/🚀/⏰ arena power-ups. Best haul is saved, and everything
   you grab banks to the shop.

@@ -129,7 +129,7 @@ export function stepBall(ball, dt, opts) {
     // forward = -z rotated by camYaw
     const ax = (ix * cos - iy * sin);
     const az = (ix * sin + iy * cos);
-    const control = ball.onGroundLast ? 1 : 0.42;   // decent air control, stronger on ground
+    const control = ball.onGroundLast ? 1 : 0.36;   // decent air control, stronger on ground
     ball.vel.x += ax * accel * control * dt;
     ball.vel.z += az * accel * control * dt;
   }
@@ -174,8 +174,12 @@ export function stepBall(ball, dt, opts) {
     ball.airTime = 0;
     ball.coyote = 0.12;
     const pv = ball.groundVel || _v1.set(0, 0, 0);
-    // damp velocity relative to the platform (rolling resistance)
-    const grip = traction * (ball.gripBoost > 0 ? 2.2 : 1);
+    // damp velocity relative to the platform (rolling resistance).
+    // slopes get slick (grip falls off fast as the surface tilts), so ramps
+    // actually accelerate you downhill instead of friction eating the run —
+    // the heart of the Monkey Ball feel.
+    const slope = Math.pow(Math.max(ball.groundNormal.y, 0), 6);
+    const grip = traction * slope * (ball.gripBoost > 0 ? 2.2 : 1);
     const f = Math.exp(-grip * dt);
     ball.vel.x = pv.x + (ball.vel.x - pv.x) * f;
     ball.vel.z = pv.z + (ball.vel.z - pv.z) * f;
@@ -195,9 +199,9 @@ export function stepBall(ball, dt, opts) {
     events.push({ type: 'jump' });
   }
 
-  // soft speed cap
+  // soft speed cap (raised for the bigger stages)
   const hs = Math.hypot(ball.vel.x, ball.vel.z);
-  const cap = 26;
+  const cap = 31;
   if (hs > cap) {
     const k = cap / hs;
     ball.vel.x *= k; ball.vel.z *= k;

@@ -19,9 +19,9 @@ const _v = new THREE.Vector3();
 function flightStats(char) {
   const s = char.stats;
   return {
-    cruise: 14 + s.speed * 0.5,                       // natural glide airspeed
-    sink: Math.max(0.7, 2.3 - s.jump * 0.14 + s.weight * 0.09), // base descent while gliding level
-    diveGain: 11 + s.weight * 0.7,                    // nose-down acceleration
+    cruise: 15 + s.speed * 0.55,                      // natural glide airspeed
+    sink: Math.max(0.55, 1.9 - s.jump * 0.13 + s.weight * 0.08), // base descent while gliding level
+    diveGain: 13 + s.weight * 0.7,                    // nose-down acceleration
     turn: 1.35 + s.traction * 0.09,                   // yaw rate (open)
     launch: 26 + s.speed * 1.1                        // ramp exit speed
   };
@@ -81,36 +81,66 @@ export class TargetMode {
     this.water = water;
     this.root.add(water);
 
-    // launch tower + ramp (a chain of angled slabs ending in an up-kick)
-    const rampMat = new THREE.MeshStandardMaterial({ map: checkerTexture('#3a8fd6', '#9fd0ff', 6), roughness: 0.6 });
+    // THE MEGA RAMP — a wide half-pipe run with banked rails and a kicker lip,
+    // Monkey-Target style: long enough to build serious speed (tuck to go faster!)
+    const rampMat = new THREE.MeshStandardMaterial({ map: checkerTexture('#3a8fd6', '#9fd0ff', 10), roughness: 0.55 });
+    const railMat = new THREE.MeshStandardMaterial({ map: checkerTexture('#2a5da8', '#7ec8ff', 6), roughness: 0.6 });
     this.rampSolids = [];
-    const slab = (p, s, rx) => {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(s[0], s[1], s[2]), rampMat);
+    const slab = (p, s, rx, rz = 0, material = rampMat) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(s[0], s[1], s[2]), material);
       m.position.set(...p);
+      m.rotation.order = 'ZYX';
       m.rotation.x = rx;
+      m.rotation.z = rz;
+      m.castShadow = m.receiveShadow = true;
       this.root.add(m);
       const solid = {
         pos: new THREE.Vector3(...p),
-        quat: new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, 0, 0)),
+        quat: new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, 0, rz, 'ZYX')),
         half: new THREE.Vector3(s[0] / 2, s[1] / 2, s[2] / 2),
         shape: 'box', linVel: new THREE.Vector3(), angVelY: 0,
         velAt: (pt, out) => out.set(0, 0, 0)
       };
       this.rampSolids.push(solid);
     };
-    // tower top platform (start) then a long steep drop and an up-curl lip
-    slab([0, 74, 40], [8, 1, 14], 0);
-    slab([0, 66, 22], [8, 1, 26], -0.62);
-    slab([0, 51, 2], [8, 1, 26], -0.62);
-    slab([0, 40, -14], [8, 1, 16], -0.30);
-    slab([0, 37.2, -26], [8, 1, 10], 0.22);   // the kicker lip
-    // tower pillar (decor)
-    const pillar = new THREE.Mesh(
-      new THREE.CylinderGeometry(3, 4.5, 74, 12),
-      new THREE.MeshStandardMaterial({ map: gridTexture('#1c2f52', '#4de1ff', 10), roughness: 0.7 })
-    );
-    pillar.position.set(0, 37, 40);
-    this.root.add(pillar);
+    const W = 16;                       // twice as wide as the old ramp
+    const pipe = (y, z, rx, len) => {
+      slab([0, y, z], [W, 1.2, len], rx);
+      // banked side rails keep the run honest without walls
+      slab([-(W / 2 + 1.6), y + 1.4, z], [4.5, 1, len], rx, -0.55, railMat);
+      slab([W / 2 + 1.6, y + 1.4, z], [4.5, 1, len], rx, 0.55, railMat);
+    };
+    // start deck high above the sea, then a LONG drop
+    pipe(110, 64, 0, 18);
+    pipe(101.5, 45, -0.60, 26);
+    pipe(87, 24, -0.60, 26);
+    pipe(72.5, 3, -0.60, 26);
+    pipe(60, -17, -0.45, 24);
+    pipe(51.5, -36, -0.26, 20);
+    slab([0, 49.4, -52], [W, 1.2, 14], 0.24);   // the kicker lip
+    // support pylons plunging into the sea
+    for (const [ph, pz] of [[104, 60], [80, 20], [56, -20], [48, -48]]) {
+      const pylon = new THREE.Mesh(
+        new THREE.CylinderGeometry(1.4, 2.2, ph, 10),
+        new THREE.MeshStandardMaterial({ map: gridTexture('#1c2f52', '#4de1ff', 10), roughness: 0.7 })
+      );
+      pylon.position.set(0, ph / 2 - 4, pz);
+      this.root.add(pylon);
+    }
+    // distance markers on the sea: rings + floating range signs every 60m
+    for (let i = 1; i <= 4; i++) {
+      const d = i * 60;
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(2.2, 3.1, 32),
+        new THREE.MeshBasicMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0.5, side: THREE.DoubleSide, depthWrite: false })
+      );
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.set(-26, SEA_Y + 0.05, -d);
+      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: iconSprite(`${d}m`, 'rgba(20,40,80,0.85)'), transparent: true }));
+      spr.scale.setScalar(5);
+      spr.position.set(-26, 4, -d);
+      this.root.add(ring, spr);
+    }
 
     this.buildTargets();
     this.buildAirGoodies();
@@ -140,6 +170,7 @@ export class TargetMode {
           { r: R * 1.0, v: values[4] }
         ],
         moving,
+        mult: 1,
         solid: {
           pos: g.position, quat: new THREE.Quaternion(),
           half: new THREE.Vector3(R, 0.6, R), shape: 'disc',
@@ -150,11 +181,19 @@ export class TargetMode {
       this.targets.push(t);
     };
     // main boards at staggered distances; values center-out
-    mkTarget(0, -120, 11, [100, 60, 30, 15, 10], false);
-    mkTarget(-34, -95, 6, [150, 80, 40, 20, 15], false);
-    mkTarget(38, -150, 6, [150, 80, 40, 20, 15], false);
-    mkTarget(0, -195, 4.5, [300, 200, 120, 60, 40], false);   // the long-shot jackpot
-    mkTarget(20, -70, 3.2, [200, 120, 80, 40, 25], true);     // moving bonus board
+    mkTarget(0, -150, 12, [100, 60, 30, 15, 10], false);       // the big board
+    mkTarget(-38, -115, 6.5, [150, 80, 40, 20, 15], false);
+    mkTarget(42, -185, 6.5, [150, 80, 40, 20, 15], false);
+    mkTarget(0, -250, 4.5, [300, 200, 120, 60, 40], false);    // the long-shot jackpot
+    mkTarget(24, -90, 3.4, [200, 120, 80, 40, 25], true);      // moving bonus board
+    // x3 multiplier board — tiny, far, and drifting. The dream landing.
+    mkTarget(-20, -215, 2.8, [100, 70, 45, 25, 15], true);
+    this.targets[this.targets.length - 1].mult = 3;
+    // banner so you know it's special
+    const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: iconSprite('×3', 'rgba(180,40,120,0.9)'), transparent: true }));
+    tag.scale.setScalar(4);
+    tag.position.set(0, 5, 0);
+    this.targets[this.targets.length - 1].mesh.add(tag);
   }
 
   buildAirGoodies() {
@@ -183,17 +222,19 @@ export class TargetMode {
       this.root.add(g);
       this.goodies.push({ kind: 'power', def, pos: g.position, mesh: g, taken: false, r: 2.6 });
     };
-    // arcs of bananas along the natural glide path
-    for (let i = 0; i < 7; i++) addBananaAt(Math.sin(i * 0.6) * 4, 30 - i * 2.2, -45 - i * 8);
-    for (let i = 0; i < 5; i++) addBananaAt(-20 + i * 2, 22 - i * 1.5, -70 - i * 6);
-    for (let i = 0; i < 5; i++) addBananaAt(24, 20 - i * 1.5, -85 - i * 7);
+    // arcs of bananas along the natural glide paths from the big launch
+    for (let i = 0; i < 9; i++) addBananaAt(Math.sin(i * 0.55) * 5, 44 - i * 2.4, -70 - i * 11);
+    for (let i = 0; i < 6; i++) addBananaAt(-26 + i * 2.5, 34 - i * 1.8, -95 - i * 8);
+    for (let i = 0; i < 6; i++) addBananaAt(30, 32 - i * 1.8, -120 - i * 9);
     // high line rewarding a climb
-    for (let i = 0; i < 4; i++) addBananaAt(0, 38, -60 - i * 10);
-    addPowerup(POWERUPS[0], 10, 26, -60);     // rocket
-    addPowerup(POWERUPS[1], -12, 30, -55);    // feather
-    addPowerup(POWERUPS[2], 0, 34, -95);      // x2 (worth the climb)
-    addPowerup(POWERUPS[3], -30, 18, -80);    // sticky
-    addPowerup(POWERUPS[0], 30, 16, -110);
+    for (let i = 0; i < 5; i++) addBananaAt(0, 52, -85 - i * 12);
+    // low skim line over the water for daredevils
+    for (let i = 0; i < 5; i++) addBananaAt(-12, 8, -110 - i * 10);
+    addPowerup(POWERUPS[0], 12, 38, -85);      // rocket
+    addPowerup(POWERUPS[1], -14, 42, -80);     // feather
+    addPowerup(POWERUPS[2], 0, 50, -130);      // x2 (worth the climb)
+    addPowerup(POWERUPS[3], -32, 26, -110);    // sticky
+    addPowerup(POWERUPS[0], 34, 22, -150);
   }
 
   // ---------------- flyer visuals: ball splits into wings ----------------
@@ -271,7 +312,11 @@ export class TargetMode {
     this.stuckTimer = 0;
     this.cooldown = 0;
     this.magnet = 0; this.feather = 0; this.superLift = 0; this.windShield = 0; this.slowmo = 0;
-    this.ball.reset([0, 76, 42]);
+    this.ball.reset([0, 112, 68]);
+    this.launchBonus = 0;         // Turbo Launch item
+    this.roundFeather = false;    // Feather item (whole-round lift)
+    this.tuck = 0;
+    this.tuckHintShown = false;
     // each flight happens later in the day: dawn -> sunset -> night
     if (this.ctx.atmosphere) {
       this.ctx.atmosphere.setPreset(['morning', 'sunset', 'night'][this.round - 1] || 'night');
@@ -288,10 +333,15 @@ export class TargetMode {
     const wa = Math.random() * Math.PI * 2;
     const ws = 1.5 + Math.random() * 4.5;
     this.wind = new THREE.Vector3(Math.cos(wa) * ws, 0, Math.sin(wa) * ws * 0.4);
-    const dirTxt = Math.abs(this.wind.x) > Math.abs(this.wind.z)
-      ? (this.wind.x > 0 ? '→' : '←') : (this.wind.z > 0 ? '↓' : '↑');
-    this.windText = `WIND ${dirTxt} ${ws.toFixed(1)}`;
+    // wind sock: 8-way arrow relative to your flight direction (-z = ahead = ↑)
+    const arrows = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖'];
+    const ang = Math.atan2(this.wind.x, -this.wind.z);            // 0 = tailwind ahead
+    const idx = ((Math.round(ang / (Math.PI / 4)) % 8) + 8) % 8;
+    this.windText = `🧦 WIND ${arrows[idx]} ${ws.toFixed(1)}`;
     this.ctx.ui.flashMessage(`ROUND ${this.round} / ${ROUNDS}`, 1400);
+    // snap the chase cam straight to the deck (no cross-map lerp)
+    this.ctx.camera.position.set(0, 118.5, 81);
+    this.ctx.camera.lookAt(0, 108, 50);
     sfx.ready();
   }
 
@@ -379,6 +429,7 @@ export class TargetMode {
       case 'landed': this.updateLanded(dt, t); break;
       case 'scored': if (this.phaseT > 2.2) this.nextRound(); break;
       case 'splash': if (this.phaseT > 1.6) this.nextRound(); break;
+      case 'shop': break;   // waiting on the item shop UI
     }
 
     this.syncVisual(t, realDt);
@@ -388,28 +439,41 @@ export class TargetMode {
   }
 
   updateRamp(dt, input) {
-    // roll down the ramp with real physics; player steers a little
+    // roll the half-pipe: steer freely, HOLD UP to tuck for extra launch speed
+    let tuckIn = -input.y;
+    if (getSave().settings.invertPitch) tuckIn = -tuckIn;
+    this.tuck += ((tuckIn > 0.2 ? 1 : 0) - this.tuck) * Math.min(1, dt * 4);
+    if (!this.tuckHintShown && this.phaseT > 0.8) {
+      this.tuckHintShown = true;
+      this.ctx.ui.flashMessage(document.body.classList.contains('touch') ? 'HOLD ▲ TO TUCK!' : 'HOLD UP TO TUCK!', 1400);
+    }
     const events = [];
     stepBall(this.ball, Math.min(dt, 1 / 30), {
       solids: this.rampSolids, bumpers: [],
-      input: { x: input.x * 0.5, y: -1, jump: false, ability: false }, camYaw: this.yaw,
-      events, accel: this.fs.launch, traction: 0.35, jumpVel: 0, weightFactor: this.char.stats.weight / 10
+      input: { x: input.x * 0.6, y: -1, jump: false, ability: false }, camYaw: this.yaw,
+      events,
+      accel: (this.fs.launch + this.launchBonus) * (0.85 + this.tuck * 0.55),
+      traction: this.tuck > 0.5 ? 0.15 : 0.4,
+      jumpVel: 0, weightFactor: this.char.stats.weight / 10
     });
-    // left the lip?
-    if (this.ball.pos.z < -30 && !this.ball.onGround) {
+    // off the kicker?
+    if (this.ball.pos.z < -56 && !this.ball.onGround) {
       this.phase = 'fly';
       this.phaseT = 0;
       this.airVel.copy(this.ball.vel);
       const hs = Math.hypot(this.airVel.x, this.airVel.z);
-      if (hs < this.fs.launch * 0.8) { // guarantee a decent launch
-        const k = (this.fs.launch * 0.8) / Math.max(hs, 0.1);
+      const floor = (this.fs.launch + this.launchBonus) * 0.85;
+      if (hs < floor) { // guarantee a respectable launch even after a wobbly run
+        const k = floor / Math.max(hs, 0.1);
         this.airVel.x *= k; this.airVel.z *= k;
       }
+      // the kicker pops you into a proper arc
+      this.airVel.y = Math.max(this.airVel.y, 7 + Math.hypot(this.airVel.x, this.airVel.z) * 0.14);
       this.yaw = Math.atan2(-this.airVel.x, -this.airVel.z);
       sfx.launch();
       this.ctx.ui.flashMessage(document.body.classList.contains('touch') ? 'TAP JUMP = WINGS!' : 'SPACE = WINGS!', 1600);
     }
-    if (this.ball.pos.y < 30) { // fell off the ramp somehow
+    if (this.ball.pos.y < 42 && this.phase === 'ramp') { // slipped off the pipe
       this.phase = 'fly'; this.airVel.copy(this.ball.vel);
     }
   }
@@ -459,10 +523,11 @@ export class TargetMode {
       const accel = -Math.sin(this.pitch) * this.fs.diveGain - (this.speed - this.fs.cruise) * 0.45;
       this.speed = THREE.MathUtils.clamp(this.speed + accel * dt, 9, 38);
 
-      // sink: gliding always descends a little (abilities can cancel it)
-      let sink = this.fs.sink;
+      // sink: gliding always descends a little (abilities can cancel it);
+      // hard banking bleeds extra lift — pick your turns
+      let sink = this.fs.sink + Math.abs(input.x) * 0.7;
       if (this.superLift > 0) sink = 0;
-      else if (this.feather > 0) sink *= 0.35;
+      else if (this.feather > 0 || this.roundFeather) sink *= 0.35;
 
       const horiz = this.speed * Math.cos(this.pitch);
       this.airVel.set(f.x * horiz, this.speed * Math.sin(this.pitch) - sink, f.z * horiz);
@@ -524,10 +589,25 @@ export class TargetMode {
       if (this.ball.pos.y <= tg.pos.y + 0.6 + BALL_RADIUS && this.ball.pos.y > tg.pos.y - 1 &&
           Math.hypot(dx, dz) < tg.R + 0.5 && this.airVel.y < 0) {
         this.phase = 'landed'; this.phaseT = 0;
-        this.open = false;
         this.ball.vel.copy(this.airVel);
-        if (this.sticky) { this.ball.vel.multiplyScalar(0.06); this.ctx.ui.flashMessage('STUCK IT!', 900); }
-        else this.ball.vel.y = Math.max(this.ball.vel.y * -0.2, -2);
+        if (this.sticky) {
+          // Sticky Ball item: dead stop where you hit
+          this.ball.vel.multiplyScalar(0.06);
+          this.landTraction = 8;
+          this.ctx.ui.flashMessage('STUCK IT!', 900);
+        } else if (!this.open) {
+          // CLOSED ball plants like a cannonball — the precision landing
+          this.ball.vel.x *= 0.35; this.ball.vel.z *= 0.35;
+          this.ball.vel.y = -1;
+          this.landTraction = 4.5;
+          this.ctx.ui.flashMessage('PLANTED!', 700);
+        } else {
+          // OPEN wings bounce & roll — pray you stop on a good ring
+          this.ball.vel.x *= 0.85; this.ball.vel.z *= 0.85;
+          this.ball.vel.y = Math.min(Math.abs(this.airVel.y) * 0.35, 5);
+          this.landTraction = 1.2;
+        }
+        this.open = false;
         sfx.bounce();
         return;
       }
@@ -542,7 +622,7 @@ export class TargetMode {
     stepBall(this.ball, Math.min(dt, 1 / 30), {
       solids, bumpers: [],
       input: { x: 0, y: 0, jump: false, ability: false }, camYaw: this.yaw,
-      events, accel: 0, traction: this.sticky ? 8 : 1.6, jumpVel: 0,
+      events, accel: 0, traction: this.landTraction || 1.6, jumpVel: 0,
       weightFactor: this.char.stats.weight / 10
     });
     // rolled off into the sea?
@@ -559,7 +639,7 @@ export class TargetMode {
 
   scoreLanding() {
     // find which board & ring we rest on
-    let best = null;
+    let best = null, boardMult = 1;
     for (const tg of this.targets) {
       const d = Math.hypot(this.ball.pos.x - tg.pos.x, this.ball.pos.z - tg.pos.z);
       if (d <= tg.R + 0.2 && Math.abs(this.ball.pos.y - (tg.pos.y + 0.6 + BALL_RADIUS)) < 1.2) {
@@ -567,19 +647,22 @@ export class TargetMode {
           if (d <= ring.r) { best = ring.v; break; }
         }
         if (best === null) best = tg.rings[tg.rings.length - 1].v;
+        boardMult = tg.mult || 1;
         break;
       }
     }
-    const pts = (best || 0) * this.multiplier;
+    const pts = (best || 0) * boardMult * this.multiplier;
     this.roundScore += pts;
     this.total += this.roundScore;
     this.phase = 'scored';
     this.phaseT = 0;
     sfx.goal();
-    this.ctx.ui.flashMessage(
-      best ? `${best}${this.multiplier > 1 ? ' ×2' : ''} POINTS!` : 'ON THE BOARD!',
-      1800
-    );
+    let msg = best ? `${best}` : 'ON THE BOARD!';
+    if (best && boardMult > 1) msg += ` ×${boardMult}`;
+    if (best && this.multiplier > 1) msg += ` ×${this.multiplier}`;
+    if (best && (boardMult > 1 || this.multiplier > 1)) msg += ` = ${pts}`;
+    if (best) msg += ' POINTS!';
+    this.ctx.ui.flashMessage(msg, 2000);
   }
 
   nextRound() {
@@ -593,7 +676,29 @@ export class TargetMode {
       return;
     }
     this.round++;
-    this.startRound();
+    // Deluxe-style item shop: spend flight bananas on gear for the next ball
+    this.phase = 'shop';
+    this.ctx.ui.showItemShop({
+      bananas: this.bananasGot,
+      round: this.round,
+      rounds: ROUNDS,
+      items: [
+        { id: 'sticky', icon: '🍯', name: 'Sticky Ball', cost: 8, desc: 'Stop dead where you land — no bounce, no roll.' },
+        { id: 'x2', icon: '✖️2', name: 'Double Score', cost: 12, desc: 'Next landing scores double.' },
+        { id: 'turbo', icon: '🚀', name: 'Turbo Launch', cost: 8, desc: 'Extra ramp speed for a longer flight.' },
+        { id: 'feather', icon: '🪶', name: 'Feather', cost: 6, desc: 'Featherlight glide for the whole flight.' }
+      ],
+      onPick: (id) => {
+        this.startRound();
+        if (!id) return;
+        this.bananasGot -= { sticky: 8, x2: 12, turbo: 8, feather: 6 }[id] || 0;
+        if (id === 'sticky') this.sticky = true;
+        if (id === 'x2') this.multiplier = 2;
+        if (id === 'turbo') this.launchBonus = 9;
+        if (id === 'feather') this.roundFeather = true;
+        sfx.buy();
+      }
+    });
   }
 
   // ---------------- visuals ----------------
@@ -635,9 +740,9 @@ export class TargetMode {
       px = b.x - f.x * (10 - divey * 2.5); py = b.y + 3.2 + divey * 5; pz = b.z - f.z * (10 - divey * 2.5);
       lx = b.x + f.x * 9; ly = b.y - 1.5 - divey * 7; lz = b.z + f.z * 9;
     } else if (this.phase === 'ramp') {
-      // offset to the side so we never clip through the launch tower
-      px = b.x + 7; py = b.y + 4.5; pz = b.z + 9;
-      lx = b.x; ly = b.y; lz = b.z - 6;
+      // high chase cam straight down the pipe — watch your line & speed
+      px = b.x * 0.5; py = b.y + 6.5; pz = b.z + 13;
+      lx = b.x * 0.5; ly = b.y - 2; lz = b.z - 10;
     } else {
       px = b.x + 8; py = b.y + 7; pz = b.z + 8;
       lx = b.x; ly = b.y; lz = b.z;
@@ -658,7 +763,9 @@ export class TargetMode {
       abilityName: this.skill.name,
       timerFrozen: this.slowmo > 0
     });
-    const wings = this.phase === 'fly' ? (this.open ? ' · 🪽 OPEN' : ' · ⚫ CLOSED (JUMP)') : '';
+    let wings = '';
+    if (this.phase === 'fly') wings = this.open ? ' · 🪽 OPEN' : ' · ⚫ CLOSED (JUMP)';
+    else if (this.phase === 'ramp') wings = this.tuck > 0.5 ? ' · 💨 TUCKED!' : ' · HOLD UP = TUCK';
     this.ctx.ui.setExtra(`${this.windText}${wings}${this.multiplier > 1 ? ' · ×2 ARMED' : ''}${this.sticky ? ' · 🍯' : ''}`);
   }
 

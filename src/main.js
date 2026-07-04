@@ -280,7 +280,7 @@ function charPhysics() {
   const sv = getSave();
   const st = G.char.stats;
   return {
-    accel: (15 + st.speed * 1.7) * (1 + 0.08 * sv.upgrades.accel),
+    accel: (17 + st.speed * 1.9) * (1 + 0.08 * sv.upgrades.accel),
     traction: (0.9 + st.traction * 0.27) * (1 + 0.08 * sv.upgrades.traction),
     jumpVel: (6.4 + st.jump * 0.55) * (1 + 0.07 * sv.upgrades.jump),
     weightFactor: st.weight / 10
@@ -467,7 +467,7 @@ function startDuelLocal() {
 function duelPhysFor(char, ball) {
   const st = char.stats;
   const phys = {
-    accel: (15 + st.speed * 1.7) * (ball.turboT > 0 ? 1.65 : 1),
+    accel: (17 + st.speed * 1.9) * (ball.turboT > 0 ? 1.65 : 1),
     traction: 0.9 + st.traction * 0.27,
     jumpVel: 6.4 + st.jump * 0.55,
     weightFactor: st.weight / 10
@@ -718,7 +718,9 @@ function updateCamera(dt, input) {
     while (d < -Math.PI) d += Math.PI * 2;
     G.camYaw += d * Math.min(1, dt * 1.8);
   }
-  const dist = 7.2, height = 3.6;
+  // camera pulls back with speed so big stages read at pace
+  const hs2 = Math.hypot(b.vel.x, b.vel.z);
+  const dist = 7.8 + Math.min(hs2 * 0.08, 2.2), height = 4.0 + Math.min(hs2 * 0.04, 1.1);
   const cx = b.pos.x + Math.sin(G.camYaw) * dist;
   const cz = b.pos.z + Math.cos(G.camYaw) * dist;
   const cy = b.pos.y + height;

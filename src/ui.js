@@ -538,6 +538,31 @@ export const UI = {
     this.actionBar(back);
   },
 
+  // ---------------- SKY TARGET ITEM SHOP (between rounds) ----------------
+  showItemShop({ bananas, round, rounds, items, onPick }) {
+    this.clear();
+    const s = el('div', 'screen menu-bg');
+    s.appendChild(el('h1', 'title', 'ITEM SHOP'));
+    s.appendChild(el('div', 'subtitle', `Ball ${round} of ${rounds} — spend your flight bananas: <span class="banana-count">🍌 ${bananas}</span>`));
+    const col = el('div', 'scroll-col');
+    for (const it of items) {
+      const item = el('div', 'shop-item pop');
+      item.appendChild(el('div', 'info', `<h3>${it.icon} ${it.name}</h3><p>${it.desc}</p>`));
+      const btn = el('button', 'btn', `🍌 ${it.cost}`);
+      btn.style.padding = '8px 20px';
+      btn.style.fontSize = '15px';
+      btn.disabled = bananas < it.cost;
+      btn.onclick = () => { sfx.select(); this.clear(); onPick(it.id); };
+      item.appendChild(btn);
+      col.appendChild(item);
+    }
+    s.appendChild(col);
+    screens.appendChild(s);
+    const skip = el('button', 'btn secondary', 'NO THANKS — LAUNCH! ▶');
+    skip.onclick = () => { sfx.menu(); this.clear(); onPick(null); };
+    this.actionBar(skip);
+  },
+
   // ---------------- UPDATE PROMPT ----------------
   showUpdatePrompt({ latest, current, install }) {
     // non-blocking banner over whatever screen is showing

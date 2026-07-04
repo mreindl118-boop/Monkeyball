@@ -32,7 +32,7 @@ export class Stage {
     this.bananas = [];
     this.pads = [];
     this.bumpers = [];
-    this.fallY = -14;
+    this.fallY = -17;
     this.time = 0;
 
     this.buildParts();
