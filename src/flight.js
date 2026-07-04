@@ -4,7 +4,7 @@
 // Ball rolls to a stop after touchdown; the ring you rest on is what you score.
 import * as THREE from 'three';
 import { Ball, stepBall, BALL_RADIUS } from './physics.js';
-import { buildCharacterMesh, animateCharacter } from './characters.js';
+import { buildCharacterMesh, animateCharacter, fitCharacterInBall } from './characters.js';
 import { targetTexture, waterTexture, iconSprite, checkerTexture, gridTexture } from './textures.js';
 import { sfx } from './audio.js';
 import { getSave, save, addBananas } from './save.js';
@@ -256,8 +256,7 @@ export class TargetMode {
     this.wingL.add(hl); this.wingR.add(hr);
     g.add(this.wingL, this.wingR);
     this.built = buildCharacterMesh(this.char.id);
-    this.built.group.scale.setScalar(0.62);
-    this.built.group.position.y = -BALL_RADIUS * 0.82;
+    fitCharacterInBall(this.built, BALL_RADIUS);
     g.add(this.built.group);
     this.flyer = g;
     this.ctx.scene.add(g);

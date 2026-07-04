@@ -95,9 +95,16 @@ function resolveContact(ball, solid, closest, events) {
   _v2.copy(ball.vel).sub(platVel);
   const vn = _v2.dot(n);
   if (vn < 0) {
-    const restitution = n.y > 0.6 ? 0.12 : 0.42;   // floors damp, walls bounce
+    // springy contacts: walls kick back properly, and hard floor impacts
+    // actually bounce instead of thudding dead
+    let restitution;
+    if (n.y > 0.6) restitution = vn < -9 ? 0.34 : (vn < -5 ? 0.22 : 0.12);
+    else restitution = 0.58;
     ball.vel.addScaledVector(n, -vn * (1 + restitution));
-    if (n.y <= 0.6 && vn < -4 && events) events.push({ type: 'wallhit', speed: -vn });
+    if (events) {
+      if (n.y <= 0.6 && vn < -4) events.push({ type: 'wallhit', speed: -vn });
+      else if (n.y > 0.6 && vn < -6) events.push({ type: 'land', speed: -vn });
+    }
   }
   if (n.y > 0.55) {
     ball.onGround = true;
@@ -134,16 +141,21 @@ export function stepBall(ball, dt, opts) {
     ball.vel.z += az * accel * control * dt;
   }
 
-  // integrate
-  ball.pos.addScaledVector(ball.vel, dt);
-
-  // collide (a few iterations for stability on seams)
-  for (let iter = 0; iter < 3; iter++) {
-    let any = false;
-    for (const s of solids) {
-      if (collideSphereSolid(ball, s, iter === 0 ? events : null)) any = true;
+  // integrate & collide in substeps so a fast ball can never move further
+  // than half its radius between collision checks (no tunneling through
+  // thin floors/walls at top speed)
+  const travel = ball.vel.length() * dt;
+  const steps = Math.min(6, Math.max(1, Math.ceil(travel / (ball.radius * 0.5))));
+  const sdt = dt / steps;
+  for (let step = 0; step < steps; step++) {
+    ball.pos.addScaledVector(ball.vel, sdt);
+    for (let iter = 0; iter < 3; iter++) {
+      let any = false;
+      for (const s of solids) {
+        if (collideSphereSolid(ball, s, step === 0 && iter === 0 ? events : null)) any = true;
+      }
+      if (!any) break;
     }
-    if (!any) break;
   }
 
   // bumpers
@@ -158,7 +170,7 @@ export function stepBall(ball, dt, opts) {
       ball.pos.x = b.pos.x + nx * minD;
       ball.pos.z = b.pos.z + nz * minD;
       if (ball.shielded <= 0) {
-        const punch = 14 / (0.7 + weightFactor);   // heavies shrug bumpers off
+        const punch = 12.5 / (0.7 + weightFactor);   // heavies shrug bumpers off
         const vdotn = ball.vel.x * nx + ball.vel.z * nz;
         if (vdotn < 0) { ball.vel.x -= vdotn * nx * 2; ball.vel.z -= vdotn * nz * 2; }
         ball.vel.x += nx * punch;

@@ -2,7 +2,7 @@
 // rolling laps in their balls, bouncing on a bumper, showing off, getting
 // dizzy, chasing a runaway banana. Plays behind all menu screens.
 import * as THREE from 'three';
-import { CHARACTERS, buildCharacterMesh, animateCharacter } from './characters.js';
+import { CHARACTERS, buildCharacterMesh, animateCharacter, fitCharacterInBall } from './characters.js';
 import { jungleTexture, checkerTexture, dotTexture } from './textures.js';
 import { BALL_RADIUS } from './physics.js';
 
@@ -101,8 +101,7 @@ export class MenuScene {
     racers.forEach((id, i) => {
       const char = CHARACTERS.find(c => c.id === id);
       const built = buildCharacterMesh(id);
-      built.group.scale.setScalar(0.62);
-      built.group.position.y = -BALL_RADIUS * 0.82;
+      fitCharacterInBall(built, BALL_RADIUS);
       const shell = makeShell(char.ballColor);
       const g = new THREE.Group();
       g.add(shell, built.group);
@@ -171,6 +170,7 @@ export class MenuScene {
     const built = buildCharacterMesh(id);
     built.group.scale.setScalar(1.7);
     built.group.position.set(0, 1.3, 0);
+    built.group.userData.baseY = 1.3;
     const glow = new THREE.Mesh(
       new THREE.SphereGeometry(1.9, 16, 12),
       new THREE.MeshBasicMaterial({ color: char.ballColor, transparent: true, opacity: 0.12 })
@@ -197,7 +197,8 @@ export class MenuScene {
       } else if (a.kind === 'bouncer') {
         const cycle = (t * 1.4) % 2;
         const h = Math.abs(Math.sin(cycle * Math.PI)) * 2.2;
-        a.group.position.set(a.base.x, a.base.y + h, a.base.z);
+        a.group.position.set(a.base.x, a.group.position.y, a.base.z);
+        a.group.userData.baseY = a.base.y + h;
         animateCharacter(a.built, t, h > 0.4 ? 'air' : 'idle', 0);
       } else if (a.kind === 'dancer') {
         a.group.rotation.y = t * 1.2;

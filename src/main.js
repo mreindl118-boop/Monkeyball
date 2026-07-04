@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { Ball, stepBall, BALL_RADIUS } from './physics.js';
 import { Stage } from './stage.js';
 import { LEVELS, WORLDS, starThresholds } from './levels.js';
-import { getCharacter, buildCharacterMesh, animateCharacter } from './characters.js';
+import { getCharacter, buildCharacterMesh, animateCharacter, fitCharacterInBall } from './characters.js';
 import { pollInput, pollInputDuel, initTouch, clearInput, onPause, onRestart, requestTiltPermission } from './input.js';
 import { collideBalls, Ghost, DuelNet } from './duel.js';
 import { UI } from './ui.js';
@@ -99,8 +99,7 @@ function makeBallGroup(char) {
   const ring2 = ring1.clone(); ring2.rotation.y = Math.PI / 2;
   shell.add(ring1, ring2);
   const built = buildCharacterMesh(char.id);
-  built.group.scale.setScalar(0.62);
-  built.group.position.y = -BALL_RADIUS * 0.82;
+  fitCharacterInBall(built, BALL_RADIUS);
   g.add(shell, built.group);
   return { group: g, shell, built };
 }
@@ -757,11 +756,12 @@ function updatePlay(dt, t) {
     UI.flashMessage('BOING!', 600);
   }
 
-  // events -> sfx
+  // events -> sfx + impact squash
   for (const e of events) {
-    if (e.type === 'bumper') { sfx.bumper(); for (const bm of G.stage.bumpers) bm.flash = 1; }
+    if (e.type === 'bumper') { sfx.bumper(); for (const bm of G.stage.bumpers) bm.flash = 1; G.squash = 0.3; }
     if (e.type === 'jump') sfx.jump();
-    if (e.type === 'wallhit') sfx.bounce();
+    if (e.type === 'wallhit') { sfx.bounce(); G.squash = Math.min(0.34, 0.1 + e.speed * 0.018); }
+    if (e.type === 'land') { if (e.speed > 9) sfx.bounce(); G.squash = Math.min(0.3, 0.06 + e.speed * 0.014); }
   }
 
   // launch pads
@@ -864,6 +864,9 @@ function syncBallVisual(t, dt, input) {
   const bg = G.ballGroup;
   if (!bg) return;
   bg.group.position.copy(G.ball.pos);
+  // squash & stretch: impacts compress the ball, then it springs back
+  G.squash = (G.squash || 0) * Math.exp(-9 * dt);
+  bg.group.scale.set(1 + G.squash * 0.55, 1 - G.squash, 1 + G.squash * 0.55);
   // roll the shell
   const spinLen = G.ball.spin.length();
   if (spinLen > 0.01) {

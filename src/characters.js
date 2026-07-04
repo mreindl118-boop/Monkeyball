@@ -690,6 +690,20 @@ export function getCharacter(id) {
   return CHARACTERS.find(c => c.id === id) || CHARACTERS[0];
 }
 
+// Measure the finished sculpt and scale/center it to sit inside the ball
+// shell — no more ears, hats or pans poking through the glass.
+export function fitCharacterInBall(built, radius) {
+  const box = new THREE.Box3().setFromObject(built.group);
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+  const halfMax = Math.max(size.x, size.y, size.z) * 0.5;
+  const s = (radius * 0.86) / Math.max(halfMax, 1e-6);
+  built.group.scale.multiplyScalar(s);
+  const y = -center.y * s - radius * 0.06;
+  built.group.position.set(-center.x * s, y, -center.z * s);
+  built.group.userData.baseY = y;   // animations bob relative to this
+}
+
 export function buildCharacterMesh(id) {
   const builder = BUILDERS[id] || BUILDERS.marco;
   const built = builder();
@@ -711,7 +725,7 @@ export function animateCharacter(built, t, mode = 'idle', speed = 0) {
     if (limbs.legR) limbs.legR.rotation.x = w * amp;
     if (limbs.tail) limbs.tail.rotation.y = Math.PI + Math.sin(t * 4) * 0.4;
     if (head) head.rotation.y = Math.sin(t * 1.6) * 0.12;
-    group.position.y = Math.abs(Math.sin(t * (mode === 'roll' ? rate / 2 : 2))) * 0.03;
+    group.position.y = (group.userData.baseY || 0) + Math.abs(Math.sin(t * (mode === 'roll' ? rate / 2 : 2))) * 0.03;
     // Waka chomps as he moves
     if (limbs.jawTop && limbs.jawBot) {
       const chomp = (Math.sin(t * (4 + s * 12)) * 0.5 + 0.5) * (0.2 + s * 0.4);
@@ -723,10 +737,10 @@ export function animateCharacter(built, t, mode = 'idle', speed = 0) {
     if (limbs.armR) limbs.armR.rotation.x = -2.4;
     if (limbs.legL) limbs.legL.rotation.x = 0.5;
     if (limbs.legR) limbs.legR.rotation.x = -0.5;
-    group.position.y = 0.05;
+    group.position.y = (group.userData.baseY || 0) + 0.05;
   } else if (mode === 'win') {
     const hop = Math.abs(Math.sin(t * 6));
-    group.position.y = hop * 0.25;
+    group.position.y = (group.userData.baseY || 0) + hop * 0.25;
     if (limbs.armL) limbs.armL.rotation.x = -2.6 + Math.sin(t * 12) * 0.3;
     if (limbs.armR) limbs.armR.rotation.x = -2.6 - Math.sin(t * 12) * 0.3;
     if (head) head.rotation.z = Math.sin(t * 6) * 0.15;
@@ -735,6 +749,6 @@ export function animateCharacter(built, t, mode = 'idle', speed = 0) {
     if (head) { head.rotation.z = Math.sin(t * 10) * 0.35; head.rotation.y = Math.cos(t * 8) * 0.3; }
     if (limbs.armL) limbs.armL.rotation.x = 0.8;
     if (limbs.armR) limbs.armR.rotation.x = 0.8;
-    group.position.y = 0;
+    group.position.y = group.userData.baseY || 0;
   }
 }
