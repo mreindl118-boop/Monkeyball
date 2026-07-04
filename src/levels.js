@@ -181,9 +181,9 @@ export const LEVELS = [
     goal: { p: [0, 0.3, -58], ry: 0 },
     parts: [
       lane(0, 0, 6, 7, 14),
-      // moving stepping stones over the void
-      { p: [-3, 0, -6], s: [3, 0.6, 3], tex: 'plank', anim: { type: 'slide', axis: [1, 0, 0], amp: 3.5, speed: 0.9 } },
-      { p: [3, 0, -13], s: [3, 0.6, 3], tex: 'plank', anim: { type: 'slide', axis: [1, 0, 0], amp: 3.5, speed: 0.9, phase: Math.PI } },
+      // moving stepping stones over the void (long enough for every rascal's hop)
+      { p: [-3, 0, -6], s: [3.6, 0.6, 4], tex: 'plank', anim: { type: 'slide', axis: [1, 0, 0], amp: 3.5, speed: 0.9 } },
+      { p: [3, 0, -13], s: [3.6, 0.6, 4], tex: 'plank', anim: { type: 'slide', axis: [1, 0, 0], amp: 3.5, speed: 0.9, phase: Math.PI } },
       { p: [0, 0, -20], s: [4, 0.6, 4], tex: 'plank' },
       lane(0, 0, -30, 8, 10),
       // launch across the mega gap onto a moving island

@@ -184,7 +184,7 @@ export function stepBall(ball, dt, opts) {
   // ground friction & platform carry
   if (ball.onGround) {
     ball.airTime = 0;
-    ball.coyote = 0.12;
+    ball.coyote = 0.16;
     const pv = ball.groundVel || _v1.set(0, 0, 0);
     // damp velocity relative to the platform (rolling resistance).
     // slopes get slick (grip falls off fast as the surface tilts), so ramps

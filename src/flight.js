@@ -11,6 +11,7 @@ import { getSave, save, addBananas } from './save.js';
 
 const ROUNDS = 3;
 const SEA_Y = 0;
+const GRAV_AIR = 22;   // one gravity constant: ballistic fall, climb cost & dive gain all match
 const _v = new THREE.Vector3();
 
 // Flight tuning derived from the rascal's ground stats.
@@ -110,16 +111,29 @@ export class TargetMode {
       slab([-(W / 2 + 1.6), y + 1.4, z], [4.5, 1, len], rx, -0.55, railMat);
       slab([W / 2 + 1.6, y + 1.4, z], [4.5, 1, len], rx, 0.55, railMat);
     };
-    // start deck high above the sea, then a LONG drop
-    pipe(110, 64, 0, 18);
-    pipe(101.5, 45, -0.60, 26);
-    pipe(87, 24, -0.60, 26);
-    pipe(72.5, 3, -0.60, 26);
-    pipe(60, -17, -0.45, 24);
-    pipe(51.5, -36, -0.26, 20);
-    slab([0, 49.4, -52], [W, 1.2, 14], 0.24);   // the kicker lip
+    // The run is chained end-to-end from a cursor: every slab's top surface
+    // begins exactly where the previous one ended (a hair lower, so no seam
+    // edge ever sticks up into the ball's path — a slow roll from rest must
+    // survive every joint). Flat start deck, a crest rounded over several
+    // angles, one LONG gravity drop, a rounded pull-out and an upward kicker.
+    let cz = 73, cy = 110.6;                 // cursor: top-surface point
+    const seg = (a, len) => {                // a>0 rolls downhill, a<0 kicks up
+      const ey = cy - Math.sin(a) * len, ez = cz - Math.cos(a) * len;
+      pipe((cy + ey) / 2 - 0.6 * Math.cos(a), (cz + ez) / 2 + 0.6 * Math.sin(a), -a, len);
+      cy = ey - 0.12;                        // tuck the next slab just under
+      cz = ez;
+    };
+    seg(0.06, 18);       // start deck — barely tilted, rolls off from rest
+    seg(0.20, 10);       // crest ease-in…
+    seg(0.35, 10);
+    seg(0.50, 10);       //   …rounded over the top
+    seg(0.62, 58);       // the BIG drop
+    seg(0.45, 14);       // pull-out…
+    seg(0.28, 12);
+    seg(0.12, 10);       // …runout
+    seg(-0.22, 12);      // kicker lip
     // support pylons plunging into the sea
-    for (const [ph, pz] of [[104, 60], [80, 20], [56, -20], [48, -48]]) {
+    for (const [ph, pz] of [[113, 60], [96, 20], [68, -20], [58, -48]]) {
       const pylon = new THREE.Mesh(
         new THREE.CylinderGeometry(1.4, 2.2, ph, 10),
         new THREE.MeshStandardMaterial({ map: gridTexture('#1c2f52', '#4de1ff', 10), roughness: 0.7 })
@@ -161,7 +175,7 @@ export class TargetMode {
       g.position.set(x, SEA_Y + 0.6, z);
       this.root.add(g);
       const t = {
-        mesh: g, pos: g.position, R,
+        mesh: g, pos: g.position, baseX: x, R,
         rings: [
           { r: R * 0.09, v: values[0] },
           { r: R * 0.22, v: values[1] },
@@ -312,7 +326,8 @@ export class TargetMode {
     this.cooldown = 0;
     this.magnet = 0; this.feather = 0; this.superLift = 0; this.windShield = 0; this.slowmo = 0;
     this.ball.reset([0, 112, 68]);
-    this.launchBonus = 0;         // Turbo Launch item
+    if (this.launchBonus) this.ball.vel.set(0, 0, -this.launchBonus);   // Rolling Start push
+    this.launchBonus = 0;
     this.roundFeather = false;    // Feather item (whole-round lift)
     this.tuck = 0;
     this.tuckHintShown = false;
@@ -410,7 +425,7 @@ export class TargetMode {
     for (const tg of this.targets) {
       if (tg.moving) {
         const off = Math.sin(t * 0.55) * 16;
-        tg.pos.x = 20 + off;
+        tg.pos.x = tg.baseX + off;
         tg.solid.linVel.set(Math.cos(t * 0.55) * 0.55 * 16, 0, 0);
       }
     }
@@ -446,28 +461,27 @@ export class TargetMode {
       this.tuckHintShown = true;
       this.ctx.ui.flashMessage(document.body.classList.contains('touch') ? 'HOLD ▲ TO TUCK!' : 'HOLD UP TO TUCK!', 1400);
     }
+    // no motor: gravity does ALL the work. Tucking drops rolling friction,
+    // pulling back drags a brake — your launch speed is earned on the hill.
+    const braking = tuckIn < -0.2 ? 1 : 0;
     const events = [];
     stepBall(this.ball, Math.min(dt, 1 / 30), {
       solids: this.rampSolids, bumpers: [],
-      input: { x: input.x * 0.6, y: -1, jump: false, ability: false }, camYaw: this.yaw,
+      input: { x: input.x * 0.6, y: 0, jump: false, ability: false }, camYaw: this.yaw,
       events,
-      accel: (this.fs.launch + this.launchBonus) * (0.85 + this.tuck * 0.55),
-      traction: this.tuck > 0.5 ? 0.15 : 0.4,
+      accel: 0,
+      traction: this.tuck > 0.5 ? 0.06 : (braking ? 2.2 : 0.35),
       jumpVel: 0, weightFactor: this.char.stats.weight / 10
     });
     // off the kicker?
-    if (this.ball.pos.z < -56 && !this.ball.onGround) {
+    if (this.ball.pos.z < -62 && !this.ball.onGround) {
       this.phase = 'fly';
       this.phaseT = 0;
       this.airVel.copy(this.ball.vel);
+      // the curved lip converts a share of run speed into climb (geometry we
+      // don't model with a true curve) — nothing is added for free
       const hs = Math.hypot(this.airVel.x, this.airVel.z);
-      const floor = (this.fs.launch + this.launchBonus) * 0.85;
-      if (hs < floor) { // guarantee a respectable launch even after a wobbly run
-        const k = floor / Math.max(hs, 0.1);
-        this.airVel.x *= k; this.airVel.z *= k;
-      }
-      // the kicker pops you into a proper arc
-      this.airVel.y = Math.max(this.airVel.y, 7 + Math.hypot(this.airVel.x, this.airVel.z) * 0.14);
+      this.airVel.y = Math.max(this.airVel.y, hs * 0.20);
       this.yaw = Math.atan2(-this.airVel.x, -this.airVel.z);
       sfx.launch();
       this.ctx.ui.flashMessage(document.body.classList.contains('touch') ? 'TAP JUMP = WINGS!' : 'SPACE = WINGS!', 1600);
@@ -482,8 +496,9 @@ export class TargetMode {
     if (this.open) {
       // ball pops open: convert motion into stable airspeed & pitch
       const hs = Math.hypot(this.airVel.x, this.airVel.z);
-      this.speed = THREE.MathUtils.clamp(Math.hypot(hs, Math.max(-this.airVel.y * 0.45, 0)), 12, 32);
-      this.pitch = THREE.MathUtils.clamp(Math.atan2(this.airVel.y, Math.max(hs, 2)), -0.55, 0.12);
+      // total velocity magnitude carries over — no energy created or lost
+      this.speed = THREE.MathUtils.clamp(Math.hypot(hs, this.airVel.y), 5, 44);
+      this.pitch = THREE.MathUtils.clamp(Math.atan2(this.airVel.y, Math.max(hs, 2)), -0.6, 0.15);
       sfx.glide();
     } else {
       // tuck back into the ball: keep current velocity, gravity takes over
@@ -518,21 +533,27 @@ export class TargetMode {
       if (this.speed < 13) pitchTarget = Math.min(pitchTarget, (this.speed - 13) * 0.1);
       this.pitch += (pitchTarget - this.pitch) * Math.min(1, dt * 3.2);
 
-      // airspeed: diving accelerates, climbing bleeds, level relaxes to cruise
-      const accel = -Math.sin(this.pitch) * this.fs.diveGain - (this.speed - this.fs.cruise) * 0.45;
-      this.speed = THREE.MathUtils.clamp(this.speed + accel * dt, 9, 38);
+      // energy exchange under consistent gravity: climbing costs speed at
+      // exactly g*sin(pitch), diving pays it back — altitude IS speed.
+      // Quadratic drag bleeds excess speed off fast.
+      const drag = 0.3 + 0.004 * this.speed * this.speed;
+      this.speed = THREE.MathUtils.clamp(
+        this.speed + (-GRAV_AIR * Math.sin(this.pitch) - drag) * dt, 5, 44);
 
       // sink: gliding always descends a little (abilities can cancel it);
       // hard banking bleeds extra lift — pick your turns
       let sink = this.fs.sink + Math.abs(input.x) * 0.7;
+      // flaring loads the wings: nose-up climbs shed sink, so speed traded
+      // upward actually shows up as altitude (readable energy exchange)
+      if (this.pitch > 0) sink *= Math.max(0.25, 1 - this.pitch * 2.2);
       if (this.superLift > 0) sink = 0;
       else if (this.feather > 0 || this.roundFeather) sink *= 0.35;
 
       const horiz = this.speed * Math.cos(this.pitch);
       this.airVel.set(f.x * horiz, this.speed * Math.sin(this.pitch) - sink, f.z * horiz);
     } else {
-      // ---- closed ball: ballistic dive, fast & heavy ----
-      this.airVel.y -= 24 * dt;
+      // ---- closed ball: ballistic dive under the same gravity ----
+      this.airVel.y -= GRAV_AIR * dt;
       const hs = Math.hypot(this.airVel.x, this.airVel.z) * Math.exp(-0.03 * dt);
       this.airVel.x = f.x * hs;
       this.airVel.z = f.z * hs;
@@ -684,7 +705,7 @@ export class TargetMode {
       items: [
         { id: 'sticky', icon: '🍯', name: 'Sticky Ball', cost: 8, desc: 'Stop dead where you land — no bounce, no roll.' },
         { id: 'x2', icon: '✖️2', name: 'Double Score', cost: 12, desc: 'Next landing scores double.' },
-        { id: 'turbo', icon: '🚀', name: 'Turbo Launch', cost: 8, desc: 'Extra ramp speed for a longer flight.' },
+        { id: 'turbo', icon: '🚀', name: 'Rolling Start', cost: 8, desc: 'Begin the run with a hefty push instead of standing still.' },
         { id: 'feather', icon: '🪶', name: 'Feather', cost: 6, desc: 'Featherlight glide for the whole flight.' }
       ],
       onPick: (id) => {
@@ -693,7 +714,7 @@ export class TargetMode {
         this.bananasGot -= { sticky: 8, x2: 12, turbo: 8, feather: 6 }[id] || 0;
         if (id === 'sticky') this.sticky = true;
         if (id === 'x2') this.multiplier = 2;
-        if (id === 'turbo') this.launchBonus = 9;
+        if (id === 'turbo') this.ball.vel.set(0, 0, -12);   // the round just reset — shove off now
         if (id === 'feather') this.roundFeather = true;
         sfx.buy();
       }

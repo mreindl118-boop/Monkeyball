@@ -281,7 +281,7 @@ function charPhysics() {
   return {
     accel: (17 + st.speed * 1.9) * (1 + 0.08 * sv.upgrades.accel),
     traction: (0.9 + st.traction * 0.27) * (1 + 0.08 * sv.upgrades.traction),
-    jumpVel: (6.4 + st.jump * 0.55) * (1 + 0.07 * sv.upgrades.jump),
+    jumpVel: (7.7 + st.jump * 0.66) * (1 + 0.07 * sv.upgrades.jump),
     weightFactor: st.weight / 10
   };
 }
@@ -468,7 +468,7 @@ function duelPhysFor(char, ball) {
   const phys = {
     accel: (17 + st.speed * 1.9) * (ball.turboT > 0 ? 1.65 : 1),
     traction: 0.9 + st.traction * 0.27,
-    jumpVel: 6.4 + st.jump * 0.55,
+    jumpVel: 7.7 + st.jump * 0.66,
     weightFactor: st.weight / 10
   };
   return phys;
