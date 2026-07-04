@@ -362,7 +362,7 @@ function performAbility(ball, char, ctx) {
 function useAbility() {
   if (G.abilityCooldown > 0) return;
   const used = performAbility(G.ball, G.char, {
-    camYaw: G.camYaw,
+    camYaw: viewYaw(),
     setMagnet: (s) => { G.magnetTimer = s; },
     freezeTimer: (s) => { G.timerFrozen = s; },
     flash: (m, ms) => UI.flashMessage(m, ms)
@@ -729,6 +729,13 @@ function updateCamera(dt, input) {
 }
 
 // ---------------- per-frame gameplay ----------------
+// The control frame is the RENDERED camera, not the orbit target it lerps
+// toward — stick-up always pushes away from the actual point of view, so
+// steering stays screen-relative even mid camera swing.
+function viewYaw() {
+  const b = G.ball.pos;
+  return Math.atan2(camera.position.x - b.x, camera.position.z - b.z);
+}
 const events = [];
 function updatePlay(dt, t) {
   const input = pollInput();
@@ -745,7 +752,7 @@ function updatePlay(dt, t) {
   stepBall(G.ball, Math.min(dt, 1 / 30), {
     solids: G.stage.solids,
     bumpers: G.stage.bumpers,
-    input, camYaw: G.camYaw,
+    input, camYaw: viewYaw(),
     events, ...phys
   });
 
