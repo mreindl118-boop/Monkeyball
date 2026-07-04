@@ -254,34 +254,52 @@ export function targetTexture() {
 
 export function waterTexture(repeat = 20) {
   if (cache.has('water')) return cache.get('water');
-  const [c, ctx] = makeCanvas(256);
-  const deep = ctx.createLinearGradient(0, 0, 256, 256);
-  deep.addColorStop(0, '#1d66b4');
-  deep.addColorStop(0.5, '#175a9e');
-  deep.addColorStop(1, '#134f8e');
+  const [c, ctx] = makeCanvas(512);
+  const deep = ctx.createLinearGradient(0, 0, 512, 512);
+  deep.addColorStop(0, '#1a5fae');
+  deep.addColorStop(0.45, '#14549b');
+  deep.addColorStop(1, '#0e4383');
   ctx.fillStyle = deep;
-  ctx.fillRect(0, 0, 256, 256);
-  // dark undertow bands
-  ctx.strokeStyle = 'rgba(8,30,64,0.35)';
-  ctx.lineWidth = 9;
-  for (let i = 0; i < 8; i++) {
+  ctx.fillRect(0, 0, 512, 512);
+  // broad swell shadows, layered two ways for a cross-chop look
+  ctx.strokeStyle = 'rgba(6,28,62,0.30)';
+  ctx.lineWidth = 22;
+  for (let i = 0; i < 7; i++) {
     ctx.beginPath();
-    const y = (i * 73 + 20) % 256;
+    const y = (i * 79 + 30) % 512;
     ctx.moveTo(0, y);
-    ctx.bezierCurveTo(80, y + 16, 176, y - 16, 256, y);
+    ctx.bezierCurveTo(150, y + 34, 360, y - 34, 512, y);
     ctx.stroke();
   }
-  // bright caustic crests
-  ctx.strokeStyle = 'rgba(190,230,255,0.4)';
-  ctx.lineWidth = 4;
-  for (let i = 0; i < 12; i++) {
+  ctx.strokeStyle = 'rgba(10,36,74,0.22)';
+  ctx.lineWidth = 30;
+  for (let i = 0; i < 5; i++) {
     ctx.beginPath();
-    const y = (i * 61) % 256;
-    ctx.moveTo(0, y);
-    ctx.bezierCurveTo(64, y - 14, 128, y + 14, 256, y);
+    const x = (i * 113 + 60) % 512;
+    ctx.moveTo(x, 0);
+    ctx.bezierCurveTo(x - 40, 170, x + 40, 340, x, 512);
     ctx.stroke();
   }
-  grain(ctx, 256, 0.05, 2);
+  // caustic crest web
+  ctx.strokeStyle = 'rgba(190,230,255,0.35)';
+  ctx.lineWidth = 5;
+  for (let i = 0; i < 16; i++) {
+    ctx.beginPath();
+    const y = (i * 67 + 13) % 512;
+    ctx.moveTo(0, y);
+    ctx.bezierCurveTo(128, y - 26, 300, y + 26, 512, y);
+    ctx.stroke();
+  }
+  // sun glints & foam flecks
+  for (let i = 0; i < 260; i++) {
+    const x = Math.random() * 512, y = Math.random() * 512;
+    const w = 3 + Math.random() * 14;
+    ctx.fillStyle = Math.random() < 0.7 ? 'rgba(210,240,255,0.28)' : 'rgba(255,255,255,0.45)';
+    ctx.beginPath();
+    ctx.ellipse(x, y, w, 1.2 + Math.random() * 1.6, Math.random() * 0.6 - 0.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  grain(ctx, 512, 0.05, 2);
   const t = toTexture(c, repeat);
   cache.set('water', t);
   return t;
