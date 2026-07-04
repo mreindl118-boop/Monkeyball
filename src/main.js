@@ -478,7 +478,7 @@ function duelCameraAndSync(dt, t, inputs) {
   const [b0, b1] = G.duel.balls;
   const mx = (b0.pos.x + b1.pos.x) / 2, mz = (b0.pos.z + b1.pos.z) / 2;
   const sep = b0.pos.distanceTo(b1.pos);
-  const dist = Math.max(11, sep * 0.75 + 8);
+  const dist = Math.max(9.5, sep * 0.72 + 7);
   camera.position.lerp(camTarget.set(mx, dist * 0.72, mz + dist), Math.min(1, dt * 5));
   camera.lookAt(mx, 0.5, mz);
   for (let i = 0; i < 2; i++) {
@@ -717,9 +717,10 @@ function updateCamera(dt, input) {
     while (d < -Math.PI) d += Math.PI * 2;
     G.camYaw += d * Math.min(1, dt * 1.8);
   }
-  // camera pulls back with speed so big stages read at pace
+  // camera pulls back with speed so big stages read at pace — but sits close
+  // by default so the rascal in the ball actually fills some screen
   const hs2 = Math.hypot(b.vel.x, b.vel.z);
-  const dist = 7.8 + Math.min(hs2 * 0.08, 2.2), height = 4.0 + Math.min(hs2 * 0.04, 1.1);
+  const dist = 6.1 + Math.min(hs2 * 0.09, 2.1), height = 3.2 + Math.min(hs2 * 0.045, 1.1);
   const cx = b.pos.x + Math.sin(G.camYaw) * dist;
   const cz = b.pos.z + Math.cos(G.camYaw) * dist;
   const cy = b.pos.y + height;

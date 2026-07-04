@@ -81,6 +81,14 @@ jobs:
       - name: Force landscape orientation
         run: |
           sed -i 's/<activity/<activity android:screenOrientation="sensorLandscape"/' android/app/src/main/AndroidManifest.xml
+      - name: Go edge-to-edge (fill the display cutout, hide the status bar)
+        # Phones with a camera notch letterbox the app behind a white system
+        # bar unless the theme opts into drawing under the cutout. The launch
+        # theme inherits from AppTheme.NoActionBar, so one edit covers both.
+        run: |
+          sed -i 's#<style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">#&\n        <item name="android:windowFullscreen">true</item>\n        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>\n        <item name="android:windowBackground">@color/rrGameBg</item>#' android/app/src/main/res/values/styles.xml
+          sed -i 's#</resources>#    <color name="rrGameBg">\#FF0A0A1A</color>\n</resources>#' android/app/src/main/res/values/styles.xml
+          cat android/app/src/main/res/values/styles.xml
       - name: Pin the signing key explicitly
         # Android only upgrades an app if the signature matches the installed one.
         # Relying on ~/.android/debug.keystore proved unreliable on runners, so we

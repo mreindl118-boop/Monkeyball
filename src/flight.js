@@ -617,8 +617,7 @@ export class TargetMode {
 
   updateRamp(dt, input) {
     // roll the half-pipe: steer freely, HOLD UP to tuck for extra launch speed
-    let tuckIn = -input.y;
-    if (getSave().settings.invertPitch) tuckIn = -tuckIn;
+    const tuckIn = -input.y;   // tuck is a posture, not pitch — never inverted
     this.tuck += ((tuckIn > 0.2 ? 1 : 0) - this.tuck) * Math.min(1, dt * 4);
     if (!this.tuckHintShown && this.phaseT > 0.8) {
       this.tuckHintShown = true;
@@ -626,16 +625,20 @@ export class TargetMode {
     }
     // no motor: gravity does ALL the work. Tucking drops rolling friction,
     // pulling back drags a brake — your launch speed is earned on the hill.
+    // (accel only ever sees x — the forward axis is zeroed, so steering your
+    // line across the pipe never adds free launch speed)
     const braking = tuckIn < -0.2 ? 1 : 0;
     const events = [];
     stepBall(this.ball, Math.min(dt, 1 / 30), {
       solids: this.rampSolids, bumpers: [],
-      input: { x: input.x * 0.6, y: 0, jump: false, ability: false }, camYaw: this.yaw,
+      input: { x: input.x * 0.85, y: 0, jump: false, ability: false }, camYaw: this.yaw,
       events,
-      accel: 0,
+      accel: 10,
       traction: this.tuck > 0.5 ? 0.06 : (braking ? 2.2 : 0.35),
       jumpVel: 0, weightFactor: this.char.stats.weight / 10
     });
+    // lateral speed is for picking a line, not for jumping the rails
+    this.ball.vel.x = THREE.MathUtils.clamp(this.ball.vel.x, -8, 8);
     // remember the grade we're rolling down so the chase cam can stay above it
     if (this.ball.onGround) {
       const n = this.ball.groundNormal;
@@ -686,14 +689,18 @@ export class TargetMode {
       this.ctx.ui.flashMessage(document.body.classList.contains('touch') ? 'JUMP = WINGS!' : 'SPACE = WINGS!', 1200);
     }
 
-    // steering — banking turns; the closed ball barely steers
-    this.yaw -= input.x * this.fs.turn * (this.open ? 1 : 0.55) * dt;
-    this.lastTurn = input.x;
+    // steering — banking turns; the closed ball barely steers.
+    // squared response: small deflections nudge, full deflection still snaps
+    const sx = input.x * Math.abs(input.x);
+    this.yaw -= sx * this.fs.turn * (this.open ? 1 : 0.55) * dt;
+    this.lastTurn = sx;
     const f = this.forward();
 
     if (this.open) {
       // ---- kinematic glider: stable & readable, no stall spirals ----
-      let dive = -input.y;                    // stick up = nose down, like Monkey Target
+      // arcade default: stick UP = climb, pull BACK = dive.
+      // (invert-pitch setting flips to flight-sim/Monkey-Target style)
+      let dive = input.y * Math.abs(input.y);
       if (getSave().settings.invertPitch) dive = -dive;
       // nose down up to ~35°, nose up to ~20°
       let pitchTarget = dive > 0 ? -dive * 0.62 : -dive * 0.34;
@@ -710,7 +717,7 @@ export class TargetMode {
 
       // sink: gliding always descends a little (abilities can cancel it);
       // hard banking bleeds extra lift — pick your turns
-      let sink = this.fs.sink + Math.abs(input.x) * 0.7;
+      let sink = this.fs.sink + Math.abs(sx) * 0.7;
       // flaring loads the wings: nose-up climbs shed sink, so speed traded
       // upward actually shows up as altitude (readable energy exchange)
       if (this.pitch > 0) sink *= Math.max(0.25, 1 - this.pitch * 2.2);
@@ -919,16 +926,16 @@ export class TargetMode {
       const f = this.forward();
       // when diving (nose down / closed ball), camera rises for a better view of the boards
       const divey = this.open ? THREE.MathUtils.clamp(-this.pitch, 0, 0.7) : 0.55;
-      px = b.x - f.x * (10 - divey * 2.5); py = b.y + 3.2 + divey * 5; pz = b.z - f.z * (10 - divey * 2.5);
-      lx = b.x + f.x * 9; ly = b.y - 1.5 - divey * 7; lz = b.z + f.z * 9;
+      px = b.x - f.x * (7.8 - divey * 2); py = b.y + 2.6 + divey * 4.5; pz = b.z - f.z * (7.8 - divey * 2);
+      lx = b.x + f.x * 9; ly = b.y - 1.2 - divey * 6.5; lz = b.z + f.z * 9;
     } else if (this.phase === 'ramp') {
       // chase cam straight down the pipe. The deck BEHIND the ball is higher
       // on the steeps, so ride the measured grade up — never inside the ramp.
-      const rise = Math.max(0, this.rampSlope || 0) * 13;
-      px = b.x * 0.5; py = b.y + 6 + rise; pz = b.z + 13;
-      lx = b.x * 0.5; ly = b.y - 2; lz = b.z - 10;
+      const rise = Math.max(0, this.rampSlope || 0) * 10;
+      px = b.x * 0.5; py = b.y + 4.6 + rise; pz = b.z + 10;
+      lx = b.x * 0.5; ly = b.y - 1.6; lz = b.z - 10;
     } else {
-      px = b.x + 8; py = b.y + 7; pz = b.z + 8;
+      px = b.x + 5.5; py = b.y + 4.6; pz = b.z + 5.5;
       lx = b.x; ly = b.y; lz = b.z;
     }
     cam.position.lerp(_v.set(px, py, pz), Math.min(1, dt * (this.phase === 'fly' ? 6 : 5)));

@@ -49,23 +49,27 @@ export function initTouch() {
   const base = document.getElementById('joy-base');
   const stick = document.getElementById('joy-stick');
   let activeId = null, cx = 0, cy = 0;
-  const RADIUS = 55;
+  const RADIUS = 72;         // longer throw = finer control
+  const DEADZONE = 0.12;
 
   function setStick(dx, dy) {
     const len = Math.hypot(dx, dy);
     if (len > RADIUS) { dx = dx / len * RADIUS; dy = dy / len * RADIUS; }
     stick.style.left = (cx + dx - 29) + 'px';
     stick.style.top = (cy + dy - 29) + 'px';
-    touchVec.x = dx / RADIUS;
-    touchVec.y = dy / RADIUS;
+    // radial deadzone, rescaled so full deflection still reaches 1
+    const m = Math.min(1, len / RADIUS);
+    const eff = m < DEADZONE ? 0 : (m - DEADZONE) / (1 - DEADZONE);
+    touchVec.x = len > 1e-6 ? dx / len * eff : 0;
+    touchVec.y = len > 1e-6 ? dy / len * eff : 0;
   }
 
   zone.addEventListener('touchstart', (e) => {
     const t = e.changedTouches[0];
     activeId = t.identifier;
     cx = t.clientX; cy = t.clientY;
-    base.style.left = (cx - 65) + 'px';
-    base.style.top = (cy - 65) + 'px';
+    base.style.left = (cx - 80) + 'px';
+    base.style.top = (cy - 80) + 'px';
     base.style.display = 'block';
     stick.style.display = 'block';
     setStick(0, 0);
