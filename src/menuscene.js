@@ -248,7 +248,7 @@ export class MenuScene {
       // shift the look target sideways so the podium star shows at the screen
       // edge instead of hiding behind the menu cards
       const rx = -Math.sin(ang), rz = Math.cos(ang);   // camera-right on the orbit circle
-      camera.lookAt(rx * 4.4, 2.3, rz * 4.4);
+      camera.lookAt(rx * 6.0, 2.3, rz * 6.0);
     } else {
       camera.lookAt(0, 0.8, 0);
     }

@@ -342,6 +342,19 @@ function performAbility(ball, char, ctx) {
       sfx.ability();
       ctx.flash('TIME FROZEN!', 1000);
       break;
+    case 'overshield':   // Jawn-117: spartan energy shield
+      b.shielded = 3;
+      b.gripBoost = 3;
+      sfx.ability();
+      ctx.flash('OVERSHIELD!', 900);
+      break;
+    case 'box':          // Liquid Snack: the box is love, the box is life
+      b.vel.multiplyScalar(0.05);
+      b.shielded = 2;
+      ctx.setMagnet(2.5);
+      sfx.ability();
+      ctx.flash('! ...just a box.', 1100);
+      break;
     default: used = false;
   }
   return used;

@@ -36,7 +36,9 @@ const AIR_SKILLS = {
   magnet: { name: 'Zap Magnet', desc: 'Pull in bananas & power-ups 6s', cooldown: 8 },
   pound: { name: 'Dive Bomb', desc: 'Plummet & stick the landing dead', cooldown: 6 },
   glide: { name: 'Parasol Lift', desc: 'Near-zero sink for 4s', cooldown: 7 },
-  chomp: { name: 'Chrono Chomp', desc: 'Slow time for 3s of precise aiming', cooldown: 10 }
+  chomp: { name: 'Chrono Chomp', desc: 'Slow time for 3s of precise aiming', cooldown: 10 },
+  overshield: { name: 'Overshield', desc: 'Wind immunity + steadied flight for 4s', cooldown: 7 },
+  box: { name: 'Box Glider', desc: 'Deploy the box: slow-fall + wind-proof 3s', cooldown: 7 }
 };
 
 const POWERUPS = [
@@ -330,6 +332,17 @@ export class TargetMode {
         break;
       case 'glide': this.open = true; this.superLift = 4; break;
       case 'chomp': this.slowmo = 3; this.ctx.ui.flashMessage('SLOW-MO!', 800); break;
+      case 'overshield':
+        this.windShield = 4;
+        if (this.open) this.speed = Math.max(this.speed, this.fs.cruise);
+        this.ctx.ui.flashMessage('OVERSHIELD!', 800);
+        break;
+      case 'box':
+        this.open = true;
+        this.superLift = 3;
+        this.windShield = 3;
+        this.ctx.ui.flashMessage('BOX DEPLOYED!', 800);
+        break;
     }
   }
 
