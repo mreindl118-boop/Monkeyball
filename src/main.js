@@ -13,6 +13,8 @@ import { TargetMode } from './flight.js';
 import { RUSH_LEVEL, RushDirector, RUSH_TIME } from './rush.js';
 import { MenuScene } from './menuscene.js';
 import { Atmosphere } from './atmosphere.js';
+import { PostFX } from './postfx.js';
+import { setMaxAnisotropy } from './textures.js';
 import { checkForUpdate, BUILD } from './updater.js';
 
 // ---------------- renderer & scene ----------------
@@ -22,6 +24,8 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+// sharpen tiled ground textures at the grazing angles the chase cam sees
+setMaxAnisotropy(renderer.capabilities.getMaxAnisotropy());
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#120b2e');
@@ -30,12 +34,16 @@ const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 1400);
 // dynamic time-of-day lighting rig (sun/moon, sky dome, stars, fog, exposure, env reflections)
 const atmosphere = new Atmosphere(scene, renderer);
 
+// post-processing: bloom on emissives, cinematic grade + vignette, anti-alias
+const postfx = new PostFX(renderer, scene, camera);
+
 let lastW = 0, lastH = 0;
 function resize() {
   const w = window.innerWidth, h = window.innerHeight;
   if (!w || !h) return;
   lastW = w; lastH = h;
   renderer.setSize(w, h, false);
+  if (postfx) postfx.setSize(w, h);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   window.scrollTo(0, 0);   // shake off residual WebView scroll (keyboard/rotation)
@@ -973,7 +981,7 @@ function tick() {
       break;
   }
 
-  renderer.render(scene, camera);
+  postfx.render();
 }
 
 // ---------------- menu wiring ----------------

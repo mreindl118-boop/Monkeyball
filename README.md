@@ -65,6 +65,12 @@ join any relay by pasting its `ws://` URL in the Duel menu.
 
 - **3 themed worlds** with unique procedural textures, skies, music and decor: Banana Jungle,
   Sky Kingdom, and Mt. Kaboom (lava!).
+- **Modern rendering pipeline** — a post-processing stack (bloom on collectibles/lava, a
+  cinematic color-grade + vignette, and SMAA/FXAA anti-aliasing, tiered down for phone GPUs),
+  a sun-lit environment map baked into the reflections so the glass balls and metal read as
+  real materials, procedurally-generated normal maps that give the tiled surfaces per-pixel
+  relief, rounded platform edges, fresnel rim-light on the rascals, exponential distance haze
+  and max-anisotropy ground textures.
 - **Scoring & progression** — bananas (singles & bunches), time bonuses, 1–3 star ratings,
   best-score/best-time records, sequential level unlocks, lives & game-over.
 - **Banana Shop upgrades** — spend banked bananas on acceleration, grip, jump and bonus-clock

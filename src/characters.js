@@ -5,8 +5,24 @@
 import * as THREE from 'three';
 
 // ---------------- sculpting toolkit ----------------
+// Cheap fresnel rim light: adds a soft edge highlight so the rascal reads
+// crisply against any background (the readability trick modern stylized games
+// borrow from toon shading — without the cost of an outline pass).
+function withRim(material, strength = 0.35) {
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uRimStrength = { value: strength };
+    shader.uniforms.uRimColor = { value: new THREE.Color(0xdfeaff) };
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform float uRimStrength;\nuniform vec3 uRimColor;')
+      .replace('#include <opaque_fragment>',
+        '#include <opaque_fragment>\n{\n  float rim = pow(1.0 - clamp(dot(normalize(vViewPosition), normal), 0.0, 1.0), 2.6);\n  gl_FragColor.rgb += uRimColor * (rim * uRimStrength);\n}');
+  };
+  material.customProgramCacheKey = () => 'rascalRim';
+  return material;
+}
+
 function mat(color, o = {}) {
-  return new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.05, ...o });
+  return withRim(new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.05, ...o }));
 }
 function metal(color, o = {}) {
   return new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.8, ...o });

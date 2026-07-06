@@ -88,17 +88,27 @@ export class Atmosphere {
     scene.add(this.hemi, this.amb);
     this.sunOffset = new THREE.Vector3(18, 30, 14);
 
-    // sky dome (single gradient canvas, redrawn on regrade)
+    // sky dome (gradient + horizon glow canvas, redrawn on regrade)
     this.skyCanvas = document.createElement('canvas');
-    this.skyCanvas.width = 64; this.skyCanvas.height = 512;
+    this.skyCanvas.width = 96; this.skyCanvas.height = 1024;
     this.skyTex = new THREE.CanvasTexture(this.skyCanvas);
     this.skyTex.colorSpace = THREE.SRGBColorSpace;
     this.dome = new THREE.Mesh(
-      new THREE.SphereGeometry(640, 28, 18),
+      new THREE.SphereGeometry(640, 48, 28),
       new THREE.MeshBasicMaterial({ map: this.skyTex, side: THREE.BackSide, fog: false, depthWrite: false })
     );
     this.dome.renderOrder = -10;
     scene.add(this.dome);
+
+    // dedicated equirect canvas that feeds the PMREM env map — painted with a
+    // real sun disc + horizon glow so every PBR surface (glass balls, visors,
+    // metal) picks up a genuine moving specular hotspot instead of a flat
+    // gradient. Kept separate from the visible dome so there's only one sun.
+    this.envCanvas = document.createElement('canvas');
+    this.envCanvas.width = 512; this.envCanvas.height = 256;
+    this.envTex = new THREE.CanvasTexture(this.envCanvas);
+    this.envTex.colorSpace = THREE.SRGBColorSpace;
+    this.envTex.mapping = THREE.EquirectangularReflectionMapping;
 
     // sun disc + moon
     this.sunDisc = new THREE.Sprite(new THREE.SpriteMaterial({
@@ -129,8 +139,10 @@ export class Atmosphere {
     }));
     scene.add(this.stars);
 
-    // fog (color regraded; range set by each scene type)
-    this.fog = new THREE.Fog(0xbfe0f8, 60, 220);
+    // fog: exponential falloff (FogExp2) reads as natural atmospheric depth
+    // instead of the hard linear haze band. Density is derived from each
+    // scene's requested far distance in setFogRange().
+    this.fog = new THREE.FogExp2(0xbfe0f8, 0.006);
     scene.fog = this.fog;
 
     // environment reflections
@@ -154,8 +166,9 @@ export class Atmosphere {
   }
 
   setFogRange(near, far) {
-    this.fog.near = near;
-    this.fog.far = far;
+    // map the old linear near/far intent onto an exponential density:
+    // ~80% occluded by `far`, so distant geometry fades without a hard band
+    this.fog.density = 1.3 / Math.max(far, 1);
   }
 
   sunElevation() {
@@ -167,26 +180,41 @@ export class Atmosphere {
     const g = sampleGrade(this.time);
     this.grade = g;
 
-    // sky gradient
-    const ctx = this.skyCanvas.getContext('2d');
-    const grad = ctx.createLinearGradient(0, 0, 0, 512);
-    grad.addColorStop(0, '#' + g.top.getHexString());
-    grad.addColorStop(0.55, '#' + g.mid.getHexString());
-    grad.addColorStop(1, '#' + g.bot.getHexString());
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 64, 512);
-    this.skyTex.needsUpdate = true;
-
-    // lights
     const el = this.sunElevation();
     const dayness = THREE.MathUtils.clamp(el * 2 + 0.2, 0, 1);
-    this.sun.color.copy(el > -0.08 ? g.sun : C('#93a7ff'));
+
+    // visible sky dome: vertical gradient + a soft horizon glow so the
+    // skyline reads as atmosphere rather than a flat ramp
+    const H = this.skyCanvas.height;
+    const ctx = this.skyCanvas.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, '#' + g.top.getHexString());
+    grad.addColorStop(0.52, '#' + g.mid.getHexString());
+    grad.addColorStop(1, '#' + g.bot.getHexString());
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, this.skyCanvas.width, H);
+    // warm glow hugging the horizon (bottom third), strongest at low sun
+    const glow = ctx.createLinearGradient(0, H * 0.62, 0, H);
+    const gc = g.bot.clone().lerp(g.sun, 0.5);
+    glow.addColorStop(0, 'rgba(0,0,0,0)');
+    glow.addColorStop(1, `rgba(${(gc.r * 255) | 0},${(gc.g * 255) | 0},${(gc.b * 255) | 0},${(0.35 + (1 - dayness) * 0.35).toFixed(3)})`);
+    ctx.fillStyle = glow;
+    ctx.fillRect(0, H * 0.62, this.skyCanvas.width, H * 0.38);
+    this.skyTex.needsUpdate = true;
+
+    // equirect env source: same sky + a bright sun disc at the sun's real
+    // azimuth/elevation → real specular hotspot in every reflection
+    this.paintEnvSky(g, el);
+
+    // lights — leaner flat fill, richer directional key. The env map now
+    // carries real directional fill, so ambient is cut back to let form read.
+    this.sun.color.copy(el > -0.08 ? g.sun : g.sun.clone().lerp(C('#93a7ff'), THREE.MathUtils.clamp(-el * 4, 0, 1)));
     this.sun.intensity = g.sunI;
     this.hemi.color.copy(g.hemiSky);
     this.hemi.groundColor.copy(g.hemiGnd);
-    this.hemi.intensity = 0.55 + dayness * 0.45;
+    this.hemi.intensity = 0.42 + dayness * 0.42;
     this.amb.color.copy(g.amb);
-    this.amb.intensity = g.ambI;
+    this.amb.intensity = g.ambI * 0.5;
     this.fog.color.copy(g.fog);
     this.renderer.toneMappingExposure = g.exp;
     this.stars.material.opacity = g.stars * 0.9;
@@ -203,9 +231,48 @@ export class Atmosphere {
     if (rebuildEnv) this.rebuildEnv();
   }
 
+  // paint the equirectangular env source: sky gradient + ground + a bright
+  // sun disc & horizon glow at the sun's real azimuth/elevation
+  paintEnvSky(g, el) {
+    const c = this.envCanvas, ctx = c.getContext('2d');
+    const W = c.width, Hh = c.height;
+    const hex = (col) => '#' + col.getHexString();
+    // vertical sky→horizon→ground gradient
+    const grad = ctx.createLinearGradient(0, 0, 0, Hh);
+    grad.addColorStop(0.0, hex(g.top));
+    grad.addColorStop(0.42, hex(g.mid));
+    grad.addColorStop(0.5, hex(g.bot));
+    grad.addColorStop(0.5001, hex(g.hemiGnd.clone().lerp(g.bot, 0.5)));
+    grad.addColorStop(1.0, hex(g.hemiGnd));
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, Hh);
+    // the sun (azimuth matches the shadow az=0.7 used in regrade)
+    if (el > -0.12) {
+      const su = ((0.7 / (Math.PI * 2)) % 1) * W;
+      const sv = (0.5 - el * 0.5) * Hh;
+      const bright = THREE.MathUtils.clamp(el * 2 + 0.5, 0, 1);
+      // wide warm scatter glow
+      const glow = ctx.createRadialGradient(su, sv, 0, su, sv, W * 0.34);
+      const sc = g.sun;
+      glow.addColorStop(0, `rgba(${(sc.r * 255) | 0},${(sc.g * 255) | 0},${(sc.b * 255) | 0},${(0.55 * bright).toFixed(3)})`);
+      glow.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, W, Hh);
+      // bright core
+      const core = ctx.createRadialGradient(su, sv, 0, su, sv, W * 0.05);
+      core.addColorStop(0, `rgba(255,252,240,${(0.95 * bright).toFixed(3)})`);
+      core.addColorStop(1, 'rgba(255,240,210,0)');
+      ctx.fillStyle = core;
+      ctx.fillRect(0, 0, W, Hh);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    this.envTex.needsUpdate = true;
+  }
+
   rebuildEnv() {
     const old = this.envRT;
-    this.envRT = this.pmrem.fromEquirectangular(this.skyTex);
+    this.envRT = this.pmrem.fromEquirectangular(this.envTex);
     this.scene.environment = this.envRT.texture;
     if (old) old.dispose();
   }

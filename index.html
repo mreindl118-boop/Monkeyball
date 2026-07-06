@@ -14,7 +14,9 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍌</text></svg>" />
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a1a; font-family: 'Trebuchet MS', 'Segoe UI', sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; overscroll-behavior: none; }
+  /* rounded-geometric UI type: ui-rounded maps to SF Pro Rounded on iOS (our
+     PWA target); graceful fallbacks elsewhere. Modernizes every label at once. */
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a1a; font-family: ui-rounded, 'SF Pro Rounded', 'Segoe UI Rounded', 'Nunito', 'Baloo 2', 'Trebuchet MS', system-ui, sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; overscroll-behavior: none; }
   /* pin the page: WebViews can otherwise leave residual scroll after keyboard/rotation */
   body { position: fixed; inset: 0; }
   #game-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }

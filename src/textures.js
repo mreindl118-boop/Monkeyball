@@ -3,6 +3,15 @@ import * as THREE from 'three';
 
 const cache = new Map();
 
+// Max anisotropy for tiled ground textures (the camera hugs the floor, so
+// grazing-angle sharpness is very visible). Set from the renderer at boot;
+// falls back to a safe value until then.
+let MAX_ANISO = 8;
+export function setMaxAnisotropy(n) {
+  MAX_ANISO = Math.max(1, n | 0);
+  for (const t of cache.values()) { if (t && t.isTexture) { t.anisotropy = MAX_ANISO; t.needsUpdate = true; } }
+}
+
 function makeCanvas(size) {
   const c = document.createElement('canvas');
   c.width = c.height = size;
@@ -55,8 +64,58 @@ function toTexture(canvas, repeat = 1) {
   const tex = new THREE.CanvasTexture(canvas);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.repeat.set(repeat, repeat);
-  tex.anisotropy = 4;
+  tex.anisotropy = MAX_ANISO;
   tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+// Cached tangent-space normal map for an existing color texture (matches its
+// repeat), so tiled floors/walls/ramps gain real per-pixel relief that reacts
+// to the moving sun instead of the flat lighting they had painted in.
+const normalCache = new WeakMap();
+export function normalMapFor(colorTex, strength = 1.6) {
+  if (!colorTex || !colorTex.image) return null;
+  if (normalCache.has(colorTex)) return normalCache.get(colorTex);
+  const rep = colorTex.repeat ? colorTex.repeat.x : 1;
+  const n = heightToNormal(colorTex.image, strength, rep);
+  normalCache.set(colorTex, n);
+  return n;
+}
+
+// Derive a tangent-space normal map from a canvas's luminance (Sobel). The
+// relief that used to be painted into the albedo (bevels, leaf clumps, cracks)
+// becomes real per-pixel bumps that catch the moving sun. colorSpace = linear.
+export function heightToNormal(srcCanvas, strength = 1.6, repeat = 1) {
+  const S = srcCanvas.width;
+  const sctx = srcCanvas.getContext('2d');
+  const src = sctx.getImageData(0, 0, S, S).data;
+  const lum = new Float32Array(S * S);
+  for (let i = 0; i < S * S; i++) {
+    lum[i] = (src[i * 4] * 0.299 + src[i * 4 + 1] * 0.587 + src[i * 4 + 2] * 0.114) / 255;
+  }
+  const [c, ctx] = makeCanvas(S);
+  const out = ctx.createImageData(S, S);
+  const at = (x, y) => lum[((y + S) % S) * S + ((x + S) % S)];
+  for (let y = 0; y < S; y++) {
+    for (let x = 0; x < S; x++) {
+      const dx = (at(x + 1, y) - at(x - 1, y)) * strength;
+      const dy = (at(x, y + 1) - at(x, y - 1)) * strength;
+      let nx = -dx, ny = -dy, nz = 1;
+      const inv = 1 / Math.hypot(nx, ny, nz);
+      nx *= inv; ny *= inv; nz *= inv;
+      const o = (y * S + x) * 4;
+      out.data[o] = (nx * 0.5 + 0.5) * 255;
+      out.data[o + 1] = (ny * 0.5 + 0.5) * 255;
+      out.data[o + 2] = (nz * 0.5 + 0.5) * 255;
+      out.data[o + 3] = 255;
+    }
+  }
+  ctx.putImageData(out, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(repeat, repeat);
+  tex.anisotropy = MAX_ANISO;
+  tex.colorSpace = THREE.NoColorSpace;
   return tex;
 }
 

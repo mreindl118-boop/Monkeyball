@@ -1,9 +1,25 @@
 // Builds a playable stage from level data: meshes, physics solids, bananas,
 // bumpers, launch pads, goal gate, sky dome and themed decorations.
 import * as THREE from 'three';
-import { checkerTexture, stripeTexture, dotTexture, gridTexture, lavaTexture, jungleTexture, goalTexture, skyTexture } from './textures.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { checkerTexture, stripeTexture, dotTexture, gridTexture, lavaTexture, jungleTexture, goalTexture, skyTexture, normalMapFor } from './textures.js';
 
 const _v = new THREE.Vector3();
+
+// molded-plastic edges: rounded box cached per unique size so we don't
+// rebuild identical geometry (chamfered corners catch a specular highlight
+// and kill the razor-sharp "stacked cardboard" silhouette)
+const _roundedCache = new Map();
+function roundedBox(w, h, d) {
+  const key = `${w.toFixed(2)}_${h.toFixed(2)}_${d.toFixed(2)}`;
+  let g = _roundedCache.get(key);
+  if (!g) {
+    const r = Math.min(0.35, Math.min(w, h, d) * 0.18);
+    g = new RoundedBoxGeometry(w, h, d, 2, r);
+    _roundedCache.set(key, g);
+  }
+  return g;
+}
 
 function texFor(kind, world) {
   switch (kind) {
@@ -47,7 +63,11 @@ export class Stage {
   buildParts() {
     for (const part of this.level.parts) {
       const tex = texFor(part.tex || 'floor', this.world);
-      const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.75, metalness: 0.05 });
+      const mat = new THREE.MeshStandardMaterial({
+        map: tex, roughness: 0.72, metalness: 0.04,
+        normalMap: normalMapFor(tex), envMapIntensity: 1.15
+      });
+      if (mat.normalMap) mat.normalScale.set(0.7, 0.7);
       if (this.world.id === 'volcano') {
         // the course glows in the volcanic night so it stays readable
         mat.emissive = new THREE.Color(0xffffff);
@@ -57,10 +77,10 @@ export class Stage {
       let mesh, half;
       const s = part.s;
       if (part.shape === 'disc') {
-        mesh = new THREE.Mesh(new THREE.CylinderGeometry(s[0] / 2, s[0] / 2, s[1], 40), mat);
+        mesh = new THREE.Mesh(new THREE.CylinderGeometry(s[0] / 2, s[0] / 2, s[1], 48), mat);
         half = new THREE.Vector3(s[0] / 2, s[1] / 2, s[0] / 2);
       } else {
-        mesh = new THREE.Mesh(new THREE.BoxGeometry(s[0], s[1], s[2]), mat);
+        mesh = new THREE.Mesh(roundedBox(s[0], s[1], s[2]), mat);
         half = new THREE.Vector3(s[0] / 2, s[1] / 2, s[2] / 2);
       }
       mesh.castShadow = true;
