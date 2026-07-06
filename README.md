@@ -139,6 +139,17 @@ Easiest install for players: grab the `.apk` from the
 [latest release](https://github.com/mreindl118-boop/Monkeyball/releases/latest) — no GitHub
 login needed, unlike Actions artifacts.
 
+## 📱 iPhone (and any browser)
+
+iOS can't sideload APKs, so the iPhone build ships as an installable **web app**:
+
+**Play now: https://mreindl118-boop.github.io/Monkeyball/**
+
+On iPhone, open that link in Safari → **Share → Add to Home Screen**. It launches
+fullscreen with the touch controls (and optional tilt), keeps your saves, works
+offline after the first load, and always runs the latest build — CI redeploys the
+page on every push, so there's nothing to update manually.
+
 ## 🤖 Android APK
 
 Built automatically by GitHub Actions (**android** job) — download the

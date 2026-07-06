@@ -28,6 +28,33 @@ jobs:
           name: rollin-rascals-web
           path: dist/
 
+  pages:
+    # The iPhone "install": a live PWA — open the Pages URL in Safari and
+    # Add to Home Screen. Runs fullscreen with touch controls, works offline.
+    name: Deploy web app to GitHub Pages (iPhone link)
+    runs-on: ubuntu-latest
+    needs: web
+    permissions:
+      pages: write
+      id-token: write
+      contents: read
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: rollin-rascals-web
+          path: dist
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
   windows:
     name: Windows exe
     runs-on: windows-latest
@@ -165,6 +192,9 @@ jobs:
             - **Android**: download the `.apk` and open it to install/upgrade (the in-game
               updater points here on startup).
             - **Windows**: `-setup-` is the installer, `-portable-` runs directly.
+            - **iPhone / any browser**: play at https://mreindl118-boop.github.io/Monkeyball/
+              (on iPhone: open in Safari → Share → **Add to Home Screen** for the
+              fullscreen app).
           files: |
             *.apk
             *.exe
