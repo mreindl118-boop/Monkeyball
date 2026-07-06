@@ -31,9 +31,13 @@ jobs:
   pages:
     # The iPhone "install": a live PWA — open the Pages URL in Safari and
     # Add to Home Screen. Runs fullscreen with touch controls, works offline.
+    # Soft-fails until Pages is enabled once by the repo owner
+    # (Settings -> Pages -> Source: "GitHub Actions") — the CI token cannot
+    # flip that switch itself. After that, every build deploys automatically.
     name: Deploy web app to GitHub Pages (iPhone link)
     runs-on: ubuntu-latest
     needs: web
+    continue-on-error: true
     permissions:
       pages: write
       id-token: write
