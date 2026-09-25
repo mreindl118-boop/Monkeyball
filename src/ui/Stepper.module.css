@@ -36,7 +36,7 @@
 }
 
 .btn:disabled {
-  color: var(--smoke);
+  color: var(--smoke-text);
   opacity: 0.45;
   cursor: not-allowed;
 }
@@ -84,6 +84,6 @@
 
 .unit {
   font-size: 13px;
-  color: var(--smoke);
+  color: var(--smoke-text);
   white-space: nowrap;
 }

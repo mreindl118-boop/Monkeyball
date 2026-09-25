@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CrushDB } from '../db/db'
 import { kvGet, kvSet } from '../db/repo'
 import type { PlayerProfile, Settings } from '../types'
@@ -151,6 +151,38 @@ describe('useSettings store', () => {
     const store = createSettingsStore(d)
     await store.getState().load()
     expect(store.getState().profile).toBeNull()
+  })
+
+  it('keeps working in memory when storage writes fail', async () => {
+    const d = freshDb()
+    const store = createSettingsStore(d)
+    await store.getState().load()
+    vi.spyOn(d.kv, 'put').mockRejectedValue(new Error('QuotaExceededError'))
+    await expect(store.getState().update({ ageConfirmed: true })).resolves.toBeUndefined()
+    await expect(store.getState().updateConnection({ storyModel: 'm' })).resolves.toBeUndefined()
+    const p: PlayerProfile = {
+      name: 'Ari',
+      gender: 'woman',
+      pronouns: 'she/her',
+      bodyNotes: '',
+      relationshipStyle: 'figuring',
+    }
+    await expect(store.getState().setProfile(p)).resolves.toBeUndefined()
+    const st = store.getState()
+    expect(st.settings.ageConfirmed).toBe(true)
+    expect(st.settings.connection.storyModel).toBe('m')
+    expect(st.profile).toEqual(p)
+    expect(st.error).toMatch(/Quota/)
+  })
+
+  it('loads defaults and records the error when storage is unavailable', async () => {
+    const d = freshDb()
+    vi.spyOn(d.kv, 'get').mockRejectedValue(new Error('MissingAPIError'))
+    const store = createSettingsStore(d)
+    await store.getState().load()
+    expect(store.getState().loaded).toBe(true)
+    expect(store.getState().error).toMatch(/MissingAPI/)
+    expect(store.getState().settings).toEqual(DEFAULT_SETTINGS)
   })
 
   it('resets in memory', async () => {

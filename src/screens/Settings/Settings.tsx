@@ -148,7 +148,7 @@ export default function Settings() {
         id="settings-saves"
         className={styles.section}
         title="Saves"
-        description="Move your game between devices, or keep snapshots to try a different approach."
+        description="Move your game between devices, or keep snapshots to try a different approach. Save files never include your API keys."
       >
         <SavesSection />
       </Panel>

@@ -83,3 +83,34 @@ export function isLmStudio(conn: ConnLike): boolean {
 export function isOpenRouter(conn: ConnLike): boolean {
   return conn.preset === 'openrouter' || detectPreset(conn.baseUrl) === 'openrouter'
 }
+
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '[::1]', '::1'])
+
+/** True for this device's own addresses (localhost, 127.x, ::1). */
+export function isLoopbackHost(hostname: string): boolean {
+  const h = hostname.toLowerCase()
+  return LOOPBACK_HOSTS.has(h) || /^127\.\d+\.\d+\.\d+$/.test(h) || h.endsWith('.localhost')
+}
+
+/** True for addresses on a home or office network: private IPv4 ranges and .local names. */
+export function isPrivateNetworkHost(hostname: string): boolean {
+  const h = hostname.toLowerCase()
+  if (h.endsWith('.local') || h.endsWith('.lan') || h.endsWith('.home.arpa')) return true
+  const m = /^(\d+)\.(\d+)\.\d+\.\d+$/.exec(h)
+  if (m) {
+    const a = Number(m[1])
+    const b = Number(m[2])
+    return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254)
+  }
+  // IPv6 unique-local (fc00::/7) and link-local (fe80::/10).
+  return /^\[?(f[cd][0-9a-f]{2}|fe[89ab][0-9a-f]):/i.test(h)
+}
+
+/** The hostname of a base URL, or '' when it isn't a URL. */
+export function hostnameOf(baseUrl: string): string {
+  try {
+    return new URL(normalizeBaseUrl(baseUrl)).hostname
+  } catch {
+    return ''
+  }
+}

@@ -48,9 +48,14 @@ src/
 ## Navigation
 
 `src/store/nav.ts` — `useNav` holds a `Screen` union and a stack; `go(screen)`, `replace(screen)`,
-`back()`. It mirrors the current screen into `location.hash` (`#/profile/nova`) so the browser back
-button works and a reload lands on the same screen (screens must tolerate missing state, e.g. a
-reload on `#/date` with no active date goes to the hub).
+`back()`, `reset(screen)`. It mirrors the current screen into `location.hash` (`#/profile/nova`) so the
+browser back button works and a reload lands on the same screen (screens must tolerate missing state,
+e.g. a reload on `#/date` with no active date goes to the hub). Every history entry the app writes
+carries `{ crush: true, idx }`: `go()` pushes one entry per stack item, in-app `back()` calls
+`history.back()` and the popstate handler (`bindHistory()`) pops or pushes the stack by comparing
+`idx`, so in-app Back and the system back button share one path. With an empty stack (first screen,
+after a reload) `back()` replaces the current screen with the hub. `reset()` unwinds the entries its
+stack pushed (`history.go(-n)`) and rewrites the one it lands on. Malformed hashes parse to `null`.
 
 ## Persistence (Dexie, `src/db/db.ts`)
 
@@ -69,8 +74,10 @@ Database name `crushlab`. Tables:
 Bundled characters are never written to Dexie; they come from `src/data/sets`. A custom character
 with the same id as a bundled one is not allowed (duplicating gives a new id, e.g. `nova-copy`).
 
-Save export = JSON of kv(profile, settings minus apiKey unless opted in, game), relationships,
-customCharacters, packs, dates; images optional (base64). Import replaces everything after confirm.
+Save export = JSON of kv(profile, settings with every API key blanked, game), relationships,
+customCharacters, packs, dates; images optional (base64). API keys are never exported (no opt-in);
+on import each preset keeps the key already stored on this device for that preset. Import replaces
+everything else after confirm.
 
 ## Stores (`src/store/`)
 
@@ -311,7 +318,9 @@ Platform layer (`src/platform/`): the only place that knows whether we're native
 - `platform.ts` — `isNative()`, `platformName()` via `@capacitor/core`'s `Capacitor`.
 - `files.ts` — `saveFile(blob, filename, mime)`: web → anchor download; native → write to the
   cache dir with `@capacitor/filesystem` and open the Android share sheet with `@capacitor/share`
-  (WebView blob downloads don't work). Every export in the app goes through this.
+  (WebView blob downloads don't work). Every export in the app goes through this. Until those two
+  plugins are added, `canSaveFiles()` is false in the APK and `saveFile()` throws
+  `FileSaveUnavailableError`; callers say "isn't available in the Android app yet" instead.
 - `backButton.ts` — `@capacitor/app` `backButton` listener: close the top sheet/dialog if one is
   open, else `useNav.back()`, and at the hub root minimize the app instead of exiting abruptly.
 - `http.ts` — native HTTP fallback: in the APK, if a WebView `fetch` to the model or image server
@@ -369,6 +378,12 @@ Record<ConnectionPreset, { baseUrl, apiKey }>`), and each role picks a preset + 
 The story route serves story and memory calls; the judge route serves judge, agreement and
 suggestions calls. So Claude can write the story while Grok or a ChatGPT mini model judges, etc.
 Test connection runs per configured preset.
+
+Already in place (Phase 1): `ConnectionSettings.providers?: Partial<Record<ConnectionPreset,
+ProviderSlot>>` keeps each inactive preset's `{ baseUrl, apiKey }`; the active preset's live in
+`baseUrl`/`apiKey`. Switching presets (`switchPreset()` in `screens/ConnectionSetup/connectionHelpers.ts`)
+stores the old slot and restores the new one, so a key is never sent to another provider's server.
+The per-role routing above builds on this field.
 
 - `src/llm/anthropic.ts` — Claude via the official `@anthropic-ai/sdk` (`new Anthropic({ apiKey,
   dangerouslyAllowBrowser: true })`; the SDK sends the direct-browser-access CORS header). No raw

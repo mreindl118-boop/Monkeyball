@@ -13,7 +13,7 @@
 }
 
 .loadingText {
-  color: var(--smoke);
+  color: var(--smoke-text);
   font-size: 14px;
   animation: breathe 1.6s ease-in-out infinite;
 }

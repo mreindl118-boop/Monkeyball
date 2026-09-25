@@ -10,6 +10,7 @@ import {
   judgeJson,
   listModels,
   LlmError,
+  rejectsJsonMode,
   resetJsonModeCache,
   streamChat,
 } from './client'
@@ -277,6 +278,31 @@ describe('jsonChat', () => {
     expect(r2.value.delta).toBe(2)
     expect(calls).toHaveLength(3)
     expect(calls[2].body.response_format).toBeUndefined()
+  })
+
+  it("doesn't turn JSON mode off for an unrelated 400", async () => {
+    const unsupported = {
+      error: {
+        message: "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.",
+        type: 'invalid_request_error',
+        param: 'max_tokens',
+        code: 'unsupported_parameter',
+      },
+    }
+    mockFetch(jsonResponse(unsupported, 400))
+    const c = conn()
+    await expect(jsonChat(judgeOpts(c))).rejects.toMatchObject({ kind: 'http', status: 400 })
+    expect(calls).toHaveLength(1)
+    expect(jsonModeAllowed(c, 'story-m')).toBe(true)
+  })
+
+  it('recognises response_format rejections by param or wording only', () => {
+    const http = (body: unknown) => new LlmError('http', 'HTTP 400: x', { status: 400, body: JSON.stringify(body) })
+    expect(rejectsJsonMode(http({ error: { message: 'Invalid value', param: 'response_format' } }))).toBe(true)
+    expect(rejectsJsonMode(http({ error: "'json_object' is not supported by this model" }))).toBe(true)
+    expect(rejectsJsonMode(http({ detail: [{ loc: ['body', 'response_format'], msg: 'extra fields not permitted' }] }))).toBe(true)
+    expect(rejectsJsonMode(http({ error: { message: 'Invalid parameter: temperature', param: 'temperature' } }))).toBe(false)
+    expect(rejectsJsonMode(http({ error: 'Could not parse the JSON body of your request' }))).toBe(false)
   })
 
   it('retries once with the nudge when the reply is not JSON', async () => {

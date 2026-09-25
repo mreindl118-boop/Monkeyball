@@ -1,4 +1,5 @@
 .panel {
+  --smoke-text: var(--smoke-on-panel);
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -44,7 +45,7 @@
 }
 
 .description {
-  color: var(--smoke);
+  color: var(--smoke-text);
   font-size: 14px;
 }
 

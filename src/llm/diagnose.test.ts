@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDebug } from '../store/debug'
 import type { ConnectionSettings } from '../types'
 import { LlmError, resetJsonModeCache } from './client'
-import { explainError, testConnection } from './diagnose'
+import { explainError, looksLikeModelError, sameModel, testConnection } from './diagnose'
 
 const conn = (patch: Partial<ConnectionSettings> = {}): ConnectionSettings => ({
   preset: 'ollama',
@@ -157,6 +157,51 @@ describe('testConnection', () => {
     expect(r.steps[2].ok).toBe(false)
   })
 
+  it("doesn't call an unrelated 400 an unknown model when the model is listed", async () => {
+    const unsupported = {
+      error: {
+        message: "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.",
+        type: 'invalid_request_error',
+        param: 'max_tokens',
+        code: 'unsupported_parameter',
+      },
+    }
+    route({ models: () => models('gpt-5-mini'), complete: () => json(unsupported, 400) })
+    const r = await testConnection(
+      conn({ preset: 'custom', baseUrl: 'https://api.openai.com/v1', apiKey: 'sk-x', storyModel: 'gpt-5-mini' }),
+    )
+    expect(r.steps[1]).toMatchObject({ ok: true, detail: 'Found gpt-5-mini.' })
+    expect(r.problem?.kind).toBe('other')
+    expect(r.problem?.message).toMatch(/max_completion_tokens/)
+    expect(r.problem?.fix).not.toMatch(/Pick a model/)
+  })
+
+  it('names OLLAMA_HOST when an Ollama PC on the network is unreachable', async () => {
+    route({ probe: 'unreachable' })
+    const r = await testConnection(conn({ baseUrl: 'http://192.168.1.20:11434/v1' }))
+    expect(r.problem?.kind).toBe('unreachable')
+    expect(r.problem?.fix).toMatch(/OLLAMA_HOST=0\.0\.0\.0/)
+    expect(r.problem?.fix).toMatch(/192\.168\.1\.20/)
+    expect(r.problem?.fix).toMatch(/same Wi-Fi/)
+    expect(r.problem?.fix).not.toMatch(/localhost/)
+  })
+
+  it('names "Serve on local network" when an LM Studio PC is unreachable', async () => {
+    route({ probe: 'unreachable' })
+    const r = await testConnection(conn({ preset: 'lmstudio', baseUrl: 'http://192.168.1.20:1234/v1' }))
+    expect(r.problem?.fix).toMatch(/Serve on local network/)
+    expect(r.problem?.fix).not.toMatch(/localhost/)
+  })
+
+  it('keeps the localhost advice for loopback URLs', async () => {
+    route({ probe: 'unreachable' })
+    const r = await testConnection(conn({ baseUrl: 'http://127.0.0.1:11434/v1' }))
+    expect(r.problem?.fix).toMatch(/ollama serve/)
+    expect(r.problem?.fix).not.toMatch(/OLLAMA_HOST/)
+    const lan = await testConnection(conn({ preset: 'custom', baseUrl: 'http://10.0.0.5:8080/v1' }))
+    expect(lan.problem?.fix).toMatch(/same Wi-Fi/)
+  })
+
   it('reports CORS when GET works but the POST preflight is blocked', async () => {
     route({ models: () => models('llama3.1'), probe: 'reachable' })
     const r = await testConnection(conn())
@@ -191,6 +236,47 @@ describe('testConnection', () => {
     expect((await testConnection(conn({ baseUrl: '' }))).problem?.kind).toBe('unreachable')
     expect((await testConnection(conn({ baseUrl: 'localhost 11434' }))).problem?.kind).toBe('unreachable')
     expect(seen).toHaveLength(0)
+  })
+})
+
+describe('looksLikeModelError', () => {
+  const http = (status: number, body: unknown) =>
+    new LlmError('http', `HTTP ${status}: x`, { status, body: typeof body === 'string' ? body : JSON.stringify(body) })
+
+  it('accepts real unknown-model errors', () => {
+    expect(looksLikeModelError(http(404, { error: 'model "llama3.1" not found, try pulling it first' }))).toBe(true)
+    expect(looksLikeModelError(http(400, { error: { message: 'foo/bar is not a valid model ID', code: 400 } }))).toBe(true)
+    expect(looksLikeModelError(http(400, { error: { message: 'nope', code: 'model_not_found' } }))).toBe(true)
+    expect(looksLikeModelError(http(400, { error: { message: 'bad value', param: 'model' } }))).toBe(true)
+    expect(looksLikeModelError(http(400, { error: 'Invalid model identifier "x".' }))).toBe(true)
+    expect(looksLikeModelError(http(400, { error: 'The model `qwen2.5-7b` does not exist.' }))).toBe(true)
+  })
+
+  it('ignores other 400s that mention the model', () => {
+    const openai = (message: string, param: string) => ({ error: { message, type: 'invalid_request_error', param, code: null } })
+    expect(
+      looksLikeModelError(
+        http(400, openai("Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.", 'max_tokens')),
+      ),
+    ).toBe(false)
+    expect(
+      looksLikeModelError(
+        http(400, openai('max_tokens is too large: 100000. This model supports at most 16384 completion tokens, whereas you provided 100000.', 'max_tokens')),
+      ),
+    ).toBe(false)
+    expect(
+      looksLikeModelError(
+        http(400, { error: 'Trying to keep the first 5000 tokens when context overflows. However, the model is loaded with context length of only 4096 tokens, which is not enough.' }),
+      ),
+    ).toBe(false)
+  })
+})
+
+describe('sameModel', () => {
+  it('treats an Ollama :latest tag as the same model', () => {
+    expect(sameModel('llama3.1', 'llama3.1:latest')).toBe(true)
+    expect(sameModel('LLAMA3.1:latest', 'llama3.1')).toBe(true)
+    expect(sameModel('llama3.1', 'llama3.1:8b')).toBe(false)
   })
 })
 

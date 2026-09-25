@@ -16,7 +16,7 @@
 
 .tagline {
   max-width: 30ch;
-  color: var(--smoke);
+  color: var(--smoke-text);
   font-size: 15px;
 }
 
@@ -92,13 +92,13 @@
 }
 
 .exit p {
-  color: var(--smoke);
+  color: var(--smoke-text);
 }
 
 .fine {
   max-width: 520px;
   font-size: 12.5px;
   line-height: 1.5;
-  color: var(--smoke);
+  color: var(--smoke-text);
   text-align: center;
 }

@@ -37,6 +37,35 @@ describe('SSE parser', () => {
     expect(datas(out)).toEqual(['a', 'b'])
   })
 
+  it('keeps a trailing CR pending across empty chunks', () => {
+    const p = createSseParser()
+    const out = [...p.feed('data: x\r'), ...p.feed(''), ...p.feed('\ndata: y\r\n\r\n'), ...p.end()]
+    expect(datas(out)).toEqual(['x\ny'])
+  })
+
+  it('gives the same events however a CRLF stream is split, empty chunks included', () => {
+    const text = 'data: a\r\ndata: b\r\n\r\n: ping\r\n\r\ndata: {"c":1}\r\n\r\ndata: [DONE]\r\n\r\n'
+    const expected = datas(parseSse(text))
+    expect(expected).toEqual(['a\nb', '{"c":1}', '[DONE]'])
+    let seed = 7
+    const rand = () => {
+      seed = (seed * 1103515245 + 12345) % 2147483648
+      return seed / 2147483648
+    }
+    for (let run = 0; run < 300; run++) {
+      const p = createSseParser()
+      const out = []
+      let i = 0
+      while (i < text.length) {
+        const n = Math.floor(rand() * 4) // 0 makes an empty chunk
+        out.push(...p.feed(text.slice(i, i + n)))
+        i += n
+      }
+      out.push(...p.end())
+      expect(datas(out), `run ${run}`).toEqual(expected)
+    }
+  })
+
   it('ignores comments and unknown fields, keeps event and id', () => {
     const out = parseSse(': OPENROUTER PROCESSING\n\nretry: 100\nevent: message\nid: 7\ndata: x\n\n')
     expect(out).toEqual([{ event: 'message', id: '7', data: 'x' }])

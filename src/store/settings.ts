@@ -8,7 +8,10 @@ export interface SettingsState {
   loaded: boolean
   settings: Settings
   profile: PlayerProfile | null
-  /** Set when storage couldn't be read (private mode, blocked storage). Defaults are in use. */
+  /**
+   * Set when storage couldn't be read or written (private mode, blocked storage, quota). The
+   * store keeps working in memory; mutations still resolve.
+   */
   error: string | null
   /** Load settings and profile from Dexie. Safe to call more than once. */
   load: () => Promise<void>
@@ -84,7 +87,16 @@ export function createSettingsStore(d: CrushDB = db) {
   let loading: Promise<void> | null = null
 
   return create<SettingsState>()((set, get) => {
-    const persist = (settings: Settings) => kvSet('settings', settings, d)
+    // State is already in memory when these run, so a storage failure is recorded, not thrown:
+    // the game keeps working for this session and App warns once that nothing is being saved.
+    const guard = async (write: () => Promise<unknown>) => {
+      try {
+        await write()
+      } catch (e) {
+        set({ error: e instanceof Error ? e.message : String(e) })
+      }
+    }
+    const persist = (settings: Settings) => guard(() => kvSet('settings', settings, d))
 
     return {
       loaded: false,
@@ -137,7 +149,7 @@ export function createSettingsStore(d: CrushDB = db) {
       setProfile: async (p) => {
         const profile = { ...p }
         set({ profile })
-        await kvSet('profile', profile, d)
+        await guard(() => kvSet('profile', profile, d))
       },
 
       resetInMemory: () => {

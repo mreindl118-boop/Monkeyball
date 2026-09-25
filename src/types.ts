@@ -207,10 +207,22 @@ export interface PlayerProfile {
 
 export type ConnectionPreset = 'ollama' | 'lmstudio' | 'openrouter' | 'custom';
 
+/** A preset's own address and key, kept while another preset is active. */
+export interface ProviderSlot {
+  baseUrl: string;
+  apiKey: string;
+}
+
 export interface ConnectionSettings {
   preset: ConnectionPreset;
   baseUrl: string;
   apiKey: string;
+  /**
+   * Optional extension: base URL and key per preset, so switching presets never carries one
+   * provider's key to another server and switching back restores it. `baseUrl`/`apiKey` above
+   * are always the active preset's. Keys never leave the device (not in save exports).
+   */
+  providers?: Partial<Record<ConnectionPreset, ProviderSlot>>;
   storyModel: string;
   /** Empty string means "same as story model". */
   judgeModel: string;

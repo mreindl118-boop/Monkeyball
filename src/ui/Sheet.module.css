@@ -15,6 +15,7 @@
 }
 
 .sheet {
+  --smoke-text: var(--smoke-on-panel);
   pointer-events: auto;
   position: relative;
   display: grid;
@@ -75,7 +76,7 @@
 }
 
 .description {
-  color: var(--smoke);
+  color: var(--smoke-text);
   font-size: 14.5px;
 }
 

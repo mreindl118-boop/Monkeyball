@@ -2,8 +2,17 @@
 // Failures come back as a problem that names the fix.
 
 import type { ConnectionSettings } from '../types'
-import { chat, isLlmError, LlmError, listModels, modelsUrl } from './client'
-import { isLmStudio, isOllama, isOpenRouter, normalizeBaseUrl } from './presets'
+import { chat, errorMessageFrom, isLlmError, LlmError, listModels, modelsUrl } from './client'
+import { extractJson } from './json'
+import {
+  hostnameOf,
+  isLmStudio,
+  isLoopbackHost,
+  isOllama,
+  isOpenRouter,
+  isPrivateNetworkHost,
+  normalizeBaseUrl,
+} from './presets'
 
 export type ProblemKind = 'cors' | 'unreachable' | 'auth' | 'model' | 'other'
 
@@ -69,18 +78,37 @@ function mixedContentNote(conn: ConnectionSettings): string {
     return ''
   }
   if (u.protocol !== 'http:') return ''
-  if (/^(localhost|127\.0\.0\.1|\[::1\])$/i.test(u.hostname)) return ''
+  if (isLoopbackHost(u.hostname)) return ''
   return ' This page is served over https, so the browser blocks plain http servers other than localhost: use an https URL, or open the app over http on your network.'
 }
 
+/** Where the base URL points: this device, another machine on the network, or the internet. */
+function whereIs(conn: ConnectionSettings): 'device' | 'lan' | 'remote' {
+  const host = hostnameOf(conn.baseUrl)
+  if (!host || isLoopbackHost(host)) return 'device'
+  // A local preset pointed anywhere but this device is the "PC on my Wi-Fi" case.
+  if (isPrivateNetworkHost(host) || isOllama(conn) || isLmStudio(conn)) return 'lan'
+  return 'remote'
+}
+
 function unreachableFix(conn: ConnectionSettings): string {
+  const where = whereIs(conn)
+  const host = hostnameOf(conn.baseUrl)
   let fix: string
-  if (isOllama(conn)) {
-    fix = 'Check that Ollama is running (ollama serve) and the URL is http://localhost:11434/v1.'
-  } else if (isLmStudio(conn)) {
-    fix = "Start the server in LM Studio's Developer tab and check the URL is http://localhost:1234/v1."
-  } else if (isOpenRouter(conn)) {
+  if (isOpenRouter(conn)) {
     fix = 'Check your internet connection and that the URL is https://openrouter.ai/api/v1.'
+  } else if (isOllama(conn)) {
+    fix =
+      where === 'device'
+        ? 'Check that Ollama is running (ollama serve) and the URL is http://localhost:11434/v1.'
+        : `Make sure Ollama is running on that PC and listening on your network (set OLLAMA_HOST=0.0.0.0, then restart Ollama), that this device is on the same Wi-Fi, and that the address ${host} is right.`
+  } else if (isLmStudio(conn)) {
+    fix =
+      where === 'device'
+        ? "Start the server in LM Studio's Developer tab and check the URL is http://localhost:1234/v1."
+        : `Make sure LM Studio's server is running on that PC with "Serve on local network" turned on, that this device is on the same Wi-Fi, and that the address ${host} is right.`
+  } else if (where === 'lan') {
+    fix = `Make sure the server on ${host} is running and listening on your network (not only on localhost), that this device is on the same Wi-Fi, and that the URL is right, including /v1 at the end.`
   } else {
     fix =
       'Check that the server is running and the URL is right, including /v1 at the end (for example http://localhost:11434/v1).'
@@ -123,11 +151,38 @@ function authProblem(conn: ConnectionSettings, status?: number): ConnectionProbl
       }
 }
 
-function looksLikeModelError(e: LlmError): boolean {
+/** The error object an OpenAI-style body carries ({"error": {message, code, param}}), if any. */
+function errorObject(body: string | undefined): { code?: unknown; param?: unknown } | null {
+  if (!body) return null
+  const parsed = extractJson(body)
+  const e = parsed?.error
+  return e && typeof e === 'object' ? (e as { code?: unknown; param?: unknown }) : null
+}
+
+/** What the server said, without our "HTTP 400:" style prefixes. */
+function serverMessage(e: LlmError): string {
+  const fromBody = e.body ? errorMessageFrom(e.body) : ''
+  return fromBody || e.message.replace(/^(HTTP \d+: |The model server reported an error: )/, '')
+}
+
+const MODEL_MISSING =
+  /\bmodel\b[^\n]{0,80}?\b(not found|does not exist|doesn't exist|is not available|not available|isn't available)|\b(unknown|invalid|no such) model\b|\bnot a valid model\b|\bno models? (are |is )?loaded\b|\btry pulling it\b/i
+
+/**
+ * A "this model doesn't exist here" error: a 404, an error naming the model parameter or
+ * model_not_found, or a message that says so. Other 400s that merely mention "model" (an
+ * unsupported parameter, a context that's too small) are not model problems.
+ */
+export function looksLikeModelError(e: LlmError): boolean {
   if (e.kind !== 'http') return false
-  if (e.status === 404) return true
-  const text = `${e.message} ${e.body ?? ''}`
-  return (e.status === 400 || e.status === 422) && /model/i.test(text) && /not|unknown|invalid|exist|found/i.test(text)
+  return e.status === 404 || saysModelMissing(e)
+}
+
+/** The error itself says the model is missing (not just a bare 404). */
+function saysModelMissing(e: LlmError): boolean {
+  const obj = errorObject(e.body)
+  if (obj && (obj.code === 'model_not_found' || obj.param === 'model')) return true
+  return MODEL_MISSING.test(serverMessage(e))
 }
 
 /**
@@ -185,7 +240,8 @@ async function probeReachable(url: string, signal?: AbortSignal): Promise<boolea
   }
 }
 
-function sameModel(a: string, b: string): boolean {
+/** Model ids that name the same model (Ollama lists "llama3.1:latest" for "llama3.1"). */
+export function sameModel(a: string, b: string): boolean {
   const x = a.trim().toLowerCase()
   const y = b.trim().toLowerCase()
   return x === y || `${x}:latest` === y || x === `${y}:latest`
@@ -360,6 +416,19 @@ export async function testConnection(
       }
     } else {
       problem = explainError(err, conn, testModel)
+      if (
+        problem.kind === 'model' &&
+        listed &&
+        models.some((m) => sameModel(testModel, m)) &&
+        !saysModelMissing(err)
+      ) {
+        // Step 2 already found the model, so the server objected to something else.
+        problem = {
+          kind: 'other',
+          message: `The server turned down the test request: ${serverMessage(err)}`,
+          fix: 'The model is on the server, so this is about the request itself. Check the server logs, then try again.',
+        }
+      }
     }
     steps.push({ label: STEP_LABELS.complete, ok: false, detail: problem.message })
     return fail(problem)

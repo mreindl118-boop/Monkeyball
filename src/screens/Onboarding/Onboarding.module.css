@@ -24,6 +24,6 @@
 }
 
 .sub {
-  color: var(--smoke);
+  color: var(--smoke-text);
   max-width: 52ch;
 }

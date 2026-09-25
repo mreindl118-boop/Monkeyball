@@ -1,7 +1,15 @@
 // Small typed helpers over the Dexie schema. Every helper takes an optional database as its
 // last argument so tests can run against an isolated CrushDB instance.
 
-import type { DateRecord, Relationship, Settings, StoredImage } from '../types'
+import type {
+  ConnectionPreset,
+  ConnectionSettings,
+  DateRecord,
+  ProviderSlot,
+  Relationship,
+  Settings,
+  StoredImage,
+} from '../types'
 import { db, type CrushDB, type KvRow, type SaveBlob, type SaveRow } from './db'
 
 // ---------------------------------------------------------------------------
@@ -112,9 +120,7 @@ export interface SaveFile extends SaveBlob {
 }
 
 export interface ExportOptions {
-  /** Include the API key in the exported settings. Default false. */
-  includeApiKey?: boolean
-  /** Include imported and generated images (base64). Default false. */
+  /** Include imported and generated images (base64). Default false. API keys are never exported. */
   includeImages?: boolean
 }
 
@@ -125,15 +131,24 @@ export class SaveFormatError extends Error {
   }
 }
 
-function stripApiKey(rows: KvRow[]): KvRow[] {
+/** Settings with every API key blanked (the active one and each preset's). */
+function withoutKeys(settings: Settings): Settings {
+  const conn = settings.connection
+  const providers = isRecord(conn.providers)
+    ? Object.fromEntries(
+        Object.entries(conn.providers).map(([id, slot]) => [id, isRecord(slot) ? { ...slot, apiKey: '' } : slot]),
+      )
+    : undefined
+  return { ...settings, connection: { ...conn, apiKey: '', ...(providers ? { providers } : {}) } }
+}
+
+/** Keys stay on this device: exports never carry them. */
+function stripApiKeys(rows: KvRow[]): KvRow[] {
   return rows.map((row) => {
     if (row.key !== 'settings' || !isRecord(row.value)) return row
     const settings = row.value as unknown as Settings
     if (!isRecord(settings.connection)) return row
-    return {
-      key: row.key,
-      value: { ...settings, connection: { ...settings.connection, apiKey: '' } },
-    }
+    return { key: row.key, value: withoutKeys(settings) }
   })
 }
 
@@ -141,18 +156,14 @@ function stripApiKey(rows: KvRow[]): KvRow[] {
  * Snapshot the current state. `withSettings: false` (save slots) leaves settings out so restoring
  * a slot never rolls back the connection or preferences.
  */
-export async function snapshot(
-  opts: { withSettings?: boolean; includeApiKey?: boolean } = {},
-  d: CrushDB = db,
-): Promise<SaveBlob> {
-  const { withSettings = true, includeApiKey = false } = opts
+export async function snapshot(opts: { withSettings?: boolean } = {}, d: CrushDB = db): Promise<SaveBlob> {
+  const { withSettings = true } = opts
   return d.transaction(
     'r',
     [d.kv, d.relationships, d.customCharacters, d.packs, d.dates],
     async () => {
       let kv = await d.kv.toArray()
-      if (!withSettings) kv = kv.filter((r) => r.key !== 'settings')
-      else if (!includeApiKey) kv = stripApiKey(kv)
+      kv = withSettings ? stripApiKeys(kv) : kv.filter((r) => r.key !== 'settings')
       return {
         version: 1 as const,
         kv,
@@ -167,7 +178,7 @@ export async function snapshot(
 
 /** Build a downloadable save file (JSON). */
 export async function exportSave(opts: ExportOptions = {}, d: CrushDB = db): Promise<Blob> {
-  const blob = await snapshot({ withSettings: true, includeApiKey: !!opts.includeApiKey }, d)
+  const blob = await snapshot({ withSettings: true }, d)
   const file: SaveFile = { app: 'crushLAB', exportedAt: Date.now(), ...blob }
   if (opts.includeImages) {
     const images = await d.images.toArray()
@@ -260,14 +271,39 @@ export async function importSave(input: Blob | string, d: CrushDB = db): Promise
   return file
 }
 
+/**
+ * Imported settings get this device's keys back: each preset keeps the key stored here for that
+ * preset, so a key is never moved onto a different provider. (Older files that carried a key
+ * keep it.)
+ */
 function keepLocalApiKey(rows: KvRow[], current: KvRow | undefined): KvRow[] {
-  const currentKey = (current?.value as Settings | undefined)?.connection?.apiKey
-  if (!currentKey) return rows
+  const local = (current?.value as Settings | undefined)?.connection
+  if (!isRecord(local)) return rows
+  type Slots = NonNullable<ConnectionSettings['providers']>
+  const localSlots: Slots = isRecord(local.providers) ? local.providers : {}
+  const localKeys = new Map<ConnectionPreset, string>()
+  for (const [id, slot] of Object.entries(localSlots) as [ConnectionPreset, ProviderSlot | undefined][]) {
+    if (slot?.apiKey) localKeys.set(id, slot.apiKey)
+  }
+  if (local.apiKey) localKeys.set(local.preset, local.apiKey)
+  if (localKeys.size === 0) return rows
+
   return rows.map((row) => {
     if (row.key !== 'settings' || !isRecord(row.value)) return row
     const s = row.value as unknown as Settings
-    if (!isRecord(s.connection) || s.connection.apiKey) return row
-    return { key: row.key, value: { ...s, connection: { ...s.connection, apiKey: currentKey } } }
+    if (!isRecord(s.connection)) return row
+    const conn = s.connection
+    const providers: Slots = isRecord(conn.providers) ? { ...conn.providers } : {}
+    for (const [id, key] of localKeys) {
+      if (id === conn.preset) continue
+      const slot =
+        providers[id] ?? localSlots[id] ?? (id === local.preset ? { baseUrl: local.baseUrl, apiKey: '' } : undefined)
+      if (slot) providers[id] = { ...slot, apiKey: slot.apiKey || key }
+    }
+    const apiKey = conn.apiKey || localKeys.get(conn.preset) || ''
+    const next: ConnectionSettings = { ...conn, apiKey }
+    if (Object.keys(providers).length > 0) next.providers = providers
+    return { key: row.key, value: { ...s, connection: next } }
   })
 }
 

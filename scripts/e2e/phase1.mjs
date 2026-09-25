@@ -9,8 +9,9 @@
 //   -> Test connection lists the mock's models -> pick the story model -> hub
 //   -> Settings: heat 4 -> long-press the version -> Debug shows a story prompt with the profile
 //   and the heat 4 (Explicit) description -> reload -> still there.
-// Also: hash navigation can't skip the gate or onboarding, and a server without CORS headers is
-// diagnosed as CORS (not as unreachable).
+// Also: hash navigation can't skip the gate or onboarding (and a malformed hash still boots), in-app
+// Back pops browser history, the app works in memory when IndexedDB is missing, and a server
+// without CORS headers is diagnosed as CORS (not as unreachable).
 
 import { heatDescription } from '../../src/data/heat.ts'
 import {
@@ -191,6 +192,27 @@ async function firstLaunch(browser, app, mock, viewport, { cors } = {}) {
     await shot('06-debug-full', { fullPage: true })
   }, page)
 
+  await step(at('in-app Back walks history back, so system back then leaves the app'), async () => {
+    await page.getByRole('button', { name: 'Back' }).click()
+    await waitForHash(page, '#/settings')
+    await page.getByRole('button', { name: 'Back' }).click()
+    await waitForHash(page, '#/hub')
+    await page.getByRole('heading', { name: new RegExp(`${PROFILE.name}`) }).waitFor()
+    // The hub is the first entry the app wrote: nothing of ours is left behind it.
+    const idx = await page.evaluate(() => window.history.state?.idx)
+    check(idx === 0, `hub should be history entry 0 after Back, Back (got ${idx})`)
+    await page.goBack()
+    await page.waitForURL((u) => !u.href.startsWith(app.origin), { timeout: 10_000 })
+    await page.goForward()
+    await waitForHash(page, '#/hub')
+    await page.getByRole('heading', { name: new RegExp(`${PROFILE.name}`) }).waitFor()
+    // Back to the debug panel for the reload check.
+    await page.getByRole('button', { name: 'Settings', exact: true }).first().click()
+    await waitForHash(page, '#/settings')
+    await longPress(page, page.getByRole('button', { name: /crushLAB version/ }))
+    await waitForHash(page, '#/debug')
+  }, page)
+
   await step(at('reload: profile and heat survive'), async () => {
     await page.reload()
     await waitForHash(page, '#/debug')
@@ -255,6 +277,13 @@ async function hashCannotSkipGate(browser, app) {
     await waitForHash(page, '#/onboarding')
   }, page)
 
+  await step('a malformed hash still boots (no stuck loading screen)', async () => {
+    await page.goto(`${app.origin}/#/profile/100%`)
+    await page.getByRole('heading', { name: "Who's walking in tonight?" }).waitFor()
+    await waitForHash(page, '#/onboarding')
+    check(!page.errors.some((e) => e.kind === 'pageerror'), page.errors.map((e) => e.text).join('\n'))
+  }, page)
+
   await step('changing the hash in place to #/hub keeps onboarding', async () => {
     await page.evaluate(() => {
       window.location.hash = '#/hub'
@@ -262,6 +291,35 @@ async function hashCannotSkipGate(browser, app) {
     await sleep(300)
     await page.getByRole('heading', { name: "Who's walking in tonight?" }).waitFor()
     await waitForHash(page, '#/onboarding')
+  }, page)
+
+  await context.close()
+}
+
+/** With IndexedDB missing the app warns once and still works in memory for the session. */
+async function noStorage(browser, app) {
+  const { context, page } = await newPage(browser, 'phone')
+  await context.addInitScript(() => {
+    Object.defineProperty(window, 'indexedDB', { value: undefined, configurable: true })
+  })
+
+  await step('no storage: the gate warns that progress will be lost', async () => {
+    await page.goto(`${app.origin}/`)
+    await page.getByRole('button', { name: "I'm 18 or older" }).waitFor()
+    await page.getByText("won't let crushLAB save anything").first().waitFor()
+  }, page)
+
+  await step('no storage: onboarding still finishes', async () => {
+    await page.getByRole('button', { name: "I'm 18 or older" }).click()
+    await waitForHash(page, '#/onboarding')
+    await page.getByLabel('Name', { exact: true }).fill('Robin')
+    await page.getByRole('button', { name: 'Save and continue' }).click()
+    await page.waitForFunction(
+      () => ['#/connection-setup', '#/hub'].includes(window.location.hash),
+      null,
+      { timeout: 70_000 },
+    )
+    check(!page.errors.some((e) => e.kind === 'pageerror'), page.errors.map((e) => e.text).join('\n'))
   }, page)
 
   await context.close()
@@ -277,6 +335,7 @@ await main(async () => {
   const browser = await launchBrowser()
 
   await hashCannotSkipGate(browser, app)
+  await noStorage(browser, app)
   await firstLaunch(browser, app, mock, 'phone')
   await firstLaunch(browser, app, mock, 'desktop', { cors: noCors })
 })

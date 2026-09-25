@@ -60,7 +60,7 @@
   border: 0;
   border-radius: var(--radius-s);
   background: transparent;
-  color: var(--smoke);
+  color: var(--smoke-text);
   font-size: 13px;
   font-weight: 600;
 }

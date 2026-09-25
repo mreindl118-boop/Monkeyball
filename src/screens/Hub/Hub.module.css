@@ -33,7 +33,7 @@
 }
 
 .sub {
-  color: var(--smoke);
+  color: var(--smoke-text);
   max-width: 46ch;
 }
 
@@ -84,7 +84,7 @@
 .statusDetail {
   grid-column: 2;
   font-size: 13.5px;
-  color: var(--smoke);
+  color: var(--smoke-text);
   overflow-wrap: anywhere;
 }
 

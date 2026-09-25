@@ -126,11 +126,19 @@ export function resetJsonModeCache(): void {
   jsonModeRejected.clear()
 }
 
-function rejectsJsonMode(err: unknown): boolean {
+/**
+ * True when an HTTP error is the server turning down response_format: the error names it as
+ * its param, or its message talks about response_format / json_object / JSON mode. Other 400s
+ * (an unsupported max_tokens, say) are not, even when they mention "parameter" or "json".
+ */
+export function rejectsJsonMode(err: unknown): boolean {
   if (!(err instanceof LlmError) || err.kind !== 'http') return false
   if (err.status !== 400 && err.status !== 404 && err.status !== 422) return false
-  const text = `${err.body ?? ''} ${err.message}`
-  return /response_format|json|parameter/i.test(text)
+  const parsed = err.body ? extractJson(err.body) : null
+  const e = parsed?.error
+  if (e && typeof e === 'object' && (e as { param?: unknown }).param === 'response_format') return true
+  const detail = (err.body ? errorMessageFrom(err.body) : '') || err.message
+  return /response_format|json_object|json_schema|json mode/i.test(detail)
 }
 
 // ---------------------------------------------------------------------------

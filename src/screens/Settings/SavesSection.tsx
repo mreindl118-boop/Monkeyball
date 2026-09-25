@@ -17,7 +17,7 @@ import { TextInput } from '../../ui/Inputs'
 import { Divider } from '../../ui/Panel'
 import { flashNextLoad, toast } from '../../ui/toastStore'
 import { Toggle } from '../../ui/Toggle'
-import { saveFile } from './saveFile'
+import { canSaveFiles, FileSaveUnavailableError, saveFile } from '../../platform/files'
 import styles from './Settings.module.css'
 
 const dateFmt = new Intl.DateTimeFormat(undefined, {
@@ -43,6 +43,9 @@ function reloadToHub(message: string) {
   window.location.reload()
 }
 
+const EXPORT_UNAVAILABLE =
+  "Export isn't available in the Android app yet. Your progress is safe on this phone; save slots below work as usual."
+
 type Pending =
   | { kind: 'import'; file: File }
   | { kind: 'restore'; slot: SlotInfo }
@@ -50,7 +53,6 @@ type Pending =
   | null
 
 export function SavesSection() {
-  const [includeKey, setIncludeKey] = useState(false)
   const [includeImages, setIncludeImages] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [slots, setSlots] = useState<SlotInfo[] | null>(null)
@@ -82,13 +84,18 @@ export function SavesSection() {
   }, [])
 
   const doExport = async () => {
+    if (!canSaveFiles()) {
+      toast(EXPORT_UNAVAILABLE, 'info', 6000)
+      return
+    }
     setExporting(true)
     try {
-      const blob = await exportSave({ includeApiKey: includeKey, includeImages })
+      const blob = await exportSave({ includeImages })
       await saveFile(blob, saveFileName(), 'application/json')
       toast('Save file ready.', 'success')
     } catch (e) {
-      toast(`Couldn't export: ${e instanceof Error ? e.message : String(e)}`, 'error')
+      if (e instanceof FileSaveUnavailableError) toast(EXPORT_UNAVAILABLE, 'info', 6000)
+      else toast(`Couldn't export: ${e instanceof Error ? e.message : String(e)}`, 'error')
     } finally {
       setExporting(false)
     }
@@ -167,12 +174,6 @@ export function SavesSection() {
   return (
     <div className={styles.stack}>
       <div className={styles.toggles}>
-        <Toggle
-          checked={includeKey}
-          onChange={setIncludeKey}
-          label="Include API key"
-          description="Only for moving to another device of your own. Anyone with the file can use the key."
-        />
         <Toggle
           checked={includeImages}
           onChange={setIncludeImages}

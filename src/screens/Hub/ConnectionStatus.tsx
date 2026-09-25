@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listModels } from '../../llm/client'
+import { sameModel } from '../../llm/diagnose'
 import { normalizeBaseUrl, presetFor } from '../../llm/presets'
 import { useNav } from '../../store/nav'
 import { useSettings } from '../../store/settings'
@@ -55,9 +56,12 @@ export function ConnectionStatus() {
       : { state: 'checking' }
 
   const host = hostOf(conn.baseUrl)
-  const label = presetFor(conn.preset).label
+  const preset = presetFor(conn.preset)
+  const label = preset.label
   const model = conn.storyModel.trim()
-  const modelMissing = status.state === 'ok' && model && !status.models.includes(model)
+  const modelMissing = status.state === 'ok' && !!model && !status.models.some((m) => sameModel(model, m))
+  // Some model lists are public (OpenRouter's is), so a server that answers can still need a key.
+  const keyMissing = preset.key === 'required' && !conn.apiKey.trim()
 
   let title: string
   let detail: string
@@ -65,18 +69,20 @@ export function ConnectionStatus() {
     title = `Checking ${label} at ${host}`
     detail = 'Asking the server which models it has.'
   } else if (status.state === 'ok') {
-    title = `Connected to ${label} at ${host}`
-    detail = !model
-      ? 'No story model picked yet. Choose one in the connection settings.'
-      : modelMissing
-        ? `The story model "${model}" isn't on this server.`
-        : `Story model: ${model}.`
+    title = keyMissing ? `${label} at ${host} needs an API key` : `Connected to ${label} at ${host}`
+    detail = keyMissing
+      ? `${label} lists its models without a key, but won't write anything until you add one.`
+      : !model
+        ? 'No story model picked yet. Choose one in the connection settings.'
+        : modelMissing
+          ? `The story model "${model}" isn't on this server.`
+          : `Story model: ${model}.`
   } else {
     title = `Can't reach ${label} at ${host}`
     detail = status.message
   }
 
-  const needsFix = status.state === 'fail' || !model || modelMissing
+  const needsFix = status.state === 'fail' || !model || modelMissing || keyMissing
 
   return (
     <div className={styles.status} role="status" aria-live="polite">

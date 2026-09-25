@@ -41,7 +41,13 @@
   tab-size: 2;
 }
 
+/* The block clips its children (overflow: hidden), so draw the focus ring inside. */
+.pre:focus-visible {
+  outline-offset: -2px;
+  border-radius: 0 0 var(--radius-m) var(--radius-m);
+}
+
 .empty {
-  color: var(--smoke);
+  color: var(--smoke-text);
   font-style: italic;
 }

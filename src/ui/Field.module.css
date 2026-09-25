@@ -26,19 +26,19 @@
 .optional {
   font-size: 13px;
   font-weight: 500;
-  color: var(--smoke);
+  color: var(--smoke-text);
 }
 
 .aside {
   font-size: 13px;
-  color: var(--smoke);
+  color: var(--smoke-text);
   font-variant-numeric: tabular-nums;
 }
 
 .hint {
   font-size: 13.5px;
   line-height: 1.45;
-  color: var(--smoke);
+  color: var(--smoke-text);
 }
 
 .error {

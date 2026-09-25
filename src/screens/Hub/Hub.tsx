@@ -71,9 +71,12 @@ export default function Hub() {
         <Button variant="secondary" onClick={() => go({ name: 'settings' })}>
           Settings
         </Button>
-        <Button variant="ghost" onClick={() => go({ name: 'debug' })}>
-          Debug panel
-        </Button>
+        {import.meta.env.DEV && (
+          // Dev builds only; players open it by long-pressing the version in Settings.
+          <Button variant="ghost" onClick={() => go({ name: 'debug' })}>
+            Debug panel
+          </Button>
+        )}
       </div>
     </main>
   )

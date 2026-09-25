@@ -74,7 +74,7 @@
   height: 14px;
   margin-top: -7px;
   pointer-events: none;
-  color: var(--smoke);
+  color: var(--smoke-text);
 }
 
 /* Masked */
@@ -103,6 +103,13 @@
   color: var(--brass);
   font-size: 14px;
   font-weight: 600;
+}
+
+/* The visible button is 40px; its hit area fills the 48px field height. */
+.reveal::before {
+  content: '';
+  position: absolute;
+  inset: -4px -4px -4px 0;
 }
 
 .reveal:hover {

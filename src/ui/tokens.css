@@ -11,6 +11,13 @@
   --smoke: #9c7f8a;
   --accent: var(--lipstick);
 
+  /* Secondary text. Raised surfaces (panels, sheets, debug entries) switch --smoke-text to the
+     lighter mix so hints and descriptions keep 4.5:1 on oxblood; on velvet it stays smoke. */
+  --smoke-text: var(--smoke);
+  --smoke-on-panel: color-mix(in srgb, var(--smoke) 55%, var(--blush));
+  /* Lipstick as text on panels (plain lipstick is about 3.2:1 on oxblood). */
+  --lipstick-text: color-mix(in srgb, var(--lipstick) 60%, var(--blush));
+
   --font-display: 'Bodoni Moda', 'Didot', 'Bodoni 72', Georgia, serif;
   --font-ui: 'Figtree Variable', 'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: ui-monospace, 'SFMono-Regular', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas,

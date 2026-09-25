@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { JUDGE_TEMPERATURE, listModels } from '../../llm/client'
 import { testConnection, type ConnectionTestResult } from '../../llm/diagnose'
 import { PRESET_LIST, presetFor } from '../../llm/presets'
@@ -11,7 +11,7 @@ import { Note } from '../../ui/Panel'
 import { Segmented, type SegmentedOption } from '../../ui/Segmented'
 import { Stepper } from '../../ui/Stepper'
 import styles from './ConnectionForm.module.css'
-import { hostModeOf, localBaseUrl, LOCAL_PORTS, type HostMode } from './connectionHelpers'
+import { hostModeOf, listedModel, localBaseUrl, LOCAL_PORTS, switchPreset, type HostMode } from './connectionHelpers'
 
 const PRESET_OPTIONS: SegmentedOption<ConnectionPreset>[] = PRESET_LIST.map((p) => ({
   value: p.id,
@@ -75,11 +75,12 @@ export function TestResultView({ result }: { result: ConnectionTestResult }) {
   )
 }
 
+/** Options for a model picker. `current` is shown as missing only when no listed id matches it. */
 function modelOptions(models: string[], current: string, sameLabel?: string): SelectOption[] {
   const opts: SelectOption[] = []
   if (sameLabel !== undefined) opts.push({ value: '', label: sameLabel })
   else if (!current) opts.push({ value: '', label: 'Pick a model' })
-  if (current && !models.includes(current)) {
+  if (current && !listedModel(models, current)) {
     opts.push({ value: current, label: `${current} (not on this server)` })
   }
   for (const m of models) opts.push({ value: m, label: m })
@@ -109,7 +110,7 @@ export function ConnectionForm({ onTested, idPrefix = 'conn' }: ConnectionFormPr
   const [hostMode, setHostMode] = useState<HostMode>(initialHost.mode)
   const [lanHost, setLanHost] = useState(initialHost.host)
   const testAbort = useRef<AbortController | null>(null)
-  const models = conn.baseUrl.trim() ? listed : []
+  const models = useMemo(() => (conn.baseUrl.trim() ? listed : []), [conn.baseUrl, listed])
 
   // Quietly list models whenever the URL or key settles, so the model pickers fill themselves.
   const hasUrl = !!conn.baseUrl.trim()
@@ -134,14 +135,27 @@ export function ConnectionForm({ onTested, idPrefix = 'conn' }: ConnectionFormPr
 
   useEffect(() => () => testAbort.current?.abort(), [])
 
+  // A model typed as "llama3.1" is stored as the id the server lists ("llama3.1:latest").
+  useEffect(() => {
+    if (!models.length) return
+    const patch: { storyModel?: string; judgeModel?: string } = {}
+    const story = listedModel(models, conn.storyModel)
+    const judge = listedModel(models, conn.judgeModel)
+    if (story && story !== conn.storyModel) patch.storyModel = story
+    if (judge && judge !== conn.judgeModel) patch.judgeModel = judge
+    if (patch.storyModel || patch.judgeModel) void updateConnection(patch)
+  }, [models, conn.storyModel, conn.judgeModel, updateConnection])
+
   const clearResult = () => setResult(null)
 
   const pickPreset = (id: ConnectionPreset) => {
-    const p = presetFor(id)
+    if (id === conn.preset) return
+    const patch = switchPreset(conn, id)
     clearResult()
-    setHostMode('device')
-    setLanHost('')
-    void updateConnection({ preset: id, baseUrl: p.baseUrl || conn.baseUrl })
+    const host = hostModeOf(patch.baseUrl ?? '')
+    setHostMode(host.mode)
+    setLanHost(host.host)
+    void updateConnection(patch)
   }
 
   const pickHostMode = (mode: HostMode) => {

@@ -47,7 +47,8 @@ export function Tabs<T extends string>({ tabs, value, onChange, ...aria }: TabsP
               role="tab"
               id={`${base}-tab-${t.id}`}
               aria-selected={selected}
-              aria-controls={`${base}-panel-${t.id}`}
+              // Only the active panel is rendered, so only its tab points at one.
+              aria-controls={selected ? `${base}-panel-${t.id}` : undefined}
               tabIndex={selected ? 0 : -1}
               className={styles.tab}
               onClick={() => onChange(t.id)}

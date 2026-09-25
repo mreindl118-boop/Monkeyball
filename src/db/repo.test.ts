@@ -121,19 +121,22 @@ describe('wipeAll', () => {
 })
 
 describe('export and import', () => {
-  it('exports without the API key by default and with it when asked', async () => {
+  it('never exports API keys, including the ones kept per preset', async () => {
     const d = freshDb()
     await seed(d)
-    const plain = parseSave(await (await exportSave({}, d)).text())
+    const stored = (await kvGet<Settings>('settings', d))!
+    stored.connection.providers = { openrouter: { baseUrl: 'https://openrouter.ai/api/v1', apiKey: 'sk-or-kept' } }
+    await kvSet('settings', stored, d)
+    const text = await (await exportSave({}, d)).text()
+    expect(text).not.toContain('sk-secret')
+    expect(text).not.toContain('sk-or-kept')
+    const plain = parseSave(text)
     const s = plain.kv.find((r) => r.key === 'settings')!.value as Settings
     expect(s.connection.apiKey).toBe('')
+    expect(s.connection.providers?.openrouter).toEqual({ baseUrl: 'https://openrouter.ai/api/v1', apiKey: '' })
     expect(s.connection.storyModel).toBe('llama3.1')
     expect(plain.relationships).toHaveLength(1)
     expect(plain.dates).toHaveLength(1)
-
-    const withKey = parseSave(await (await exportSave({ includeApiKey: true }, d)).text())
-    const s2 = withKey.kv.find((r) => r.key === 'settings')!.value as Settings
-    expect(s2.connection.apiKey).toBe('sk-secret')
   })
 
   it('import replaces everything and keeps the local key when the file has none', async () => {
@@ -158,6 +161,26 @@ describe('export and import', () => {
     const dates = await listDates(undefined, target)
     expect(dates).toHaveLength(1)
     expect(dates[0].characterIds).toEqual(['nova'])
+  })
+
+  it("import never moves this device's key onto a different preset", async () => {
+    const source = freshDb()
+    await seed(source)
+    const srcSettings = (await kvGet<Settings>('settings', source))!
+    srcSettings.connection = { ...srcSettings.connection, preset: 'custom', baseUrl: 'http://192.168.1.9:8080/v1' }
+    await kvSet('settings', srcSettings, source)
+    const file = await exportSave({}, source)
+
+    const target = freshDb()
+    const local = defaultSettings()
+    local.connection = { ...local.connection, preset: 'openrouter', baseUrl: 'https://openrouter.ai/api/v1', apiKey: 'sk-or-local' }
+    await kvSet('settings', local, target)
+
+    await importSave(file, target)
+    const s = (await kvGet<Settings>('settings', target))!
+    expect(s.connection.preset).toBe('custom')
+    expect(s.connection.apiKey).toBe('')
+    expect(s.connection.providers?.openrouter).toEqual({ baseUrl: 'https://openrouter.ai/api/v1', apiKey: 'sk-or-local' })
   })
 
   it('round-trips images as base64 when asked', async () => {

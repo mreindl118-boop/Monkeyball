@@ -66,7 +66,8 @@ export function createSseParser(): SseParser {
   function feed(chunk: string): SseEvent[] {
     const out: SseEvent[] = []
     let text = chunk
-    if (pendingCr) {
+    // An empty chunk says nothing about whether the "\r" was half of "\r\n"; keep waiting.
+    if (pendingCr && text !== '') {
       pendingCr = false
       if (text.startsWith('\n')) text = text.slice(1)
     }

@@ -36,10 +36,13 @@ export interface ProfileErrors {
 }
 
 /** Validate a profile draft. Empty object means valid. */
+/** The longest player name, enforced by both the input and validation. */
+export const NAME_MAX = 40
+
 export function validateProfile(p: PlayerProfile): ProfileErrors {
   const errors: ProfileErrors = {}
   if (!p.name.trim()) errors.name = 'Add a name so people know what to call you.'
-  else if (p.name.trim().length > 40) errors.name = 'Keep it under 40 characters.'
+  else if (p.name.trim().length > NAME_MAX) errors.name = `Keep it to ${NAME_MAX} characters or fewer.`
   if (!p.pronouns.trim()) errors.pronouns = 'Add your pronouns so characters get them right.'
   if (p.gender === 'custom' && !p.customGender?.trim()) {
     errors.customGender = 'Add the word you use, or pick one of the options above.'

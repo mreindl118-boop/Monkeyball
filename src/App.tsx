@@ -27,6 +27,15 @@ const LATER: Partial<Record<ScreenName, string>> = {
   ending: 'Ending',
 }
 
+let warnedNoStorage = false
+
+/** One toast per session when the browser won't let the app save. */
+function warnNoStorage() {
+  if (warnedNoStorage) return
+  warnedNoStorage = true
+  toast("This browser won't let crushLAB save anything, so progress will be lost when you close it.", 'error', 10_000)
+}
+
 /** Screen-level accent (character screens set their own accent inline). */
 const ACCENTS: Partial<Record<ScreenName, string>> = {
   debug: 'var(--brass)',
@@ -88,21 +97,37 @@ export default function App() {
   useEffect(() => {
     const unbind = bindHistory()
     let cancelled = false
+    const start = () => {
+      if (cancelled) return
+      let fromHash: Screen | null = null
+      try {
+        fromHash = typeof window !== 'undefined' ? hashToScreen(window.location.hash) : null
+      } catch {
+        fromHash = null
+      }
+      useNav.getState().reset(fromHash ?? { name: 'hub' })
+      setBooted(true)
+      consumeFlash()
+      if (useSettings.getState().error) warnNoStorage()
+    }
     void useSettings
       .getState()
       .load()
-      .then(() => {
+      .catch(() => undefined)
+      .then(start)
+      .catch(() => {
+        // Whatever went wrong, never leave the player on the loading screen.
         if (cancelled) return
-        const fromHash = typeof window !== 'undefined' ? hashToScreen(window.location.hash) : null
-        useNav.getState().reset(fromHash ?? { name: 'hub' })
+        if (!useSettings.getState().loaded) useSettings.setState({ loaded: true })
+        useNav.getState().reset({ name: 'hub' })
         setBooted(true)
-        consumeFlash()
-        const error = useSettings.getState().error
-        if (error) {
-          toast("This browser won't let crushLAB save anything, so progress will be lost when you close it.", 'error', 10_000)
-        }
       })
+    // Storage that fails later (quota, private mode) gets the same one-time warning.
+    const unsub = useSettings.subscribe((s, prev) => {
+      if (s.error && !prev.error && s.loaded && prev.loaded) warnNoStorage()
+    })
     return () => {
+      unsub()
       cancelled = true
       unbind()
     }

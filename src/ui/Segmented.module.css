@@ -10,6 +10,7 @@
 }
 
 .pill {
+  position: relative;
   flex: 1 1 auto;
   min-height: 44px;
   min-width: 72px;
@@ -25,6 +26,13 @@
   transition:
     background-color 140ms var(--ease-out),
     color 140ms var(--ease-out);
+}
+
+/* 44px to look right beside 48px fields; the hit area reaches 48px (Android touch targets). */
+.pill::before {
+  content: '';
+  position: absolute;
+  inset: -2px 0;
 }
 
 .pill:hover:not([aria-checked='true']):not(:disabled) {
@@ -137,5 +145,5 @@
   grid-column: 2;
   font-size: 13.5px;
   line-height: 1.45;
-  color: var(--smoke);
+  color: var(--smoke-text);
 }

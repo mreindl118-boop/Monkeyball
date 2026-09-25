@@ -80,7 +80,7 @@
 
 .stepDetail {
   display: block;
-  color: var(--smoke);
+  color: var(--smoke-text);
   font-size: 13.5px;
   overflow-wrap: anywhere;
 }
@@ -111,7 +111,7 @@
   border-radius: var(--radius-m);
   border: 1px solid var(--line);
   font-size: 14px;
-  color: var(--smoke);
+  color: var(--smoke-text);
 }
 
 .info strong {

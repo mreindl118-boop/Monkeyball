@@ -10,6 +10,7 @@ import {
   cleanProfile,
   GENDER_OPTIONS,
   MATCH_OPTIONS,
+  NAME_MAX,
   PRONOUN_SUGGESTIONS,
   PRONOUNS_FOR,
   STYLE_OPTIONS,
@@ -53,16 +54,26 @@ export function ProfileForm({
   const shown: ProfileErrors = tried ? errors : {}
   const changed = JSON.stringify(cleanProfile(draft)) !== baseline
 
+  // Pronouns follow the gender picker until the player types or picks their own.
+  const [pronounsTouched, setPronounsTouched] = useState(() => {
+    const p = { ...defaultProfile(), ...initial }
+    return !!p.pronouns.trim() && p.pronouns.trim() !== PRONOUNS_FOR[p.gender]
+  })
+
   const patch = (p: Partial<PlayerProfile>) => setDraft((d) => ({ ...d, ...p }))
+
+  const setPronouns = (pronouns: string) => {
+    setPronounsTouched(true)
+    patch({ pronouns })
+  }
 
   const setGender = (gender: PlayerGender) => {
     setDraft((d) => {
-      const suggested = PRONOUNS_FOR[d.gender]
-      const keepPronouns = d.pronouns.trim() && d.pronouns.trim() !== suggested
+      const follow = !pronounsTouched || !d.pronouns.trim()
       return {
         ...d,
         gender,
-        pronouns: keepPronouns ? d.pronouns : (PRONOUNS_FOR[gender] ?? d.pronouns),
+        pronouns: follow ? (PRONOUNS_FOR[gender] ?? d.pronouns) : d.pronouns,
         matchAs: gender === 'custom' ? (d.matchAs ?? 'nonbinary') : d.matchAs,
       }
     })
@@ -89,7 +100,7 @@ export function ProfileForm({
           value={draft.name}
           onChange={(name) => patch({ name })}
           autoComplete="nickname"
-          maxLength={60}
+          maxLength={NAME_MAX}
           placeholder="What should they call you?"
         />
       </Field>
@@ -137,14 +148,14 @@ export function ProfileForm({
         <div className={styles.pronounRow}>
           <TextInput
             value={draft.pronouns}
-            onChange={(pronouns) => patch({ pronouns })}
+            onChange={setPronouns}
             placeholder="she/her, he/him, they/them, or your own"
             maxLength={40}
             autoCapitalize="off"
           />
           <ChipRow label="Pronoun suggestions">
             {PRONOUN_SUGGESTIONS.map((p) => (
-              <Chip key={p} selected={draft.pronouns.trim() === p} onClick={() => patch({ pronouns: p })}>
+              <Chip key={p} selected={draft.pronouns.trim() === p} onClick={() => setPronouns(p)}>
                 {p}
               </Chip>
             ))}
