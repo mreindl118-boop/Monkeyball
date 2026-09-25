@@ -354,13 +354,21 @@ Android UX rules for every screen:
 
 The player brings their own Claude (Anthropic) or ChatGPT (OpenAI) API key; these are the two
 headline presets and Claude is the default. Ollama, LM Studio, OpenRouter and Custom stay available
-under "Other providers". `ConnectionSettings.provider` selects the wire format:
+under "Other providers". Each preset has a wire format (`provider`):
 
 | preset | provider | base URL | models (defaults, editable) |
 |---|---|---|---|
 | claude | `anthropic` | https://api.anthropic.com | story `claude-opus-5`, judge `claude-haiku-4-5` |
 | chatgpt | `openai` | https://api.openai.com/v1 | picked from the key's `/models` list after Test connection (story: newest full `gpt-*` chat model; judge: newest `*-mini`) |
+| grok | `openai` (xAI's API is OpenAI-compatible) | https://api.x.ai/v1 | picked from the key's `/models` list (story: newest full `grok-*` chat model; judge: a fast/mini variant) |
 | ollama / lmstudio / openrouter / custom | `openai` | as before | as before |
+
+**Mix and match per role.** Keys and base URLs are stored per preset (`ConnectionSettings.providers:
+Record<ConnectionPreset, { baseUrl, apiKey }>`), and each role picks a preset + model:
+`story: { preset, model }` and `judge: { preset, model }` (judge defaults to "same as story").
+The story route serves story and memory calls; the judge route serves judge, agreement and
+suggestions calls. So Claude can write the story while Grok or a ChatGPT mini model judges, etc.
+Test connection runs per configured preset.
 
 - `src/llm/anthropic.ts` — Claude via the official `@anthropic-ai/sdk` (`new Anthropic({ apiKey,
   dangerouslyAllowBrowser: true })`; the SDK sends the direct-browser-access CORS header). No raw
@@ -393,3 +401,18 @@ under "Other providers". `ConnectionSettings.provider` selects the wire format:
   won't write explicit sexual content; heat 4–5 will often be declined or toned down. The heat
   control shows that note when a Claude or ChatGPT preset is active; local/OpenRouter models are the
   route for heat 4–5.
+
+## Art providers: Automatic1111/Forge and Grok Imagine (Phase 5)
+
+`ImageSettings.provider: 'a1111' | 'grok'`. Grok Imagine (xAI) generates tier art without a local GPU,
+which suits Android:
+- POST `https://api.x.ai/v1/images/generations` with `Authorization: Bearer <xAI key>` (the same key
+  as the Grok chat preset), body `{ model, prompt, n: 1, response_format: 'b64_json', aspect_ratio }`.
+  Model default `grok-imagine-image`, editable, listed from the API when possible; portrait
+  aspect ratio (`2:3`) for character art. Response `data[0].b64_json` -> Blob cached in Dexie.
+- xAI has no negative prompt, so the locked safety text goes into the prompt itself: every
+  participant is stated as an adult with their age ("adult woman, 28 years old"), plus a fixed
+  clause that everyone depicted is a consenting adult and nothing childlike or non-consensual is
+  shown. Built in code, never editable. A1111 keeps the negative prompt as before.
+- In the APK, a CORS failure falls back to native HTTP like the model calls.
+- Grok Imagine video (animating a won character's final art) is a possible later addition.
