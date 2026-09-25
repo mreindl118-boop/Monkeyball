@@ -117,6 +117,15 @@ jobs:
         with:
           name: crushlab-web
           path: dist
+      - name: Replace the service worker with the kill switch (APK only)
+        # Builds 24-25 registered the web app's service worker inside the APK, and it kept serving
+        # that build's cached files after an upgrade. The APK never uses a service worker, so its
+        # sw.js is a kill switch that clears the caches, removes itself and reloads the app when
+        # an old registration checks for an update. The web/PWA build keeps its real worker.
+        run: |
+          cp scripts/android/sw.js dist/sw.js
+          grep -q crushlab-apk-sw-killswitch dist/sw.js || { echo "::error::dist/sw.js is not the APK kill switch"; exit 1; }
+          if grep -q registerSW dist/index.html; then echo "::error::index.html registers a service worker in the APK"; exit 1; fi
       - name: Generate Android project
         run: npx cap add android
       - name: Launcher icons and splash icon
@@ -262,6 +271,8 @@ jobs:
           if [ -z "$backup" ] || echo "$backup" | grep -Eq '=true\b|=(\(type 0x12\))?0xffffffff\b'; then
             echo "::error::the merged manifest allows backups; API keys would reach Google backups"; exit 1
           fi
+          unzip -p "$APK" assets/public/sw.js | grep -q crushlab-apk-sw-killswitch \
+            || { echo "::error::the APK's sw.js is not the kill switch; old builds' cached files would keep running"; exit 1; }
           ls -l "$APK"
       - name: Name the APK
         # crushlab.apk keeps one stable download link for the newest build:
