@@ -27,7 +27,8 @@ export function TierImage({ characterId, tier, title, name }: TierImageProps) {
   const { art, loading } = useArt(slot)
   const fileRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState<'add' | 'remove' | null>(null)
-  const mine = art?.source === 'imported' && art.url ? art.url : undefined
+  // Pack art isn't the player's own image: it shows as "No image" here, and an added image wins.
+  const mine = art?.source === 'imported' && !art.pack && art.url ? art.url : undefined
   const row = `Tier ${tier}`
 
   const onFile = async (files: FileList | null) => {

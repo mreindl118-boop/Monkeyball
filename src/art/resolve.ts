@@ -1,6 +1,7 @@
 // Resolving a slot to art (docs/SPEC.md, "Art and gallery"; ARCHITECTURE, Art). First match wins:
 //
-//   1. imported   the player's own image for the slot (Dexie images table, the slot key; pack art too)
+//   1. imported   the player's own image for the slot (Dexie images table, the slot key), then art
+//                 that came with an imported pack (the slot key plus '#pack')
 //   2. bundled    public/art/{setId}/{characterId}/tier-{n} or ending-{type} (.webp, .png, .jpg),
 //                 listed at build time by vite.config.ts as `virtual:bundled-art`
 //   3. generated  painted once and cached (Dexie, the slot key plus '#generated')
@@ -23,7 +24,7 @@ import { kvGet, kvSet } from '../db/repo'
 import { makeThumbnail } from './compress'
 import { useRoster } from '../store/roster'
 import type { StoredImage } from '../types'
-import { generatedKey, parseSlotKey, polyculeSlot, slotKey, type ArtSlot, type ResolvedArt } from './types'
+import { baseKey, generatedKey, packKey, parseSlotKey, polyculeSlot, slotKey, type ArtSlot, type ResolvedArt } from './types'
 
 // ---------------------------------------------------------------------------
 // Change events
@@ -53,7 +54,7 @@ export function emitArtChange(slots?: readonly (ArtSlot | string)[]): void {
   } else {
     for (const s of slots) {
       const slot = typeof s === 'string' ? parseSlotKey(s) : s
-      const key = typeof s === 'string' ? s.replace(/#generated$/, '') : slotKey(s)
+      const key = typeof s === 'string' ? baseKey(s) : slotKey(s)
       keys.add(key)
       if (slot?.kind === 'group' && slot.slot === 'polycule') {
         for (const id of slot.characterIds) keys.add(`${id}:ending-polycule`)
@@ -207,7 +208,7 @@ export interface ArtResolver {
   canonicalSlot: (slot: ArtSlot) => Promise<ArtSlot>
   /** The bundled file for a slot (a path under public/), or null. */
   bundledPath: (slot: ArtSlot) => string | null
-  /** The imported row for a slot (canonical first), or undefined. */
+  /** The imported row for a slot (canonical first; the player's own image, then pack art), or undefined. */
   importedImage: (slot: ArtSlot) => Promise<StoredImage | undefined>
   /** The generated row for a slot (canonical first), or undefined. */
   generatedImage: (slot: ArtSlot) => Promise<StoredImage | undefined>
@@ -302,8 +303,10 @@ export function createArtResolver(deps: ArtResolverDeps = {}): ArtResolver {
   }
 
   const importedImage = async (slot: ArtSlot): Promise<StoredImage | undefined> => {
-    for (const s of await keysOf(slot)) {
-      const row = await safely(() => d.images.get(slotKey(s)), undefined)
+    const slots = await keysOf(slot)
+    // The player's own image wins over the pack's.
+    for (const key of [...slots.map(slotKey), ...slots.map(packKey)]) {
+      const row = await safely(() => d.images.get(key), undefined)
       if (row && row.source === 'imported' && row.blob) return row
     }
     return undefined
@@ -331,7 +334,8 @@ export function createArtResolver(deps: ArtResolverDeps = {}): ArtResolver {
     if (row.prompt) art.prompt = row.prompt
     if (typeof row.seed === 'number') art.seed = row.seed
     if (favorite) art.favorite = true
-    if (row.key.replace(/#generated$/, '') !== key) art.resolvedKey = row.key.replace(/#generated$/, '')
+    if (baseKey(row.key) !== key) art.resolvedKey = baseKey(row.key)
+    if (row.source === 'imported' && row.pack) art.pack = row.pack
     return art
   }
 

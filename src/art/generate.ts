@@ -307,7 +307,11 @@ export function createArtEngine(deps: ArtEngineDeps = {}): ArtEngine {
           (revised ? `\n\nxAI rewrote the prompt and painted from:\n${revised}` : ''),
       })
       return { blob, prompt: built.prompt, seed: res.seed, ...(revised ? { revisedPrompt: revised } : {}) }
-    } catch (e) {
+    } catch (caught) {
+      // A timeout is a failure, not the player stopping it, whatever the transport made of the
+      // abort (Android's native HTTP turns every abort reason into an AbortError).
+      const reason: unknown = signal?.aborted ? signal.reason : undefined
+      const e = reason && typeof reason === 'object' && (reason as { name?: unknown }).name === 'TimeoutError' ? reason : caught
       patchLog(logId, { error: isAbort(e) ? 'Stopped.' : messageOf(e) })
       throw e
     }
@@ -439,7 +443,8 @@ export function createArtEngine(deps: ArtEngineDeps = {}): ArtEngine {
     const d = resolver().db
     for (const s of [canonical, slot]) {
       const row = await d.images.get(slotKey(s))
-      if (row?.source === 'imported') await d.images.delete(slotKey(s))
+      // Only the player's own image: pack art has its own '#pack' row and stays.
+      if (row?.source === 'imported' && !row.pack) await d.images.delete(slotKey(s))
     }
     emitArtChange([canonical, slot])
   }
@@ -448,6 +453,10 @@ export function createArtEngine(deps: ArtEngineDeps = {}): ArtEngine {
     await resolver().setFavorite(slot, on)
     emitArtChange([slot])
   }
+
+  /** True when the slot already shows something other than the placeholder. */
+  const hasArt = async (r: ArtResolver, slot: ArtSlot, canonical: ArtSlot): Promise<boolean> =>
+    !!(await r.importedImage(slot)) || !!r.bundledPath(slot) || !!r.bundledPath(canonical) || !!(await r.generatedImage(canonical))
 
   /** Paint in the background when nothing else shows for the slot. Never throws. */
   /** Background work not yet queued or finished (idle() waits for it). */
@@ -475,6 +484,12 @@ export function createArtEngine(deps: ArtEngineDeps = {}): ArtEngine {
         const canonical = await r.canonicalSlot(slot)
         const key = slotKey(canonical)
         keys = jobKeysFor(canonical, slot)
+        // Nothing to paint (the player's image, pack art, bundled art or a cached painting): clear
+        // the marker now rather than after whatever the queue is painting.
+        if (!inflight.has(key) && (await hasArt(r, slot, canonical))) {
+          clearQueued([...new Set([...marked, ...keys])])
+          return
+        }
         markQueued(keys)
         const running = inflight.get(key)
         if (running) {
@@ -491,9 +506,7 @@ export function createArtEngine(deps: ArtEngineDeps = {}): ArtEngine {
           try {
             const settings = settingsOf()
             if (!providerOf(settings)) return
-            if (await r.importedImage(slot)) return
-            if (r.bundledPath(slot) || r.bundledPath(canonical)) return
-            if (await r.generatedImage(canonical)) return
+            if (await hasArt(r, slot, canonical)) return
             const t = timeoutSignal(BACKGROUND_TIMEOUT_MS)
             try {
               await generateArt(canonical, { signal: t.signal })

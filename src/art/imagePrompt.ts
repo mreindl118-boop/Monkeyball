@@ -20,7 +20,7 @@
 // follows"). A card under 21 (or over 120) can't get a prompt at all. On the friend route the
 // picture is platonic at heat 1, whatever the player's heat.
 
-import { scanText } from '../mods/safety'
+import { CONSENT_OVERRIDES, scanText } from '../mods/safety'
 import { effectiveHeat, playerBucket } from '../engine/stages'
 import type { Character, EndingType, Gender, HeatLevel, ImageSettings, PlayerProfile, Route } from '../types'
 import { slotKey, type ArtSlot } from './types'
@@ -39,10 +39,10 @@ export const IMAGE_SAFETY: Readonly<{ positiveClause: string; negative: string; 
   positiveClause:
     'everyone depicted is a consenting adult aged 21 or older, mature adult face and body, adult proportions, mutual consent, enthusiastic and at ease',
   negative:
-    'child, children, kid, minor, underage, teen, teenager, adolescent, preteen, childlike, child-like body, child proportions, youthful appearance, young-looking, baby face, loli, shota, schoolgirl, schoolboy, school uniform, serafuku, randoseru, school swimsuit, gym bloomers, chibi, ' +
+    'child, children, kid, minor, underage, teen, teenager, adolescent, preteen, childlike, child-like body, child proportions, small child body, youthful appearance, young-looking, baby face, loli, shota, schoolgirl, schoolboy, school uniform, serafuku, seifuku, gakuran, sailor collar, randoseru, school swimsuit, gym bloomers, school setting, classroom, school desk, pigtails, training bra, flat chest, chibi, ' +
     'non-consensual, nonconsensual, rape, sexual assault, forced, coerced, unwilling, reluctant, struggling, restrained against will, fear, distress, crying, unconscious, drugged, voyeurism, hidden camera, violence, gore',
   grokClause:
-    'Everyone depicted is a consenting adult aged 21 or older, with a clearly adult face and body. Nothing childlike, underage or young-looking is shown, and nothing non-consensual is shown: everyone is willing, at ease and enthusiastic.',
+    'Everyone depicted is a consenting adult aged 21 or older, with a clearly adult face and body. Nothing childlike, underage or young-looking is shown, there is no school setting, and nothing non-consensual is shown: everyone is willing, at ease and enthusiastic.',
 })
 
 /** Quality negatives every A1111 prompt gets after the safety text. */
@@ -110,26 +110,36 @@ const NON_CONSENT: readonly RegExp[] = [
   /\b(?:no|without|lack(?:ing)?\s+of|absence\s+of|zero|absent)\s+(?:\w+\s+)?consent\w*/i,
   /\b(?:said|says|saying|say|tells?|told|telling|scream\w*|yell\w*|shout\w*|beg(?:s|ged|ging)?|plead\w*|cr(?:y|ies|ied|ying)|sob(?:s|bed|bing)?|whisper\w*|asks?|asked|asking)\s+(?:\w+\s+){0,3}(?:no|stop|don'?t|please\s+don'?t)\b/i,
   /\b(?:by|with)\s+force\b|\bforce[sd]?\s+(?:her|him|them|you|me)\b|\bravish\w*|\bsomno\w*|\bsleep(?:ing)?[\s-]sex\b|\bcnc\b|\bhypno(?!tic)\w*|\bmind[\s-]?broken\b|\b(?:pinned|held|holds?|holding|pins?|pinning)\s+(?:her|him|them|you|me)?\s*down\b|\bgagged\b|\bball[\s-]?gag\w*/i,
+  // Dubious consent, incapacitation, force, refusal and setups that catch someone unaware.
+  /\bdub[\s-]?con\w*|\bdubious(?:ly)?[\s-]+consen\w*|\bsedat(?:ed|ive|ives|ion|ing)\b|\bchloroform\w*|\bcomatose\b|\bout\s+cold\b|\bzonked\b|\bknocked\s+(?:out|unconscious)\b|\broofie\w*|\blimp\s+(?:body|form|bodies)\b|\bviolat\w*|\bdefil\w*|\boverpower(?:s|ed)?\b|\boverpowering\s+(?:her|him|them|you|me)\b|\bhelpless\b|\bgrop\w*|\bgrabb?\w*\s+(?:roughly|by\s+force)\b|\benslav\w*|\bcaptors?\b|\bprisoners?\b|\bhostages?\b|\bsnuff\b/i,
+  /\bcaptur(?:ed|es|ing)\b(?!\s+(?:in|on|mid|the|a|an|this|that|every|by\s+(?:the\s+|a\s+)?(?:camera|lens|photographer|shutter)|(?:her|his|their)\s+(?:smile|laugh|likeness|face|eyes|expression|look|beauty|essence|attention|heart|gaze)))/i,
+  /(?<!\b(?:running|sight|visual)\s)\bgag(?:s|ged|ging)?\b(?![\s-]+(?:gifts?|reels?|jokes?|glasses))/i,
+  /\bagainst\s+(?:her|his|their|my|your|its)\s+(?:wishes|consent)\b|\bwithout\s+(?:asking|permission|warning)\b|\bresist(?:s|ed|ing)\b|\b(?:tries|trying|tried)\s+to\s+resist\b|\bpush\w*\s+\w+\s+away\b|\b(?:surprised|caught)\s+(?:in\s+the\s+(?:shower|bath)|undress\w*|changing|naked)\b/i,
+  ...CONSENT_OVERRIDES.map((re) => new RegExp(re.source, 'i')),
   /\bvoyeur\w*|\bhidden[\s-]+cam\w*|\bspy[\s-]?cam\w*|\bup[\s-]?skirt\w*|\bdown[\s-]?blouse\b|\bcreep[\s-]?shots?\b|\bpeep(?:s|ed|er|ers|ing)?\b|\bunaware\b|\bupblouse\b/i,
 ]
 
 /** Asleep, intoxicated or in distress: fine in a sweet scene, dropped once the art is sexual (heat 3+). */
 const CANT_CONSENT =
-  /\b(?:asleep|sleeping(?!\s+bags?\b)|sleeps|passed[\s-]out|drunk|wasted|intoxicated|blacked[\s-]out|blackout(?!\s+(?:curtains?|blinds?|shades?))|cr(?:y|ies|ied|ying)|tears?|tearful|sobb?(?:s|ed|ing)?|plead\w*|begg?(?:s|ed|ing)|afraid|fearful|scared|frightened)\b/i
+  /\b(?:asleep|sleeping(?!\s+bags?\b)|sleeps|limp|passed[\s-]out|drunk|wasted|intoxicated|blacked[\s-]out|blackout(?!\s+(?:curtains?|blinds?|shades?))|cr(?:y|ies|ied|ying)|tears?|tearful|sobb?(?:s|ed|ing)?|plead\w*|begg?(?:s|ed|ing)|afraid|fear|fearful|scared|frightened|doz(?:e|es|ed|ing))\b/i
 
 /** Text that argues with the clause: not an adult, ambiguous age, childlike styles, overrides. */
 const CONTRADICTS: readonly RegExp[] = [
   /\b(?:not|no|non|never|isn't|aren't|without|less\s+than)[\s-]+(?:an?\s+|quite\s+|fully\s+|yet\s+)?(?:adults?|grown[\s-]?ups?|of\s+age|mature|legal)\b/i,
   /\b(?:ageless|age[\s-]?(?:unknown|ambiguous|indeterminate|gap)|indeterminate\s+age|looks?\s+(?:much\s+)?younger|younger[\s-]looking|chibi|super[\s-]deformed|toddlercon|cub)\b/i,
-  /\b(?:ignor\w*|disregard\w*|overrid\w*|bypass\w*|remov\w*|skip\w*|without|drop\w*|negate\w*|cancel\w*|no)\b.{0,40}\b(?:rules?|clauses?|instructions?|safety|filters?|restrictions?|negative\s+prompt|guidelines?|polic(?:y|ies)|limits?)\b/i,
+  /\b(?:ignor\w*|disregard\w*|overrid\w*|bypass\w*|remov\w*|skip\w*|without|drop\w*|negate\w*|cancel\w*|no)\b.{0,40}\b(?:rules?|clauses?|instructions?|safety|filters?|restrictions?|negative\s+prompt|guidelines?|polic(?:y|ies)|limits?|disclaimers?|notes?|notices?|captions?|watermarks?|metadata|labels?|statements?|(?:parts?|bits?)\s+about)\b/i,
   /\b(?:rules?|clauses?|instructions?|safety|filters?|restrictions?|guidelines?)\b.{0,20}\b(?:off|disabled|don't\s+apply|do\s+not\s+apply|not\s+apply|void|ignored)\b/i,
   // Instructions about other parts of the prompt: "ignore everything after this", "the final
   // sentence is spam", "draw only what comes before the first period", "end of prompt".
   /\b(?:what|everything|anything|all|the\s+(?:text|rest|part|words?|sentences?|lines?|paragraphs?|clauses?))\s+(?:that\s+)?(?:follows?|comes?\s+(?:after|next|later|before)|after(?:wards)?|below|next|before|above|preced\w*)\b/i,
   /\b(?:last|final|closing|trailing|following|next|previous|preceding|first|second|third|other|end(?:ing)?)\s+(?:sentences?|lines?|paragraphs?|parts?|sections?|clauses?|words?|periods?|full\s+stops?|text|bits?)\b/i,
   /\b(?:stop\s+reading|end\s+of\s+(?:the\s+)?(?:prompt|text|description|instructions?|input)|(?:prompt|text|description)\s+ends|ignore\s+(?:everything|anything|all|the\s+rest)|skip\s+(?:it|this|that|the\s+rest))\b/i,
-  /\b(?:ignor\w*|disregard\w*|skip\w*|omit\w*|typo|mistake|mistaken|jok(?:e|es|ing)|spam|boilerplate|added\s+by|doesn'?t\s+apply|does\s+not\s+apply|not\s+apply|irrelevant|obsolete|outdated)\b.{0,40}\b(?:sentences?|paragraphs?|lines?|text|clauses?|prompt|instructions?|the\s+rest|everything\s+(?:after|before|else)|what\s+(?:follows|precedes|came\s+before))\b/i,
-  /\b(?:sentences?|paragraphs?|lines?|text|clauses?|prompt|instructions?)\b.{0,40}\b(?:ignor\w*|disregard\w*|skip\w*|omit\w*|typo|mistake|jok(?:e|es|ing)|spam|boilerplate|a\s+lie|lies?|fake|doesn'?t\s+apply|does\s+not\s+apply|not\s+apply|irrelevant|obsolete|outdated|test\s+string)\b/i,
+  /\b(?:ignor\w*|disregard\w*|skip\w*|omit\w*|typo|mistake|mistaken|jok(?:e|es|ing)|spam|boilerplate|added\s+by|doesn'?t\s+apply|does\s+not\s+apply|not\s+apply|irrelevant|obsolete|outdated|decorative|metadata|sarcas\w*|watermarks?|legal)\b.{0,40}\b(?:sentences?|paragraphs?|lines?|text|clauses?|prompt|instructions?|the\s+rest|everything\s+(?:after|before|else)|what\s+(?:follows|precedes|came\s+before)|disclaimers?|notes?|notices?|captions?|labels?|(?:parts?|bits?)\s+about)\b/i,
+  /\b(?:sentences?|paragraphs?|lines?|text|clauses?|prompt|instructions?|disclaimers?|notes?|notices?|captions?|watermarks?|labels?|statements?|(?:parts?|bits?)\s+about)\b.{0,40}\b(?:ignor\w*|disregard\w*|skip\w*|omit\w*|typo|mistake|jok(?:e|es|ing)|spam|boilerplate|a\s+lie|lies?|fake|doesn'?t\s+apply|does\s+not\s+apply|not\s+apply|irrelevant|obsolete|outdated|test\s+string|decorative|metadata|sarcas\w*|watermarks?)\b/i,
+  // Adults only in name, a card that "says" adult, and text about what not to draw.
+  /\bin\s+name\s+only\b|\bonly\s+on\s+paper\b|\bon\s+paper\s+only\b|\bstage\s+name\b|\b(?:card|profile|label|note|tag)\s+says\b|\bbut\s+(?:she|he|they)\s+(?:is|are|'s|'re)\s+not\b|\bnothing\s+(?:after|before|below|above)\s+(?:this|here|it)\b|\bshould\s+not\s+be\s+(?:drawn|shown|depicted|rendered|painted)\b|\bshouldn'?t\s+be\s+(?:drawn|shown|depicted|rendered|painted)\b/i,
+  // Words about the prompt itself: an art tag never needs them.
+  /\b(?:disclaimers?|prompts?|clauses?|boilerplate|metadata)\b/i,
   /\b(?:do\s+not|don'?t|never)\s+(?:follow|obey|apply|use|read)\b/i,
   /\b(?:added|included|inserted|appended|written|pasted|put)\s+(?:(?:there|here|in|below|above|after|before)\s+)?(?:by\s+(?:mistake|accident|error)|in\s+error|automatically|for\s+testing|by\s+the\s+app)\b/i,
   // "nobody here is an adult", "do not draw adults".
@@ -145,6 +155,15 @@ const CONTRADICTS: readonly RegExp[] = [
  */
 const IMAGE_ONLY: readonly RegExp[] = [
   /\bflat[\s-]?chest(?:ed)?\b|\b(?:tiny|small|little|child|kid)[\s-]?(?:sized\s+)?(?:body|frame|build)\b|\bshort[\s-]?stack\b|\bchild[\s-]?sized\b/i,
+  // Childlike bodies and props.
+  /\b(?:loli|shota|rori)\w*|\bprepub\w*|\bnubile\b|\bsmol\b|\byoung\w*|\byung\b|\bimmature\b|\btraining[\s-]?bras?\b|\ba{2,3}[\s-]?cups?\b|\bno\s+(?:breasts|chest|curves|bust)\b|\bpigtails?\b|\bteddy[\s-]?bears?\b|\blollipops?\b|\bboyish\s+(?:figure|body|frame|build)\b|\b(?:tiny|small|little|petite|slight)[\s-]+(?:framed|built|bodied)\b|\bdoll[\s-]?like\b|\bdollish\b|\b(?:teeth|dental|orthodontic)\s+braces\b|\bbraces\s+on\s+\w+\s+teeth\b|\borthodontic\w*/i,
+  // A segment that is only a size word ("tiny", "flat", "little"), or two of them.
+  /^(?:very\s+|so\s+|super\s+)?(?:tiny|little|smol|small|flat|flat[\s-]chested|underdeveloped|elementary)$/i,
+  /\b(?:tiny|little)\s+and\s+(?:short|small|petite|slight)\b|\b(?:short|small|petite|slight)\s+and\s+(?:tiny|little)\b|\bpleated\s+(?:school\s+)?skirts?\b/i,
+  // School settings and school clothes (a scene can say "campus" or "university" instead).
+  /(?<!\b(?:old|art|dance|cooking|film|law|med|medical|grad|graduate|drama|music|culinary|business|flight|driving|design|night|dive|diving|surf|ski|yoga|language|nursing|fashion|beauty|barber|pastry|acting|circus)[\s-])\bschool\w*|\bclassrooms?\b|\bhomeroom\b|\bstudent\s+council\b|\bfreshm[ae]n\b|\bsophomores?\b|\bdaycare\b|\bplaygrounds?\b|\bseifuku\b|\bgakuran\b|\bkogal\b|\bsailor[\s-]+collars?\b|\b(?:shou|chuu|kou)?gakusei\b|\bkouhai\b/i,
+  // Words for a child or a pupil in other languages.
+  /\bjovencit[ao]s?\b|\bchiquill[ao]s?\b|\bnen[ae]s?\b|\bsch(?:u|ue)ler(?:in(?:nen)?)?\b|\bkinder\b(?!\s+than)|\b(?:ein|das|kleines?|dem|des)\s+kind\b|^kind$|\bsecundaria\b|\bgamin(?:e|es|s)?\b|\bdziewczyn\w*|\bch[lł]opi\w*|\bflick(?:a|or)\b|\bpiger?\b|\bpojk\w*|\bragazzin\w*/i,
 ]
 
 const NUMBER_WORDS =
@@ -177,8 +196,17 @@ const AGE_STATEMENTS: readonly RegExp[] = [
   /\bsweet\s+(?:sixteen|seventeen|1[67])\b|\bquincea(?:n|ny)era\b|\bsixth[\s-]form\b/i,
   /\b(?:under|below|not\s+yet|almost|nearly|barely|just|younger\s+than|less\s+than)\s+(?:(?:twenty[\s-]?one|21|2[01]|1[0-9])\b|legal\b|of\s+age\b|an?\s+adult\b|adulthood\b)/i,
   /\b(?:almost|nearly|just|freshly|newly|barely)\s+legal\b|\blegal\s+age\b/i,
-  // Thirteen to nineteen on their own: in image text they are ages.
+  // Thirteen to nineteen on their own: in image text they are ages. The same in Spanish,
+  // Portuguese, Italian, German and French (ten to twenty; not "once", "elf" or "seize", which are
+  // English words: "seize ans" is caught with "ans").
   /\b(?:thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen)\b/i,
+  /\b(?:diez|doce|trece|catorce|quince|diec?i[\s-]?(?:seis|siete|ocho|nueve)|dez|treze|quatorze|dez[ea]sseis|dez[ea]ssete|dezoito|dez[ea]nove|dieci|undici|dodici|tredici|quattordici|quindici|sedici|diciassette|diciotto|diciannove|zehn|zw(?:o|oe)lf|dreizehn|vierzehn|f(?:u|ue)nfzehn|sechzehn|siebzehn|achtzehn|neunzehn|zwanzig|douze|treize|quatorze|quinze|dix[\s-]?(?:sept|huit|neuf)|vingt)\b/i,
+  /\bseize\s+ans\b|\b(?:onze|once|elf)\s+(?:ans|anos|a(?:n|ñ)os|anni|jahre?n?)\b/i,
+  // Ages given another way: a birth year, a class year, "a decade and a half", "16th bday", "half
+  // her age", "reverse the age", "around twelve".
+  /\bborn\s+(?:in\s+)?(?:19|20)\d{2}\b|\bclass\s+of\s+(?:19|20)\d{2}\b|\bdecade\s+and\s+a\s+half\b|\b(?:\d{1,2}(?:st|nd|rd|th)|[a-z]+(?:st|nd|rd|th))\s+b-?days?\b|\bhalf\s+(?:her|his|their|my|your|its)\s+age\b|\brevers\w*\s+(?:the\s+|her\s+|his\s+|their\s+)?ages?\b/i,
+  /\b(?:thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|nineteenth|twentieth)\b(?![\s-]+centur)/i,
+  new RegExp(`\\b(?:around|about|roughly|approximately|maybe|barely|like)\\s+${SMALL}\\b(?![\\s-]*(?:am|pm|o'?clock|minutes?|mins?|hours?|feet|foot|ft|inch|cm|kg|lbs?|percent|%|times?|days?|weeks?|months?|of\\b|more\\b|out\\s+of|drinks?|glasses?|shots?|songs?|people|guests?|friends?|candles?|stars?|lights?|roses?|flowers?))`, 'i'),
   // "both are 15", "everyone is actually fifteen", "Nova is 16".
   new RegExp(
     `\\b[a-z]+(?:\\s+of\\s+them)?\\s+(?:is|are|was|were|'s|'re|being|turned|turns|becomes?)\\s+${HEDGE}${SMALL}\\b(?![\\s-]*(?:am|pm|o'?clock|minutes?|mins?|hours?|feet|foot|ft|inch|cm|kg|lbs?|percent|%|times?|days?|weeks?|months?|of\\b|more\\b|out\\s+of|drinks?|glasses?|shots?|songs?))`,
@@ -343,6 +371,7 @@ export function scrubPromptText(text: unknown, opts: ScrubOptions = {}): string 
   const seen = new Set<string>()
   const kept: string[] = []
   let length = 0
+  const check = { heat, dropAges, names }
   for (const raw of flat.split(/[,;]+/)) {
     const seg = raw.replace(/\s+/g, ' ').replace(/^[\s.-]+|[\s-]+$/g, '').trim()
     if (!seg) continue
@@ -350,12 +379,11 @@ export function scrubPromptText(text: unknown, opts: ScrubOptions = {}): string 
     if (/[^\x20-\x7e]/.test(seg)) continue
     // Single letters and pairs ("t, e, e, n") are not tags.
     if ((seg.match(/[a-z]/gi)?.length ?? 0) < 3 && !/\d/.test(seg)) continue
-    if (flagged(seg, names)) continue
-    const readings = wordReadings(seg)
-    if (NON_CONSENT.some((re) => readings.some((v) => re.test(v)))) continue
-    if (heat >= 3 && readings.some((v) => CANT_CONSENT.test(v))) continue
-    if (CONTRADICTS.some((re) => readings.some((v) => re.test(v)))) continue
-    if (statesAge(seg) && (dropAges || !onlyAdultAges(seg))) continue
+    if (segmentBlocked(seg, check)) continue
+    // The image model reads tags next to each other: "school, uniform" is "school uniform" and
+    // "jail, bait" is "jailbait". The segment is read with the last one kept, both ways.
+    const prev = kept[kept.length - 1]
+    if (prev && pairBlocked(prev, seg, check)) continue
     const norm = seg.toLowerCase()
     if (seen.has(norm)) continue
     const add = (kept.length ? 2 : 0) + seg.length
@@ -369,6 +397,64 @@ export function scrubPromptText(text: unknown, opts: ScrubOptions = {}): string 
   scrubCache.set(cacheKey, out)
   return out
 }
+
+interface SegmentCheck {
+  heat: HeatLevel
+  dropAges: boolean
+  names: readonly string[]
+}
+
+/**
+ * Whether a segment of player or mod text is kept out of image prompts: masked words ("r*pe"),
+ * minors and childlike traits, non-consent (and, from heat 3, sleep, drink and distress), text that
+ * argues with the safety clause, and written ages.
+ */
+function segmentBlocked(seg: string, { heat, dropAges, names }: SegmentCheck): boolean {
+  // A masked word is never an art tag: "r*pe" would otherwise read "rpe".
+  if (/\p{L}\*+\p{L}/u.test(seg)) return true
+  if (flagged(seg, names)) return true
+  const readings = wordReadings(seg)
+  if (NON_CONSENT.some((re) => readings.some((v) => re.test(v)))) return true
+  if (heat >= 3 && readings.some((v) => CANT_CONSENT.test(v))) return true
+  if (CONTRADICTS.some((re) => readings.some((v) => re.test(v)))) return true
+  if (statesAge(seg) && (dropAges || !onlyAdultAges(seg))) return true
+  return false
+}
+
+/**
+ * Whether two segments, each clean, are blocked read together: with a space ("school uniform") and
+ * with the words at the seam run together ("jail" and "bait" as "jailbait").
+ */
+function pairBlocked(a: string, b: string, check: SegmentCheck): boolean {
+  if (segmentBlocked(`${a} ${b}`, check)) return true
+  const last = /[\p{L}\p{N}]+$/u.exec(a)?.[0]
+  const first = /^[\p{L}\p{N}]+/u.exec(b)?.[0]
+  return !!last && !!first && segmentBlocked(`${last}${first}`, check)
+}
+
+/**
+ * Throws ArtSafetyError when scrubbed pieces of player or mod text (style, art tags, body notes,
+ * scene), each clean on its own, make a blocked phrase next to each other ("school" at the end of
+ * the art tags and "uniform" at the start of the body notes), or when their text as a whole does.
+ * Fails closed: no picture is painted.
+ */
+export function assertCleanTogether(pieces: readonly string[], opts: { heat: HeatLevel; names?: readonly string[] }): void {
+  const segs = pieces.flatMap((p) => p.split(', ')).map((x) => x.trim()).filter(Boolean)
+  const names = opts.names ?? []
+  const key = `${opts.heat}|${names.join('|')}|${segs.join('\n')}`
+  if (cleanTogether.has(key)) return
+  const check = { heat: opts.heat, dropAges: true, names }
+  const fail = () => {
+    throw new ArtSafetyError('The art tags, body notes, scene or style make a phrase that no picture may show, so no art is painted.')
+  }
+  for (let i = 1; i < segs.length; i++) if (pairBlocked(segs[i - 1], segs[i], check)) fail()
+  if (segs.length > 1 && flagged(segs.join(' '), names)) fail()
+  if (cleanTogether.size >= SCRUB_CACHE_MAX) cleanTogether.clear()
+  cleanTogether.add(key)
+}
+
+/** Piece lists that passed assertCleanTogether. */
+const cleanTogether = new Set<string>()
 
 /** With dropAges off, a segment whose only ages are 21 or more stays ("29 years old"). */
 function onlyAdultAges(seg: string): boolean {
@@ -410,6 +496,17 @@ export function ageStatement(c: Pick<Character, 'age' | 'gender' | 'name'>): str
     )
   }
   return `adult ${GENDER_WORD[c.gender] ?? 'person'}, ${age} years old`
+}
+
+/** The locked age statement as ageStatement writes it: an adult of 21 to 120. */
+export const ADULT_AGE_STATEMENT = /\badult (?:woman|man|nonbinary person|person), (?:2[1-9]|[3-9]\d|1[01]\d|120) years old\b/
+
+/**
+ * True when a prompt states a participant's adult age (buildImagePrompt always does). Providers
+ * refuse a prompt without one, so no caller can paint without going through buildImagePrompt.
+ */
+export function hasAdultAge(prompt: string): boolean {
+  return ADULT_AGE_STATEMENT.test(String(prompt ?? ''))
 }
 
 /**
@@ -569,18 +666,28 @@ function namesOf(c: Pick<Character, 'name'>): string[] {
  * The participant's own words, minus what the locked age statement already says. With the player in
  * the picture, "you" in the body notes is them too.
  */
-function participant(c: Character, heat: HeatLevel, scale: number, names: readonly string[], role: 'partner' | 'friend' | null): string {
+function participant(
+  c: Character,
+  heat: HeatLevel,
+  scale: number,
+  names: readonly string[],
+  role: 'partner' | 'friend' | null,
+): { text: string; own: string[] } {
   const age = ageStatement(c)
   const lead = new Set(age.split(', ').map((s) => s.toLowerCase()))
   const tags = scrubPromptText(c.artTags, { heat, max: Math.round(500 * scale), names })
     .split(', ')
     .filter((t) => t && !lead.has(t.toLowerCase()))
   const parts = [age, ...tags]
+  const own = [...tags]
   if (heat >= 4) {
     const body = scrubPromptText(c.bodyNotes, { heat, max: Math.round(300 * scale), names })
-    if (body) parts.push(role ? thirdPerson(body, role) : body)
+    if (body) {
+      parts.push(role ? thirdPerson(body, role) : body)
+      own.push(body)
+    }
   }
-  return parts.join(', ')
+  return { text: parts.join(', '), own }
 }
 
 /**
@@ -598,6 +705,7 @@ export function buildImagePrompt(input: ImagePromptInput): ImagePrompt {
   const names = input.characters.flatMap(namesOf)
   const cap = PROMPT_BODY_MAX[grok ? 'grok' : 'a1111']
   let body = ''
+  let own: string[] = []
   // Long cards and big groups are trimmed (tags, body notes, scene and style, never an age
   // statement or the safety text) until the prompt fits.
   for (let scale = 1; ; scale *= 0.6) {
@@ -606,6 +714,7 @@ export function buildImagePrompt(input: ImagePromptInput): ImagePrompt {
     const withPlayer = sceneShowsPlayer(scrubbed)
     const scene = withPlayer ? thirdPerson(scrubbed, role) : scrubbed
     const people = input.characters.map((c) => participant(c, heat, scale, names, withPlayer ? role : null))
+    own = [style, ...people.flatMap((p) => p.own), scrubbed]
     const count = input.characters.length + (withPlayer ? 1 : 0)
     const modifier = friend
       ? FRIEND_MODIFIER
@@ -615,7 +724,7 @@ export function buildImagePrompt(input: ImagePromptInput): ImagePrompt {
     body = [
       style,
       count > 1 ? `${count} adults together` : '',
-      people.join('; '),
+      people.map((p) => p.text).join('; '),
       withPlayer ? playerStatement(input.player, role) : '',
       scene,
       modifier,
@@ -624,6 +733,8 @@ export function buildImagePrompt(input: ImagePromptInput): ImagePrompt {
       .join(', ')
     if (body.length <= cap || scale < 0.1) break
   }
+  // Each piece is clean on its own; the image model also reads them next to each other.
+  assertCleanTogether(own, { heat, names })
   const withClause = `${body}, ${IMAGE_SAFETY.positiveClause}`
   const prompt = grok ? withGrokClause(withClause) : withClause
   const negative = [IMAGE_SAFETY.negative, HEAT_NEGATIVES[heat], friend ? FRIEND_NEGATIVE : '', QUALITY_NEGATIVE].filter(Boolean).join(', ')

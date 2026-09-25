@@ -15,7 +15,10 @@ export async function collectPackArt(ids: readonly string[]): Promise<PackArt[]>
   for (const characterId of ids) {
     for (const tier of TIERS) {
       try {
-        const img = await getImage(`${characterId}:tier-${tier}`)
+        // The player's own image, else the art the pack came with.
+        const key = `${characterId}:tier-${tier}`
+        const own = await getImage(key)
+        const img = own?.source === 'imported' && own.blob ? own : await getImage(`${key}#pack`)
         if (img?.source === 'imported' && img.blob) out.push({ characterId, tier, blob: img.blob })
       } catch {
         // No storage: export without art.

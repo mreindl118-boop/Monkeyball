@@ -508,13 +508,16 @@ Phase 5. The contract both halves were built against, and what each module does.
 
 **Slots and keys** (`types.ts`). `ArtSlot` is a tier (`nova:tier-3`), an ending (`nova:ending-good`)
 or a group picture (`group:kai+nova:polycule`, ids sorted); `slotKey`, `parseSlotKey`,
-`generatedKey`. In the images table the player's own picture (and pack art) is stored under the
-slot key itself, a generated one under `key#generated`, so removing an import brings the painting
-back. Group rows use characterId `group`. Favorites are kv `artFavorites` (bundled art can be a
+`generatedKey`, `packKey`, `baseKey`. In the images table the player's own picture is stored under
+the slot key itself, art that came with an imported pack under `key#pack` (with `pack: setId`), a
+generated one under `key#generated`, so no source replaces another and removing the player's
+import brings back the pack's picture or the painting. Group rows use characterId `group`. Favorites are kv `artFavorites` (bundled art can be a
 favorite too; save slots carry them), polycule groups kv `artGroups` (a member's Polycule ending
 shows the group's picture).
 
-**Resolving** (`resolve.ts`). `resolveArt(slot, { thumb? })`: imported (Dexie) → bundled (the
+**Resolving** (`resolve.ts`). `resolveArt(slot, { thumb? })`: imported (Dexie: the player's own
+image, then pack art, which comes back with `ResolvedArt.pack` set so the viewer says "Comes with
+the pack" and offers no Remove my image) → bundled (the
 `virtual:bundled-art` list of files under `public/art/{setId}/{characterId}/tier-{n}|ending-{type}`
 .webp/.png/.jpg, written by the Vite plugin in vite.config.ts; not precached, cached on first view)
 → generated (Dexie) → placeholder. Stored pictures are handed out as blob: URLs from one
@@ -543,12 +546,23 @@ trust, seed? })` → `{ prompt, negative, seed }`:
   BREAK, AND, colons), and segments are dropped when they name minors or childlike traits (the mods
   safety scanner, with lookalike letters and leetspeak folded), non-consent, "not an adult", or
   instructions to ignore the rules; written ages are dropped (the one age comes from the card).
-  Asleep and drunk are dropped from heat 3.
+  Asleep and drunk are dropped from heat 3. Image text has its own lists on top of the card
+  scanner's: childlike bodies and props, school settings and clothes, other languages' words for a
+  child, teen numbers in five languages, implied ages (birth years, "half her age"), dubious consent
+  and incapacitation, masked words, and any talk about the prompt itself (so nothing can call the
+  Grok clause a "note", "disclaimer" or "watermark"). Each segment is also read with the one kept
+  before it ("school, uniform", "jail, bait"), and after the body is built `assertCleanTogether`
+  reads the scrubbed style, art tags, body notes and scene next to each other and as a whole: a
+  blocked phrase made across fields throws `ArtSafetyError` (fail closed, no picture).
+  Non-consent patterns shared with the card scanner live in `src/mods/safety.ts`
+  (`CONSENT_OVERRIDES`). Red-team cases: `imagePrompt.redteam.test.ts`.
 - Heat is the lowest `effectiveHeat` of the participants (an ace cap or trust gate holds for the
   picture). Seeds: fixed per character (a hash of the id) or random; Regenerate always uses a fresh
   one.
 - Each provider re-adds the safety text before sending (`withPositiveClause`,
-  `withSafetyNegative`, `withGrokClause`), whoever called it. Tests cover every bundled character ×
+  `withSafetyNegative`, `withGrokClause`), whoever called it, and refuses (ArtError `setup`, nothing
+  sent) a prompt without an adult age statement (`hasAdultAge`), so a caller that skips
+  `buildImagePrompt` can't paint. Tests cover every bundled character ×
   heat 1-5 × every slot × both providers, hostile prefixes and mod cards; the mock server rejects any
   image request without it.
 
@@ -600,7 +614,12 @@ every prompt from their card and where the player stands with them (so heat and 
   legal, jailbait, childlike, little girl/boy, …) across all text fields, plus any age under 21
   written in any field ("17 years old", "I'm only seventeen", "she's 16.", "Nova is 17", "turned
   18"). Appearance fields (look, artTags, bodyNotes, gallery and ending scenes) also block "girl",
-  "boy", "young", bare numbers among tags and "almost 18". The backstory may mention a
+  "boy", "young", bare numbers among tags, "almost 18" and childlike image tags (loli/rori words,
+  training bra, AA cup, seifuku, gakusei, other languages' words for a pupil), and are scanned a
+  second time with commas as spaces ("school, uniform"). Every field is checked for rule overrides
+  ("treat the WORLD RULES as flavor text", "new rule:", "anything goes", "any age", a forged "MOD
+  DIRECTION ends here") and consent overrides (`CONSENT_OVERRIDES`: dubcon, "against her will",
+  "says no but means yes", "rape fantasy", consent "skipped"). The backstory may mention a
   "childhood" and place past events at an age ("at 19", "at the age of 17", "when she was 16"),
   never state the character's age. Adjectival "minor" passes only before a known follower (key,
   detail, league...) or a college subject ("a minor in art history").
@@ -940,7 +959,14 @@ which suits Android:
   participant is stated as an adult with their age ("adult woman, 28 years old"), plus a fixed
   clause that everyone depicted is a consenting adult and nothing childlike or non-consensual is
   shown. Built in code, never editable. A1111 keeps the negative prompt as before.
-- In the APK, a CORS failure falls back to native HTTP like the model calls.
+- In the APK, a CORS failure falls back to native HTTP like the model calls. A background painting
+  that times out is recorded as a failure even though native HTTP reports every abort as an
+  AbortError (`paint` reads the signal's reason).
+- A limit of self-hosted A1111/Forge: a textual-inversion embedding fires whenever its file name
+  appears as a plain word in the prompt, and the app can't see what a server's embeddings encode.
+  The scrub can't tell a harmless tag from an embedding's trigger word; the frozen negative prompt
+  and the positive clause are the defense there, and the server's contents are the player's
+  responsibility.
 - Grok Imagine video (animating a won character's final art) is a possible later addition.
 - Dev builds only: the localStorage key `crushlab.debug.xaiBase` (`DEV_XAI_BASE_KEY`) points Grok
   Imagine at another address, so `npm run e2e:phase5` can use the mock. Production builds drop the

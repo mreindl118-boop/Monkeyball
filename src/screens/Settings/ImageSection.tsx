@@ -437,7 +437,7 @@ function ImageTest({ onListed }: { onListed: (items: string[]) => void }) {
       debugId = useDebug.getState().log({
         kind: 'image',
         characterId: character.id,
-        prompt: `Test image (${p.label})\n\nPrompt:\n${built.prompt}\n\nNegative prompt:\n${p.id === 'grok' ? 'Grok Imagine has no negative prompt: the safety clause is at the end of the prompt.' : built.negative}`,
+        prompt: `Test image (${p.label})\n\nPrompt:\n${built.prompt}\n\nNegative prompt:\n${p.id === 'grok' ? 'Grok Imagine has no negative prompt: the safety clause is at the start and the end of the prompt.' : built.negative}`,
       })
       const apiKey = apiKeyFor(s)
       const out = await p.generate({ prompt: built.prompt, negative: built.negative, seed: built.seed, settings: small, ...(apiKey ? { apiKey } : {}) }, ctrl.signal)

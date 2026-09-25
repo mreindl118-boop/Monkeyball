@@ -542,7 +542,7 @@ function DateView({ session }: { session: DateSession }) {
         />
 
         <div className={styles.stageArea} aria-hidden="true">
-          <Portrait character={character} size="small" className={styles.portrait} />
+          <Portrait character={character} size="small" thumb={false} className={styles.portrait} />
         </div>
 
         <section className={styles.box} aria-label="The conversation">

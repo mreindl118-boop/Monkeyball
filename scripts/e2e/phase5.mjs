@@ -95,7 +95,7 @@ const runs = (part) => !ONLY || ONLY.split(',').includes(part)
 const SAFETY = {
   positive: 'everyone depicted is a consenting adult aged 21 or older',
   negative: ['childlike', 'underage', 'non-consensual'],
-  grok: 'Nothing childlike, underage or young-looking is shown, and nothing non-consensual is shown',
+  grok: 'Nothing childlike, underage or young-looking is shown, there is no school setting, and nothing non-consensual is shown',
 }
 /** The dev-only override (src/art/providers.ts, DEV_XAI_BASE_KEY). */
 const XAI_BASE_KEY = 'crushlab.debug.xaiBase'
@@ -483,7 +483,7 @@ async function androidFlow(browser, app, mock, dir) {
     await section.evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }))
     await sleep(150)
     await screenshot(page, shot('settings-images'))
-    await checkTouchScreen(page, 'settings-images', { shot: shot('settings-images-top') })
+    await checkTouchScreen(page, 'settings-images', { shot: shot('settings-top') })
   }, page)
 
   let generatedColor
@@ -563,7 +563,7 @@ async function androidFlow(browser, app, mock, dir) {
     await section.evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }))
     await sleep(150)
     await screenshot(page, shot('settings-images-grok'))
-    await checkTouchScreen(page, 'settings-images-grok', { shot: shot('settings-images-grok-top') })
+    await checkTouchScreen(page, 'settings-images-grok', { shot: shot('settings-grok-top') })
   }, page)
 
   let keptColor
@@ -765,7 +765,7 @@ async function androidFlow(browser, app, mock, dir) {
     await section.evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }))
     await sleep(150)
     await screenshot(page, s('settings-images'))
-    await checkTouchScreen(page, '360 settings', { shot: s('settings-images-top') })
+    await checkTouchScreen(page, '360 settings', { shot: s('settings-top') })
   }, page)
 
   await step('android: no uncaught page errors', async () => {

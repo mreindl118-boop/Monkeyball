@@ -43,7 +43,8 @@ export interface PortraitProps {
   eager?: boolean
   /**
    * Show a stored picture's thumbnail (src/art/compress.ts): for coasters and gallery tiles, where
-   * many show at once. Default: round portraits (coasters, avatars) only.
+   * many show at once. Default: round portraits (coasters, avatars) and small ones (the recap's
+   * hero), so a phone doesn't decode a full picture for a small avatar.
    */
   thumb?: boolean
 }
@@ -78,7 +79,7 @@ function useNearScreen(eager: boolean): [(el: Element | null) => void, boolean] 
 }
 
 export function Portrait(props: PortraitProps) {
-  const { character, tier: tierProp, slot: slotProp, art: given, eager = false, thumb = props.shape === 'round' } = props
+  const { character, tier: tierProp, slot: slotProp, art: given, eager = false, thumb = props.shape === 'round' || props.size === 'small' } = props
   const id = character.id?.trim() || ''
   // No tier asked for: the highest unlocked one (the game store knows; nothing unlocked, none).
   const highest = useGame((s) => (tierProp == null && !slotProp && id ? highestUnlocked(s.relationships[id]) : undefined))

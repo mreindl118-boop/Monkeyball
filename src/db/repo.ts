@@ -103,6 +103,10 @@ export interface ExportedImage {
   seed?: number
   createdAt: number
   favorite?: boolean
+  /** Optional: Grok Imagine's rewrite of the prompt, what was actually painted. */
+  revisedPrompt?: string
+  /** Optional: pack art, the pack's set id (the row's key ends '#pack'). */
+  pack?: string
 }
 
 /** What a save file on disk holds: a SaveBlob plus identification and optional images. */
@@ -180,6 +184,8 @@ export async function exportSave(opts: ExportOptions = {}, d: CrushDB = db): Pro
         seed: img.seed,
         createdAt: img.createdAt,
         favorite: img.favorite,
+        ...(img.revisedPrompt ? { revisedPrompt: img.revisedPrompt } : {}),
+        ...(img.pack ? { pack: img.pack } : {}),
       })),
     )
   }
@@ -386,5 +392,7 @@ async function decodeImage(img: ExportedImage): Promise<StoredImage> {
     seed: img.seed,
     createdAt: img.createdAt || Date.now(),
     favorite: img.favorite,
+    ...(typeof img.revisedPrompt === 'string' && img.revisedPrompt ? { revisedPrompt: img.revisedPrompt } : {}),
+    ...(typeof img.pack === 'string' && img.pack ? { pack: img.pack } : {}),
   }
 }

@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { bundledEntry } from '../data/bundled'
 import { CrushDB } from '../db/db'
 import { newRelationship } from '../engine/relationship'
@@ -204,7 +204,8 @@ describe('generateArt', () => {
     const { engine } = setup({ provider })
     const one = engine.generateArt(tier('nova', 1))
     const two = engine.generateArt(tier('nova', 1))
-    await new Promise((r) => setTimeout(r, 10))
+    // Wait for the provider to be reached (not a fixed delay: a loaded CI box can be slow).
+    await vi.waitFor(() => expect(provider.calls).toHaveLength(1))
     expect(useArtJobs.getState().jobs['nova:tier-1']).toEqual({ generating: true })
     g.open()
     const [a, b] = await Promise.all([one, two])
@@ -252,7 +253,7 @@ describe('Regenerate', () => {
     const { engine } = setup({ provider })
     const a = engine.generateCandidate(tier('nova', 1))
     const b = engine.generateCandidate(tier('nova', 1))
-    await new Promise((r) => setTimeout(r, 10))
+    await vi.waitFor(() => expect(provider.calls).toHaveLength(1))
     g.open()
     expect(await a).toBe(await b)
     expect(provider.calls).toHaveLength(1)
@@ -298,6 +299,34 @@ describe('importImage and removeImported', () => {
     expect((await resolver.db.images.get('nova:tier-2'))?.blob.type).toBe('image/png')
     await engine.removeImported(slot)
     expect((await resolver.resolveArt(slot)).source).toBe('bundled')
+  })
+
+  it("keeps pack art and the player's own image apart: the player's wins, and removing it brings the pack's back", async () => {
+    const { engine, resolver, db } = setup()
+    const slot = tier('nova', 1)
+    // A pack's art, as src/store/roster.ts importPack writes it.
+    await db.images.put({ key: 'nova:tier-1#pack', characterId: 'nova', source: 'imported', pack: 'moonlight', blob: png(3), createdAt: 1 })
+    const pack = await resolver.resolveArt(slot)
+    expect(pack).toMatchObject({ source: 'imported', pack: 'moonlight' })
+    releaseArt(pack)
+    await engine.importImage(slot, png(4))
+    const mine = await resolver.resolveArt(slot)
+    expect(mine.source).toBe('imported')
+    expect(mine.pack).toBeUndefined()
+    releaseArt(mine)
+    // Re-importing the pack writes its '#pack' row again: the player's image still wins.
+    await db.images.put({ key: 'nova:tier-1#pack', characterId: 'nova', source: 'imported', pack: 'moonlight', blob: png(5), createdAt: 2 })
+    const still = await resolver.resolveArt(slot)
+    expect(still.pack).toBeUndefined()
+    releaseArt(still)
+    await engine.removeImported(slot)
+    expect(await db.images.get('nova:tier-1')).toBeUndefined()
+    const back = await resolver.resolveArt(slot)
+    expect(back).toMatchObject({ source: 'imported', pack: 'moonlight' })
+    releaseArt(back)
+    // Removing again leaves the pack's picture alone.
+    await engine.removeImported(slot)
+    expect(await db.images.get('nova:tier-1#pack')).toBeDefined()
   })
 
   it('refuses files that aren\'t pictures', async () => {
@@ -437,6 +466,60 @@ describe('what the recap waits for (useArtJobs)', () => {
     off.engine.onUnlock('nova', [3])
     off.engine.onEnding('nova', 'good')
     expect(jobs()).toEqual({})
+  })
+})
+
+describe('failures', () => {
+  it('records a timed-out painting as a failure, even when the transport reports a plain abort', async () => {
+    const g = gate()
+    // Android's native HTTP: every abort reason comes back as an AbortError.
+    const provider = fakeProvider({ wait: () => g.promise })
+    const { engine, logs } = setup({ provider })
+    const ctrl = new AbortController()
+    const slot = tier('nova', 1)
+    const run = engine.generateArt(slot, { signal: ctrl.signal })
+    await vi.waitFor(() => expect(provider.calls).toHaveLength(1))
+    ctrl.abort(new DOMException('The painting timed out.', 'TimeoutError'))
+    g.open()
+    await expect(run).rejects.toMatchObject({ name: 'TimeoutError' })
+    expect(useArtJobs.getState().jobs['nova:tier-1']).toMatchObject({ generating: false })
+    expect(useArtJobs.getState().jobs['nova:tier-1']?.error).toMatch(/took too long/)
+    expect(logs.at(-1)?.error).toMatch(/took too long/)
+  })
+
+  it('a stop by the player is still just stopped', async () => {
+    const g = gate()
+    const provider = fakeProvider({ wait: () => g.promise })
+    const { engine, logs } = setup({ provider })
+    const ctrl = new AbortController()
+    const run = engine.generateArt(tier('nova', 1), { signal: ctrl.signal })
+    await vi.waitFor(() => expect(provider.calls).toHaveLength(1))
+    ctrl.abort()
+    g.open()
+    await expect(run).rejects.toMatchObject({ name: 'AbortError' })
+    expect(useArtJobs.getState().jobs['nova:tier-1']).toBeUndefined()
+    expect(logs.at(-1)?.error).toBe('Stopped.')
+  })
+})
+
+describe('the queue and slots that need no painting', () => {
+  it("doesn't show a slot with art as painting while another slot paints", async () => {
+    const g = gate()
+    const provider = fakeProvider({ wait: () => g.promise })
+    const { engine, db } = setup({ provider, bundled: ['art/afterhours/kai/tier-1.webp'] })
+    await db.images.put({ key: 'nova:tier-2', characterId: 'nova', source: 'imported', blob: png(7), createdAt: 1 })
+    engine.onUnlock('theo', [3])
+    await vi.waitFor(() => expect(provider.calls).toHaveLength(1))
+    engine.onUnlock('kai', [1])
+    engine.onUnlock('nova', [2])
+    await vi.waitFor(() => {
+      expect(useArtJobs.getState().jobs['kai:tier-1']).toBeUndefined()
+      expect(useArtJobs.getState().jobs['nova:tier-2']).toBeUndefined()
+    })
+    expect(useArtJobs.getState().jobs['theo:tier-3']?.generating).toBe(true)
+    g.open()
+    await engine.idle()
+    expect(provider.calls).toHaveLength(1)
   })
 })
 

@@ -21,7 +21,7 @@ import { blockedAsMixedContent } from '../llm/diagnose'
 import { PRESETS } from '../llm/presets'
 import { canUseNativeHttp, fetchWithFallback, isFetchBlocked, NativeHttpError, type FallbackInit } from '../platform/http'
 import type { ImageProvider, ImageSettings, Settings } from '../types'
-import { withGrokClause, withPositiveClause, withSafetyNegative } from './imagePrompt'
+import { hasAdultAge, withGrokClause, withPositiveClause, withSafetyNegative } from './imagePrompt'
 
 /** Grok Imagine's default model. */
 export const GROK_IMAGE_MODEL = 'grok-imagine-image'
@@ -70,6 +70,14 @@ export class ArtError extends Error {
     if (fix) this.fix = fix
     if (status !== undefined) this.status = status
   }
+}
+
+/**
+ * A prompt without a participant's adult age ("adult woman, 28 years old"): only prompts built by
+ * buildImagePrompt reach a server, so nothing is sent.
+ */
+function noAge(provider: ImageProvider): ArtError {
+  return new ArtError(provider, 'setup', "This picture's prompt doesn't state everyone's adult age, so it wasn't sent.")
 }
 
 export interface ArtRequest {
@@ -333,6 +341,7 @@ export function createA1111Provider(deps: ProviderDeps = {}): ArtProvider {
     available: (settings) => !!normalizeImageBaseUrl(settings.image?.baseUrl ?? ''),
 
     generate: async (req, signal) => {
+      if (!hasAdultAge(req.prompt)) throw noAge('a1111')
       const image = req.settings
       const base = baseOf(image)
       const seed = Number.isFinite(req.seed) ? req.seed >>> 0 : -1
@@ -535,6 +544,7 @@ export function createGrokProvider(deps: ProviderDeps = {}): ArtProvider {
     available: (settings) => !!keyOf(settings),
 
     generate: async (req, signal) => {
+      if (!hasAdultAge(req.prompt)) throw noAge('grok')
       const key = req.apiKey?.trim()
       if (!key) throw missingKey()
       const model = req.settings.grokModel?.trim() || GROK_IMAGE_MODEL

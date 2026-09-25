@@ -62,6 +62,8 @@ interface Candidate {
   blob: Blob
   prompt: string
   seed: number
+  /** Grok Imagine's rewrite of the prompt, what was actually painted. */
+  revisedPrompt?: string
   url: string
 }
 
@@ -85,6 +87,9 @@ function ViewerInner({ items, index, onIndex, onClose, favorites }: ViewerProps)
   const [mode, setMode] = useState<Mode>('view')
   const [working, setWorking] = useState('')
   const [candidate, setCandidate] = useState<Candidate | null>(null)
+  // The candidate's blob: URL, also kept here so it is revoked on unmount (a state updater queued
+  // while unmounting never runs).
+  const candidateUrlRef = useRef<string | null>(null)
   const [busy, setBusy] = useState<'favorite' | 'save' | 'import' | 'remove' | 'keep' | 'generate' | null>(null)
   const [confirmRemove, setConfirmRemove] = useState(false)
   const [favs, setFavs] = useState<Record<string, boolean>>({})
@@ -97,10 +102,9 @@ function ViewerInner({ items, index, onIndex, onClose, favorites }: ViewerProps)
   const dropCandidate = () => {
     abortRef.current?.abort()
     abortRef.current = null
-    setCandidate((c) => {
-      if (c) URL.revokeObjectURL(c.url)
-      return null
-    })
+    if (candidateUrlRef.current) URL.revokeObjectURL(candidateUrlRef.current)
+    candidateUrlRef.current = null
+    setCandidate(null)
     setMode('view')
   }
   const dropRef = useRef(dropCandidate)
@@ -271,7 +275,9 @@ function ViewerInner({ items, index, onIndex, onClose, favorites }: ViewerProps)
     try {
       const c = await generateCandidate(slot, ctrl.signal)
       if (ctrl.signal.aborted) return
-      setCandidate({ ...c, url: URL.createObjectURL(c.blob) })
+      const url = URL.createObjectURL(c.blob)
+      candidateUrlRef.current = url
+      setCandidate({ ...c, url })
       setMode('compare')
     } catch (e) {
       if (ctrl.signal.aborted) return
@@ -305,7 +311,12 @@ function ViewerInner({ items, index, onIndex, onClose, favorites }: ViewerProps)
     if (!candidate) return
     setBusy('keep')
     try {
-      await acceptCandidate(slot, { blob: candidate.blob, prompt: candidate.prompt, seed: candidate.seed })
+      await acceptCandidate(slot, {
+        blob: candidate.blob,
+        prompt: candidate.prompt,
+        seed: candidate.seed,
+        ...(candidate.revisedPrompt ? { revisedPrompt: candidate.revisedPrompt } : {}),
+      })
       dropCandidate()
       toast('Kept the new one.', 'success')
     } catch {
@@ -375,7 +386,7 @@ function ViewerInner({ items, index, onIndex, onClose, favorites }: ViewerProps)
         <div className={styles.caption}>
           <p className={styles.kicker}>
             {item.kicker}
-            {art && art.source !== 'placeholder' && <span className={styles.source}>{sourceText(art.source)}</span>}
+            {art && art.source !== 'placeholder' && <span className={styles.source}>{sourceText(art)}</span>}
           </p>
           <h2 className={styles.title}>{item.title}</h2>
           {item.scene && <p className={styles.scene}>{item.scene}</p>}
@@ -431,7 +442,7 @@ function ViewerInner({ items, index, onIndex, onClose, favorites }: ViewerProps)
               >
                 Use my own image
               </Button>
-              {art?.source === 'imported' && (
+              {art?.source === 'imported' && !art.pack && (
                 <Button variant="ghost" disabled={mode !== 'view' || busy !== null} onClick={() => setConfirmRemove(true)}>
                   Remove my image
                 </Button>
@@ -482,10 +493,10 @@ function fitToShape(e: SyntheticEvent<HTMLImageElement>) {
   if (img.naturalWidth > 0 && img.naturalHeight > 0) img.style.setProperty('--ar', String(img.naturalWidth / img.naturalHeight))
 }
 
-function sourceText(source: ResolvedArt['source']): string {
-  switch (source) {
+function sourceText(art: ResolvedArt): string {
+  switch (art.source) {
     case 'imported':
-      return 'Your image'
+      return art.pack ? 'Comes with the pack' : 'Your image'
     case 'generated':
       return 'Generated'
     case 'bundled':

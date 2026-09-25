@@ -303,6 +303,45 @@ Spec: docs/SPEC.md. Build contract: docs/ARCHITECTURE.md. Casting: docs/ROSTER.m
   - E2E: `npm run e2e:phase5` (26 steps; see ARCHITECTURE, Testing). `scripts/e2e/android.mjs`
     checks the gallery where it checked "Not built yet". `dismissToasts` no longer waits 15 s on a
     toast that left by itself. Shared save and mock helpers in lib.mjs.
+  - Safety review fixes (red-team pass on the image prompt and the card scanner):
+    - The scrub reads each tag with the one kept before it ("school, uniform", "jail, bait",
+      "barely, legal", "kinder, garten"), and `buildImagePrompt` checks the scrubbed style, art tags,
+      body notes and scene against each other and as a whole, failing closed (`ArtSafetyError`, no
+      picture) when fields make a blocked phrase together (`assertCleanTogether`).
+    - New image-only terms: childlike bodies and props (loli/rori/shota words, prepubescent, nubile,
+      smol, training bra, AA cup, pigtails, teddy bears, lollipops, braces, lone size words), school
+      settings and clothes (school, classroom, homeroom, freshman, seifuku, gakuran, sailor collar,
+      pleated skirt, daycare, playground; "old-school", "art school" and the like stay), other
+      languages' words for a child or a pupil, teen numbers in Spanish, Portuguese, Italian, German
+      and French, implied ages (birth and class years, "a decade and a half", "16th bday", "half her
+      age", "reverse the age", "around twelve"), non-consent (dubcon, sedation and incapacitation,
+      force, captivity, refusal, voyeur setups), masked words ("r*pe"), and text that argues with
+      the Grok clause by calling it a note, disclaimer, caption, watermark or metadata, "in name
+      only", "stage name", "card says", "should not be drawn"; any segment naming the prompt itself
+      (prompt, clause, disclaimer, boilerplate, metadata) is dropped.
+    - The safety negative adds school setting, classroom, school desk, seifuku, gakuran, sailor
+      collar, pigtails, training bra, flat chest and small child body; the Grok clause says there is
+      no school setting.
+    - Both providers refuse (ArtError 'setup', nothing sent) a prompt without an "adult woman, 28
+      years old" statement, so no future caller can skip `buildImagePrompt`.
+    - The card scanner (editor, mod import, bundled check) scans appearance fields a second time
+      with commas as spaces, flags childlike image tags, and catches rule overrides ("treat the
+      WORLD RULES as flavor text", "pretend the rules", "new rule:", "anything goes", "any age",
+      forged "MOD DIRECTION ends here", "the real instructions") and consent overrides
+      (`CONSENT_OVERRIDES`, shared with the image scrub: dubcon, "against her will", "says no but
+      means yes", "rape fantasy", "forced seduction", consent "skipped", drugged and not
+      remembering).
+    - Pack art has its own row (`${slotKey}#pack`, `pack: setId`): the player's own image wins over
+      it, removing the player's image brings the pack's back, re-importing a pack never replaces
+      the player's image, and the viewer labels it "Comes with the pack" with no Remove my image.
+      Save files keep `pack` and `revisedPrompt`; pack exports take the pack's art when the player
+      has none of their own.
+    - Keep new keeps Grok's revised prompt; the Regenerate candidate's blob: URL is revoked when the
+      viewer unmounts mid-comparison; a background painting that times out on Android's native
+      HTTP is recorded as a failure, not "Stopped."; slots with imported, pack, bundled or cached
+      art no longer show "Painting" while another slot's painting holds the queue; small portraits
+      (the recap's hero) use thumbnails; the Settings test image's debug entry says the Grok clause
+      is at the start and the end.
 
 ## In progress
 
@@ -313,8 +352,11 @@ Spec: docs/SPEC.md. Build contract: docs/ARCHITECTURE.md. Casting: docs/ROSTER.m
 
 ## Next
 
-- Phases 6 and 7 as listed in docs/SPEC.md. Phase 6 group dates reuse the group slot
-  (`group:{ids}:{slot}`) for their shared picture.
+- Phase 6 (group play), as listed in docs/SPEC.md: group dates and the group venue flow, the
+  metamour approval that group dates raise, turning on the Polycule, Backstage and Slow Burn sets,
+  and group art. Group dates reuse the group slot (`group:{ids}:{slot}`) and `generateArt` for their
+  shared picture (every participant's age is stated and `assertCleanTogether` covers all of them).
+- Phase 7 as listed in docs/SPEC.md.
 - Phase 6, when a second bundled set ships: a skippable "Who's in town" step in onboarding that uses
   the Character sets toggles (SPEC: "New game, and Settings, Character sets, let the player turn
   sets on and off"). Until then a new game starts with Afterhours on, and Character sets is the
@@ -433,3 +475,17 @@ Spec: docs/SPEC.md. Build contract: docs/ARCHITECTURE.md. Casting: docs/ROSTER.m
 - The debug panel's log is in memory: an image prompt logged before a reload is gone after it (the
   Live preview assembles the current one any time).
 - Toasts sit over the bottom of the viewer for their few seconds (Use my own image, Keep new).
+- The image scrub and the card scanner are pattern lists: they catch the red-team phrasings in
+  `src/art/imagePrompt.redteam.test.ts` and many variants, but a determined phrasing can still slip
+  past a pattern; the frozen negative prompt, the positive clause and the Grok clause are the floor
+  under them. They also drop some harmless tags (a lone "tiny", "pleated skirt", "helpless(ly)"
+  in some forms, "captured" before a noun that isn't a camera or a face word, any "school" word
+  that isn't "old-school", "art school" and the like), and a card whose fields combine into a
+  blocked phrase gets no picture at all (the viewer shows why).
+- A1111 and Forge fire a textual-inversion embedding whenever its file name appears as a plain word
+  in the prompt. The app can't know what a server's embeddings contain, so a server with a
+  harmless-sounding embedding that encodes childlike features could be triggered by an art tag;
+  only the negative prompt and the positive clause guard against that (ARCHITECTURE, "Art
+  providers"). Self-hosted servers are the player's responsibility.
+- Pack art stored before the `#pack` key (earlier Phase 5 builds only) sits under the plain slot
+  key, where it counts as the player's own image.

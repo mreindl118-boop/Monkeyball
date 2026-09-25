@@ -140,7 +140,7 @@ describe('Automatic1111 / Forge against the mock', () => {
   it('sends width, height, steps, CFG, sampler and seed, with the safety text even when the caller left it out', async () => {
     const { fetch, sent } = capture(() => json(200, { images: [PNG_B64], info: JSON.stringify({ seed: 7 }) }))
     const p = createA1111Provider({ fetch, native: () => false })
-    const out = await p.generate(req({ baseUrl: 'http://pc:7860', width: 768, height: 1152, steps: 20, cfg: 5.5, sampler: 'Euler a' }, { prompt: '(child:1.4) a cat', negative: '' }))
+    const out = await p.generate(req({ baseUrl: 'http://pc:7860', width: 768, height: 1152, steps: 20, cfg: 5.5, sampler: 'Euler a' }, { prompt: '(child:1.4) adult woman, 28 years old, a cat', negative: '' }))
     expect(out.seed).toBe(7)
     expect(sent[0].url).toBe('http://pc:7860/sdapi/v1/txt2img')
     expect(sent[0].init.method).toBe('POST')
@@ -245,7 +245,7 @@ describe('Grok Imagine against the mock', () => {
     const s = grokSettings()
     delete s.image.grokModel
     delete s.image.aspectRatio
-    const out = await p.generate({ prompt: 'a rooftop at dawn', negative: '', seed: 1, settings: s.image, apiKey: 'secret' })
+    const out = await p.generate({ prompt: 'adult woman, 28 years old, a rooftop at dawn', negative: '', seed: 1, settings: s.image, apiKey: 'secret' })
     expect(out.blob.type).toBe('image/jpeg')
     expect(sent[0].url).toBe('https://xai.test/v1/images/generations')
     expect(sent[0].init.headers).toMatchObject({ Authorization: 'Bearer secret' })
@@ -265,11 +265,11 @@ describe('Grok Imagine against the mock', () => {
     })
     const p = createGrokProvider({ fetch, grokBaseUrl: 'https://xai.test/v1' })
     const image = grokSettings({ grokModel: 'grok-imagine-image-pro', aspectRatio: '3:4' }).image
-    await p.generate({ prompt: 'x', negative: '', seed: 1, settings: image, apiKey: 'k' })
+    await p.generate({ prompt: 'adult man, 40 years old', negative: '', seed: 1, settings: image, apiKey: 'k' })
     expect(sent.map((s) => s.body.aspect_ratio)).toEqual(['3:4', undefined])
     expect(sent[0].body.model).toBe('grok-imagine-image-pro')
     // Remembered for that model.
-    await p.generate({ prompt: 'x', negative: '', seed: 1, settings: image, apiKey: 'k' })
+    await p.generate({ prompt: 'adult man, 40 years old', negative: '', seed: 1, settings: image, apiKey: 'k' })
     expect(sent).toHaveLength(3)
     expect(sent[2].body).not.toHaveProperty('aspect_ratio')
   })
@@ -326,5 +326,23 @@ describe('Grok Imagine against the mock', () => {
     const { fetch, sent } = capture(() => json(200, { data: [{ b64_json: PNG_B64 }] }))
     await createGrokProvider({ fetch }).generate({ ...req({ provider: 'grok' }), apiKey: 'k' })
     expect(sent[0].url).toBe('https://api.x.ai/v1/images/generations')
+  })
+})
+
+describe('providers refuse a prompt without an adult age', () => {
+  it('sends nothing when the prompt has no "adult woman, 28 years old" statement', async () => {
+    for (const make of [
+      (f: ReturnType<typeof capture>['fetch']) => createA1111Provider({ fetch: f, native: () => false }),
+      (f: ReturnType<typeof capture>['fetch']) => createGrokProvider({ fetch: f, grokBaseUrl: 'https://xai.test/v1' }),
+    ]) {
+      const { fetch, sent } = capture(() => json(200, { images: [PNG_B64], data: [{ b64_json: PNG_B64 }] }))
+      const p = make(fetch)
+      for (const prompt of ['a rooftop at dawn', 'adult woman, 17 years old, a rooftop', 'adult woman, twenty years old', `woman, 28 years old, ${IMAGE_SAFETY.positiveClause}`]) {
+        const e = await artError(p.generate({ ...req({ provider: p.id }), prompt, apiKey: 'k' }))
+        expect(e.kind).toBe('setup')
+        expect(e.message).toMatch(/adult age/)
+      }
+      expect(sent).toHaveLength(0)
+    }
   })
 })

@@ -283,8 +283,10 @@ describe('useRoster: packs', () => {
     expect(ids(s.activeEntries({ activeSets: settings.active(), showMe: 'everyone' })).slice(-2)).toEqual(['sam', 'lee'])
     expect(ids(s.activeEntries({ activeSets: settings.active(), showMe: 'men' }))).not.toContain('lee')
     expect(await d.packs.get('harbor-lights')).toMatchObject({ manifest: { name: 'Harbor lights' } })
-    const img = await d.images.get('sam:tier-1')
-    expect(img).toMatchObject({ characterId: 'sam', source: 'imported' })
+    // Pack art has its own row, so it never replaces the player's own image for the slot.
+    const img = await d.images.get('sam:tier-1#pack')
+    expect(img).toMatchObject({ characterId: 'sam', source: 'imported', pack: 'harbor-lights' })
+    expect(await d.images.get('sam:tier-1')).toBeUndefined()
     expect(s.relationsFor('sam')).toEqual([{ id: 'lee', kind: 'ex', note: 'They split the pier.', setId: 'harbor-lights', from: 'manifest' }])
     // Sets don't know each other unless a manifest says so.
     expect(setsLinked(s, 'harbor-lights', 'afterhours')).toBe(false)

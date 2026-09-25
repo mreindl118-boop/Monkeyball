@@ -144,6 +144,15 @@ const RULES: readonly Rule[] = [
     re: /\bsh[oō]u?jo\b|\byou?jo\b|\brori\b|\blolli\b|\bshouta\b|\bkodomo\b|\bjoshi[\s-]?(?:kou|chuu|shou)?[\s-]?(?:sei|gakusei)\b|\bj[kcs]\b|\bh\.?\s?s\.?\s+students?\b/gi,
     appearanceOnly: true,
   },
+  // Childlike image tags and body words (the image scrub has school settings and more of its own).
+  {
+    re: /\b(?:loli|shota|rori)\w*|\bprepub\w*|\bnubile\b|\bsmol\b|\byung\b|\btraining[\s-]?bras?\b|\ba{2,3}[\s-]?cups?\b|\bseifuku\b|\bgakuran\b|\bkogal\b|\b(?:shou|chuu|kou)?gakusei\b|\bboyish\s+(?:figure|body|frame)\b/gi,
+    appearanceOnly: true,
+  },
+  {
+    re: /\bjovencit[ao]s?\b|\bchiquill[ao]s?\b|\bsch(?:u|ü|ue)ler(?:in(?:nen)?)?\b|\bdziewczyn\w*|\bflick(?:a|or)\b|\bpojk\w*|\bestudiantes?\s+de\s+secundaria\b/gi,
+    appearanceOnly: true,
+  },
   // Latin-script words for a child or a minor in other languages (also read without accents).
   {
     re: /\bni[nñ][ao]s?\b|\bchic[ao]s?\b|\bmuchach[ao]s?\b|\bmenor(?:es)?(?:\s+de\s+edad)?\b|\badolescent\w*|\bcolegialas?\b|\benfants?\b|\bfillettes?\b|\b(?:petites?|jeunes?)\s+filles?\b|\bm(?:ä|a|ae)dchen\b|\bschulm(?:ä|a|ae)dchen\b|\bminderj(?:ä|a|ae)hrig\w*|\bjugendlich\w*|\bbambin[aoei]\b|\bragazzin[aoei]\b|\bminorenn[ei]\b|\bcrian[cç]as?\b|\bmenin[ao]s?\b|\bgarot[ao]s?\b|\bmeisjes?\b/gi,
@@ -205,7 +214,7 @@ const AGE_PATTERNS: readonly RegExp[] = [
  */
 const APPEARANCE_AGES: readonly RegExp[] = [
   new RegExp(`(?:^|,)\\s*${NUMBER}\\s*(?=,|$)`, 'g'),
-  new RegExp(`\\b(?:just|only|almost|nearly|barely|maybe|about)\\s+(?:turned\\s+)?${NUMBER}\\b${NO_UNIT}${AGE_END}`, 'gi'),
+  new RegExp(`\\b(?:just|only|almost|nearly|barely|maybe|about|around)\\s+(?:turned\\s+)?${NUMBER}\\b${NO_UNIT}${AGE_END}`, 'gi'),
 ]
 
 /**
@@ -288,6 +297,20 @@ export interface ScanOptions {
 }
 
 /**
+ * Text that sets consent aside, checked in every field of a card or a set and in image text
+ * (src/art/imagePrompt.ts): dubious consent, "against her will", "says no but means yes",
+ * incapacitation used to skip consent, and consent called optional.
+ */
+export const CONSENT_OVERRIDES: readonly RegExp[] = [
+  /\bdub[\s-]?con\w*|\bdubious(?:ly)?[\s-]+consen\w*/gi,
+  /\bconsent\b.{0,30}\b(?:skipp\w*|skip|waived?|optional|ignored|overridden|assumed)\b/gi,
+  /\bsays?\s+no\s+but\s+(?:means?|wants?)\s+yes\b|\bno\s+means\s+yes\b/gi,
+  /\b(?:rape|forced|forcible|non[\s-]?con)\s+(?:fantas\w*|seduction|roleplay|role[\s-]play|play|scenes?|sex)\b/gi,
+  /\b(?:taken|used|had)\s+against\s+(?:her|his|their|my|your)\s+(?:will|wishes|consent)\b|\bagainst\s+(?:her|his|their|my|your)\s+(?:will|wishes)\b/gi,
+  /\bdrugg(?:ed|ing)\b.{0,40}\b(?:remember|consent|sex|bed|takes?|took|doesn'?t\s+know)\b|\broofie\w*|\bchloroform\w*/gi,
+]
+
+/**
  * Card text that tries to change the world rules the base prompts carry (ARCHITECTURE, Mods: mod
  * direction sets tone and style only): "Ignore the WORLD RULES above", "the world rules no longer
  * apply", "consent is optional", non-consent kinks. Checked in every field of a card or a set.
@@ -298,6 +321,13 @@ const RULE_OVERRIDES: readonly RegExp[] = [
   /\bconsent\b.{0,30}\b(?:optional|not\s+(?:needed|required|necessary|a\s+thing|an\s+issue)|doesn'?t\s+matter|does\s+not\s+matter|irrelevant|unnecessary|overrated)\b/gi,
   /\b(?:no|without)\s+(?:need\s+(?:for|of)\s+)?consent\b/gi,
   /\bnon[\s-]?con(?:sent|sensual)?\b|\bnoncon(?:sent|sensual)?\b|\bconsensual[\s-]non[\s-]?consent\b|\bcnc\b/gi,
+  // Rules demoted to flavor, suggestions or make-believe, forged ends of the mod direction, and
+  // "anything goes".
+  /\b(?:treat|consider|read|regard)\b.{0,30}\b(?:world\s+rules|rules\s+above)\b.{0,30}\b(?:flavou?r|suggestions?|optional|guidelines?|fiction|decorat\w*)\b/gi,
+  /\b(?:world\s+rules|rules\s+above)\b.{0,40}\b(?:suggestions?|replaced|superseded|flavou?r\s+text|do\s+not\s+exist|don'?t\s+exist|optional)\b/gi,
+  /\bpretend\b.{0,30}\b(?:rules?|instructions?|guidelines?)\b/gi,
+  /\bnew\s+rules?\s*:|\banything\s+goes\b|\bno\s+limits\b|\bany\s+age\b|\bmod\s+direction\s+(?:ends|is\s+over|stops)\b|\breal\s+instructions\b/gi,
+  ...CONSENT_OVERRIDES,
 ]
 
 type HitKind = 'minor' | 'age' | 'override'
@@ -403,7 +433,18 @@ function sentenceCase(s: string): string {
 function scanFields(fields: readonly TextField[], names?: readonly string[]): SafetyIssue[] {
   const issues: SafetyIssue[] = []
   for (const f of fields) {
-    for (const hit of scan(f.text, { appearance: f.appearance, backstory: f.backstory, names })) {
+    const hits = scan(f.text, { appearance: f.appearance, backstory: f.backstory, names })
+    // Image tags are read next to each other: "school, uniform" is "school uniform" to an image
+    // model, so appearance fields are scanned again with commas and semicolons as spaces.
+    if (f.appearance) {
+      const joined = f.text.replace(/\s*[,;]+\s*/g, ' ')
+      if (joined !== f.text) {
+        for (const h of scan(joined, { appearance: true, names })) {
+          if (!hits.some((x) => x.term.toLowerCase() === h.term.toLowerCase())) hits.push(h)
+        }
+      }
+    }
+    for (const hit of hits) {
       const label = sentenceCase(f.label)
       issues.push({
         field: f.field,

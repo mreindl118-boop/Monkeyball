@@ -13,6 +13,7 @@ import { Viewer, type ViewerItem } from './Viewer'
 
 const state = vi.hoisted(() => ({
   sources: {} as Record<string, ResolvedArt['source']>,
+  packs: {} as Record<string, string>,
   provider: true,
 }))
 
@@ -31,7 +32,7 @@ vi.mock('../../art/resolve', async () => {
     useArt: (slot: ArtSlot | null) => {
       const key = slot ? slotKey(slot) : ''
       const source = state.sources[key] ?? 'placeholder'
-      const art: ResolvedArt = { source, key, ...(source === 'placeholder' ? {} : { url: `blob:${key}` }) }
+      const art: ResolvedArt = { source, key, ...(source === 'placeholder' ? {} : { url: `blob:${key}` }), ...(state.packs[key] ? { pack: state.packs[key] } : {}) }
       return { art: slot ? art : null, loading: false, refresh: () => {} }
     },
   }
@@ -76,6 +77,7 @@ function Harness({ onClose = () => {} }: { onClose?: () => void }) {
 
 beforeEach(() => {
   state.sources = { 'nova:tier-1': 'generated', 'nova:tier-2': 'imported', 'nova:tier-3': 'placeholder' }
+  state.packs = {}
   state.provider = true
   for (const fn of Object.values(engine)) fn.mockClear()
   useSettings.setState({ settings: defaultSettings(), loaded: true })
@@ -172,6 +174,39 @@ describe('Viewer', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Regenerate' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Keep new' }))
     await waitFor(() => expect(engine.acceptCandidate).toHaveBeenCalledWith({ kind: 'tier', characterId: 'nova', tier: 1 }, candidate))
+  })
+
+  it("labels pack art and offers no Remove my image for it", () => {
+    state.packs = { 'nova:tier-2': 'moonlight' }
+    render(<Harness />)
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+    expect(screen.getByText('Comes with the pack')).toBeTruthy()
+    expect(screen.queryByText('Your image')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Remove my image' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Use my own image' })).toBeTruthy()
+  })
+
+  it("keeps Grok Imagine's rewrite of the prompt with the new picture", async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:candidate')
+    URL.revokeObjectURL = vi.fn()
+    const candidate = { blob: new Blob(['x'], { type: 'image/png' }), prompt: 'p', seed: 7, revisedPrompt: 'what xAI painted' }
+    engine.generateCandidate.mockResolvedValue(candidate)
+    render(<Harness />)
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Keep new' }))
+    await waitFor(() => expect(engine.acceptCandidate).toHaveBeenCalledWith({ kind: 'tier', characterId: 'nova', tier: 1 }, candidate))
+  })
+
+  it("lets go of the new picture's URL when the viewer goes away mid-comparison", async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:candidate')
+    URL.revokeObjectURL = vi.fn()
+    engine.generateCandidate.mockResolvedValue({ blob: new Blob(['x'], { type: 'image/png' }), prompt: 'p', seed: 7 })
+    const { unmount } = render(<Harness />)
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate' }))
+    await screen.findByRole('button', { name: 'Keep new' })
+    unmount()
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(1)
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:candidate')
   })
 
   it("imports the player's own image for the slot", async () => {

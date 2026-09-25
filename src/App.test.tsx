@@ -77,5 +77,6 @@ describe('App first-launch flow', () => {
     await screen.findByRole('heading', { name: 'Gallery' }, { timeout: 3000 })
     fireEvent.click(screen.getByRole('button', { name: 'Back' }))
     await screen.findByText('Robin')
-  })
+    // A whole first launch plus two lazy screens: allow for a busy machine running every file at once.
+  }, 20_000)
 })

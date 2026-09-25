@@ -7,8 +7,9 @@
 //   `${characterId}:ending-${type}`
 //   `group:${sortedIds.join('+')}:${slot}`
 //
-// The player's imported image lives under the slot key itself (pack art too); a generated image
-// under `${key}#generated`, so each source keeps its own row.
+// The player's imported image lives under the slot key itself, art that came with an imported
+// pack under `${key}#pack`, and a generated image under `${key}#generated`, so each source keeps
+// its own row and none replaces another.
 
 import type { EndingType, TierNumber } from '../types'
 
@@ -39,6 +40,11 @@ export interface ResolvedArt {
    * Polycule ending shows the group's picture).
    */
   resolvedKey?: string
+  /**
+   * Optional: imported art that came with a pack (the pack's set id), not the player's own image.
+   * The viewer says so and offers no "Remove my image" for it.
+   */
+  pack?: string
 }
 
 /** Every ending type, in the order the gallery lists them. */
@@ -48,6 +54,14 @@ const TIER_NUMBERS: readonly TierNumber[] = [1, 2, 3, 4, 5]
 
 /** Suffix of a generated image's row in the images table. */
 export const GENERATED_SUFFIX = '#generated'
+
+/** Suffix of the row for art that came with an imported pack. */
+export const PACK_SUFFIX = '#pack'
+
+/** A row key without its '#generated' or '#pack' suffix: the slot key. */
+export function baseKey(key: string): string {
+  return String(key ?? '').replace(/#(?:generated|pack)$/, '')
+}
 
 /** Group ids, deduplicated and sorted, so the same people always make the same key. */
 export function sortedIds(ids: readonly string[]): string[] {
@@ -71,9 +85,14 @@ export function generatedKey(s: ArtSlot): string {
   return `${slotKey(s)}${GENERATED_SUFFIX}`
 }
 
-/** A slot from its key (or a generated row's key); null when the key isn't one. */
+/** The images-table key of a slot's pack art. */
+export function packKey(s: ArtSlot): string {
+  return `${slotKey(s)}${PACK_SUFFIX}`
+}
+
+/** A slot from its key (or a generated or pack row's key); null when the key isn't one. */
 export function parseSlotKey(key: string): ArtSlot | null {
-  const k = String(key ?? '').replace(/#generated$/, '')
+  const k = baseKey(key)
   const group = /^group:([^:]+):(.+)$/.exec(k)
   if (group) {
     const ids = group[1].split('+').filter(Boolean)

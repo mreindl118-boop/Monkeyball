@@ -21,6 +21,7 @@ import { dropOutsidePartners, droppedPartnerNote, type ImportError, type ImportR
 import { ID_PATTERN, validateCharacter, validateManifest, type ValidateContext, type ValidationIssue } from '../mods/validate'
 import { PARTNER_RELATIONS } from '../mods/normalize'
 import type { Character, RosterEntry, SetManifest, SetRelationKind, Settings, ShowMe, StoredImage } from '../types'
+import { packKey } from '../art/types'
 import { useSettings } from './settings'
 
 export const CUSTOM_SET_ID = 'custom'
@@ -677,9 +678,12 @@ export function createRosterStore(deps: RosterDeps = {}) {
         const images: StoredImage[] = result.art
           .filter((a) => ids.includes(a.characterId))
           .map((a) => ({
-            key: `${a.characterId}:tier-${a.tier}`,
+            // Under its own '#pack' key: the player's own image for the slot (the plain key)
+            // stays, and wins (src/art/resolve.ts).
+            key: packKey({ kind: 'tier', characterId: a.characterId, tier: a.tier }),
             characterId: a.characterId,
             source: 'imported' as const,
+            pack: setId,
             blob: a.blob,
             createdAt: at,
           }))
