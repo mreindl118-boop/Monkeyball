@@ -94,4 +94,14 @@ describe('buildRecap', () => {
     expect(r.agreementBefore).toEqual(before.agreement)
     expect(r.agreementAfter).toEqual(after.agreement)
   })
+
+  it('keeps the agreement that stands after a declined talk', () => {
+    const open = { type: 'open' as const, terms: 'Tell me the big stuff', madeAt: 9 }
+    const rel = { ...newRelationship('nova'), agreement: open }
+    const dtr = { requested: 'exclusive' as const, by: 'player' as const, openedAt: 1, closedAt: 2, result: { agreement: 'exclusive' as const, accepted: false, terms: 'Not yet.', trustDelta: -1 } }
+    const r = buildRecap(rel, rel, record({ dtr }), nova, 'romantic').perCharacter.nova
+    expect(r.agreementAfter).toEqual(open)
+    expect(r.agreementBefore).toEqual(open)
+    expect(buildRecap(rel, rel, record(), nova, 'romantic').perCharacter.nova.agreementAfter).toBeUndefined()
+  })
 })

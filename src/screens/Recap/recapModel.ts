@@ -226,14 +226,17 @@ export interface AgreementChange {
   made: boolean
 }
 
-/** The agreement made or changed on this date, before and after in words (no arrows). */
+/**
+ * The agreement made or changed on this date, before and after in words (no arrows). Null when
+ * nothing changed (a declined talk records both sides, the same).
+ */
 export function agreementChange(before: Agreement | undefined, after: Agreement | undefined, first: string): AgreementChange | null {
   if (!after) return null
   const b = before?.type ?? 'none'
   const a = after.type ?? 'none'
   const terms = a === 'none' ? '' : (after.terms ?? '').trim()
   if (b === a) {
-    if (a === 'none') return null
+    if (a === 'none' || (before?.terms ?? '').trim() === terms) return null
     return { line: `You and ${first} are still ${agreementWords(a)}, on new terms.`, terms, made: true }
   }
   if (a === 'none') return { line: `You went from ${agreementWords(b)} to no agreement.`, terms: '', made: false }

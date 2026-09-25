@@ -58,8 +58,9 @@ export function offerDetail(name: string, offer: AgreementType | null | undefine
 /** The line under "Defining the relationship" while the talk is open. */
 export function dtrOpenLine(name: string, requested: AgreementType, by: 'player' | 'character'): string {
   const f = firstName(name)
-  const ask = `You asked for ${dtrWord(requested, true)}.`
-  return by === 'character' ? `${f} brought it up. ${ask} Say what you want, then close the talk.` : `${ask} Say what you want, then close the talk.`
+  return by === 'character'
+    ? `${f} brought it up and has ${dtrWord(requested, true)} in mind. Say what you want, then close the talk.`
+    : `You asked for ${dtrWord(requested, true)}. Say what you want, then close the talk.`
 }
 
 export type DtrOutcomeKind = 'accepted' | 'countered' | 'declined'
@@ -81,17 +82,19 @@ export function dtrOutcome(
   requested: AgreementType,
   result: AgreementResult,
   before?: Pick<Agreement, 'type'>,
+  by: 'player' | 'character' = 'player',
 ): DtrOutcome {
   const f = firstName(name)
   const terms = (result.terms ?? '').trim()
   if (result.accepted && result.agreement !== 'none') {
     if (result.agreement === requested) {
-      return { kind: 'accepted', title: `${f} said yes`, line: `You're ${dtrWord(result.agreement)} now.`, terms }
+      return { kind: 'accepted', title: by === 'character' ? `You said yes to ${f}` : `${f} said yes`, line: `You're ${dtrWord(result.agreement)} now.`, terms }
     }
+    const asked = by === 'character' ? `${f} had ${dtrWord(requested, true)} in mind.` : `You asked for ${dtrWord(requested, true)}.`
     return {
       kind: 'countered',
       title: `${f} countered`,
-      line: `You asked for ${dtrWord(requested, true)}. You settled on ${dtrWord(result.agreement)}.`,
+      line: `${asked} You settled on ${dtrWord(result.agreement)}.`,
       terms,
     }
   }

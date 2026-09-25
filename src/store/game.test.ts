@@ -79,6 +79,17 @@ describe('useGame', () => {
     expect(stored?.rekindled).toEqual(['kai|nova'])
   })
 
+  it('keeps news written by the date flow under the cap too', async () => {
+    const d = freshDb()
+    const store = createGameStore(d)
+    await store.getState().load()
+    const news = Array.from({ length: MAX_NEWS + 30 }, (_, i) => ({ id: `w${i}`, at: i, kind: 'gossip' as const, text: `${i}`, characterIds: [], read: false }))
+    await store.getState().patchGame({ news })
+    expect(store.getState().game.news).toHaveLength(MAX_NEWS)
+    expect(store.getState().game.news.at(-1)!.id).toBe(`w${MAX_NEWS + 29}`)
+    expect((await kvGet<GameState>('game', d))?.news).toHaveLength(MAX_NEWS)
+  })
+
   it('adds news, newest last, capped, and marks it read', async () => {
     const d = freshDb()
     const store = createGameStore(d)

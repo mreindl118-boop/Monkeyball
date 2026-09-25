@@ -194,7 +194,7 @@ Spec: docs/SPEC.md. Build contract: docs/ARCHITECTURE.md. Casting: docs/ROSTER.m
     the early exit (turn counter and the date's running total on the recap); the +25 gain cap
     with hints on; a restart on the hub mid-date.
 
-- Phase 4 (relationships), integrated and checked end to end (not committed yet):
+- Phase 4 (relationships), integrated, reviewed, fixed and checked end to end (not committed yet):
   - Engine (src/engine, pure, tested): `agreements.ts` (seeing, others seen, disclosure terms,
     jealousy, the judge's `{opinion}`, Define-the-relationship availability and the character's
     own wish, the Agreement result, betrayal checks and their memory lines, the story's
@@ -216,7 +216,47 @@ Spec: docs/SPEC.md. Build contract: docs/ARCHITECTURE.md. Casting: docs/ROSTER.m
     card, "What they know" and rumors, the hub's "Word around town", "Automatic" save slots.
   - Mock: the Agreement prompt accepts the requested type; "[decline]", "[counter]" and "[silent]"
     in the talk decline, counter with their style's agreement, or leave it unresolved.
-  - E2E: `npm run e2e:phase4` (dev server, 31 steps; see ARCHITECTURE, Testing). Integration fixes:
+  - Review fixes (ARCHITECTURE, "Phase 4 review decisions"; tests in
+    `src/engine/relationships.fixes.test.ts` and the engine, prompt and store suites):
+    - Betrayal: poly and open-with-telling-terms no longer betray the player for gossip about someone
+      they told them about, or for gossip that got there first: it waits for the observer's next date
+      (`heardSecondhand`) and counts only if that date ends without the player bringing it up (with
+      the -10 approval then). A judge breach is read against the engine: once per date, never again
+      for a break already counted, never for someone dated before the agreement, a denial is a lie,
+      and owning up under exclusive is the softer confession ("Heard it from you"). With no
+      agreement, the story hears "It was a lie, and {name} caught it."
+    - Disclosure needs a dating context ("I had a drink with Kai last night", not "Kai poured me a
+      drink"). "Seeing" lapses after 6 dates with other people (`GameState.dateCount`,
+      `rel.lastDateIndex`), and under exclusive only people dated since the agreement count as
+      someone they know you're seeing. {knownOthers} marks a break only while it's current (past
+      tense once worked through, gone once the agreement changed).
+    - Trust: misgendering always costs trust (at least -5) and at least -8 affection; relaying a
+      false or exaggerated rumor to its subject costs trust (judge trustDelta capped at -4), and
+      {sharedSecrets} tells the judge how to score relays and leverage; compersion and low-jealousy
+      characters forgive once trust is back to 60 (`forgivenAt`).
+    - The story: a betrayal turn's LANDED section says what broke (and the hints line shows the
+      betrayal's note); the character's own Define-the-relationship wish is raised on the opening
+      beat, told as theirs in the talk and to the Agreement prompt; {knownStyle} is what the player
+      actually said or asked for (`toldStyle`), never the profile's style broadcast; gossip lines are
+      voiced one per reply and rumors let slip in the next reply (rumors from a secret reached after
+      the last reply wait for the next date's opening); a friend's repeated gossip comes last and
+      only one "into you" line per date; the epilogue's last turn closes the story; the Sacrifice
+      direction follows why it was chosen without a pronoun; Open says poly when it's poly.
+    - Rekindles leave `rel.rekindle` on both (invites too: each knows about the other, approval at
+      least 60), reach {partners}, {opinion} and a one-time opening note, skip pairs with someone
+      from the date that just ended, and show on the map.
+    - Metamour approval: +5 for each metamour the player talks about on a date under poly (once per
+      date), so honest poly play can reach the Polycule ending in any order.
+    - Screens: the recap shows another character's betrayal as a hit on their meters, "Your ending"
+      when a date reaches 100 ("See your ending"), and the agreement that stands after a declined
+      talk; the hub's jealousy mark is someone the player still sees and they mind (never a friend
+      route; a raw betrayal shows on the profile and map); Define the relationship is offered on a
+      romantic route only; the map's person sheet no longer quotes the judge's opinion; the
+      profile's line uses first names and "is happy for you" for compersion.
+    - Store: the date's last save and the world go in one transaction (`persistAll`); End date while
+      the talk is closing waits for the Agreement answer; an unusable Agreement reply keeps the talk
+      open; `patchGame` keeps news under `MAX_NEWS`.
+  - E2E: `npm run e2e:phase4` (dev server, 32 steps; see ARCHITECTURE, Testing). Integration fixes:
     copy that picked a pronoun for a named character ("They can say yes", "in their words", "at
     their pace", "Their profile keeps it") now uses names; the epilogue recap's ending is lower-case
     mid-sentence; gossip news no longer repeats "Word got around"; gossip lines on the recap end as
@@ -313,10 +353,25 @@ Spec: docs/SPEC.md. Build contract: docs/ARCHITECTURE.md. Casting: docs/ROSTER.m
 - The date's settings refresh before each call except the orientation mode and the profile, which
   stay as the date began (changing either mid-date could switch the route).
 - Portraits on the date and recap screens are the Phase 2 placeholder until Phase 5 art.
-- Phase 4: rumors heard and passed on, name-mention disclosures and friend-route gossip reveals live
-  on the date session until the date finishes; a date recovered after a restart loses them.
-- Phase 4: a friend-route character who hears you're seeing someone can carry the jealousy mark
-  (the engine's `isJealous` doesn't look at the route). Revisit if friends shouldn't mind.
+- Phase 4: rumors heard and passed on, name-mention disclosures (and who the player talked about,
+  which settles gossip a character was waiting to hear), the rumors and gossip lines voiced, and
+  friend-route gossip reveals live on the date session until the date finishes; a date recovered
+  after a restart loses them (a recovered date can then count unconfirmed gossip as a betrayal).
+- Phase 4 reads the player's words with English keyword heuristics: a name in a dating context,
+  denials and admissions (how a judge breach is taken), rumor relays, and the style the player
+  claims. Unusual phrasings can be missed or misread; the judge's own numbers are the fallback.
+  Using a rumor as leverage is scored by the judge only (the engine has no rule for it).
+- "Seeing" lapses by count (6 dates with other people since), not by time: a player who dates
+  someone once a month and nobody else in between still counts as seeing them.
+- Gossip a poly character is waiting to hear from the player only turns into a betrayal at the end
+  of their next date; if the player never dates them again, nothing happens.
+- Metamour approval rises only through disclosure under poly (+5 per metamour per date) until group
+  dates (Phase 6), so pairs that start low (exes 35, rivals 40) take several honest dates to reach
+  the Polycule's 60.
+- The hub has no "epilogue ready" mark; the recap of the date that reaches 100 and the profile show
+  the ending.
+- Recaps saved before the review fixes have no meters for other characters' betrayals and show the
+  numbers in words.
 - Phase 4, not checked on a device: the Android back button closing the DTR sheet and the map's
   person sheet (both are Sheets, so they register as overlays), and the soft keyboard while the talk
   bar is showing.

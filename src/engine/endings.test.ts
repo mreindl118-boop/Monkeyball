@@ -84,6 +84,24 @@ describe('selectEnding', () => {
     expect(pick('nova', { nova: won('nova', { agreement: agreement('casual') }) }).type).toBe('good')
   })
 
+  it('words the reason from the numbers: trust 40 to 59 is steady, not high', () => {
+    expect(pick('nova', { nova: won('nova', { trust: 41 }) })).toMatchObject({
+      type: 'good',
+      reason: 'Affection with Nova is all the way up, and trust is steady at 41, with no betrayal on the way.',
+    })
+    expect(pick('nova', { nova: won('nova', { trust: 75 }) }).reason).toBe('High trust and affection with Nova, and honest the whole way.')
+    expect(pick('nova', { nova: won('nova', { trust: 45, agreement: agreement('open') }) }).reason).toBe(
+      'You and Nova are on an open agreement you both like, and trust is steady at 45.',
+    )
+  })
+
+  it('says "both" for a polycule of two', () => {
+    const rels = { nova: won('nova', { agreement: agreement('poly') }), marlowe: rel('marlowe', { affection: 85, agreement: agreement('poly') }) }
+    expect(pick('nova', rels, { ...newGameState(0), metamours: { 'marlowe|nova': 60 } }).reason).toBe(
+      'Nova and Marlowe are both Lover or above on poly agreements, and approve of each other.',
+    )
+  })
+
   it('checks in priority order', () => {
     expect(ENDING_PRIORITY).toEqual(['polycule', 'reconciliation', 'bitter', 'sacrifice', 'hollow', 'open', 'good'])
     // A polycule wins over a betrayal; a betrayal over a rekindle; a rekindle over low trust.
@@ -108,5 +126,20 @@ describe('ENDINGS', () => {
     expect(endingDirection({ type: 'polycule', group: ['nova', 'marlowe'] }, { characterId: 'nova', name: 'Nova Castellanos', names })).toContain(
       'Nova Castellanos, Marlowe Achebe and the player are one polycule now',
     )
+  })
+
+  it('never picks a pronoun for them, and follows why the ending was chosen', () => {
+    const sacrifice = (p: Parameters<typeof endingDirection>[1]) => endingDirection({ type: 'sacrifice' }, p)
+    const base = { characterId: 'sasha', name: 'Sasha Volkova', player: 'Robin' }
+    expect(sacrifice(base)).toBe(
+      'Sasha Volkova chooses work, or a life that was already waiting, over Robin. Robin was great; something mattered more. Play it as a kind, sad goodbye with no villain.',
+    )
+    expect(sacrifice({ ...base, unpromised: true })).toContain(
+      "Sasha Volkova wanted a promise Robin never asked for, and has chosen a life that doesn't wait on one.",
+    )
+    expect(sacrifice({ ...base, rival: 'Priya Raman' })).toContain('Sasha Volkova chooses Priya Raman over Robin.')
+    expect(sacrifice(base)).not.toMatch(/\btheir\b/)
+    expect(endingDirection({ type: 'open' }, { characterId: 'marlowe', name: 'Marlowe Achebe', agreement: 'poly' })).toContain('on a poly agreement they both actually like')
+    expect(endingDirection({ type: 'open' }, { characterId: 'nova', name: 'Nova Castellanos', agreement: 'open' })).toContain('on an open agreement')
   })
 })

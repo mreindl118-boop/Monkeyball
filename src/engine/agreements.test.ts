@@ -6,16 +6,22 @@ import {
   betrayalDeltas,
   characterDtrWish,
   checkBetrayal,
+  confessionBetrayal,
   disclosureRequired,
   dtrAvailable,
   firstName,
   isJealous,
   jealousNow,
   knownOthersText,
+  knownSeen,
   opinionText,
   othersSeen,
+  readsAsAdmission,
+  readsAsDenial,
   recordBetrayal,
+  SEEING_WINDOW,
   seeing,
+  seenIn,
   standingLine,
   wantedAgreement,
 } from './agreements'
@@ -47,6 +53,18 @@ describe('seeing and othersSeen', () => {
     const routeOf = (id: string) => (id === 'sasha' ? 'friend' : 'romantic')
     expect(othersSeen(rels, routeOf, 'nova')).toEqual(['imani', 'kai'])
     expect(othersSeen(rels, routeOf, 'kai')).toEqual(['imani', 'nova'])
+  })
+
+  it('lapses once the player has been on enough other dates since', () => {
+    const kaiRel = rel('kai', { dates: 1, affection: 30, lastDateIndex: 4 })
+    expect(seeing(kaiRel, 'romantic')).toBe(true)
+    expect(seeing(kaiRel, 'romantic', 4 + SEEING_WINDOW - 1)).toBe(true)
+    expect(seeing(kaiRel, 'romantic', 4 + SEEING_WINDOW)).toBe(false)
+    // A relationship from before the count reads as index 0.
+    expect(seeing(rel('kai', { dates: 1, affection: 30 }), 'romantic', SEEING_WINDOW)).toBe(false)
+    const rels = { nova: rel('nova', { dates: 6, affection: 50, lastDateIndex: 10 }), kai: kaiRel }
+    expect(othersSeen(rels, () => 'romantic', 'nova', 10)).toEqual([])
+    expect(seenIn(rels, () => 'romantic', 10)('nova')).toBe(true)
   })
 })
 
@@ -82,6 +100,16 @@ describe('jealousy', () => {
     expect(isJealous(as(nova, { jealousy: 'high' }), rel('nova'))).toBe(false)
   })
 
+  it('never on a friend route, never over someone the player stopped seeing or the partner they rekindled with', () => {
+    const medium = as(nova, { jealousy: 'medium' })
+    expect(isJealous(medium, knows, { route: 'friend' })).toBe(false)
+    expect(isJealous(medium, knows, { route: 'romantic', seen: () => false })).toBe(false)
+    expect(isJealous(medium, knows, { route: 'romantic', seen: () => true })).toBe(true)
+    expect(isJealous(medium, { ...knows, rekindle: { with: 'kai', invite: true, at: 1 } })).toBe(false)
+    expect(isJealous(medium, { ...knows, rekindledWith: 'kai' })).toBe(false)
+    expect(knownSeen(nova, { ...knows, rekindledWith: 'kai' }, { keepRekindled: true })).toEqual(['kai'])
+  })
+
   it('keeps the mark while a betrayal is raw (trust under 60)', () => {
     const e: BetrayalEvent = { at: 1, kind: 'lie', note: '', affectionDelta: -10, trustDelta: -15 }
     expect(jealousNow(nova, rel('nova', { betrayals: [e], trust: 59 }))).toBe(true)
@@ -90,9 +118,9 @@ describe('jealousy', () => {
 })
 
 describe('define the relationship', () => {
-  it('is available from Friend on either route', () => {
+  it('is available from Friend on a romantic route only', () => {
     expect(dtrAvailable(rel('nova', { affection: 40 }), 'romantic')).toBe(true)
-    expect(dtrAvailable(rel('nova', { affection: 40 }), 'friend')).toBe(true)
+    expect(dtrAvailable(rel('nova', { affection: 40 }), 'friend')).toBe(false)
     expect(dtrAvailable(rel('nova', { affection: 39 }), 'romantic')).toBe(false)
   })
 
@@ -184,6 +212,41 @@ describe('checkBetrayal', () => {
     }
   })
 
+  it('poly and open with disclosure: someone they heard about from the player is never a gossip betrayal', () => {
+    for (const r of [withAgreement('poly'), withAgreement('open', 'Tell me first.')]) {
+      const told = { ...r, knownOthers: ['kai'] }
+      expect(checkBetrayal(nova, told, 'kai', 'gossip', kaiDated(5000), 6000, () => 0.5)).toBeNull()
+      // Heard secondhand and never confirmed by the player: that one counts.
+      const secondhand = { ...told, heardSecondhand: ['kai'] }
+      expect(checkBetrayal(nova, secondhand, 'kai', 'gossip', kaiDated(5000), 6000, () => 0.5, { names })).toMatchObject({
+        kind: 'agreement',
+        how: 'gossip',
+        note: `Heard about Kai from someone else, and you never brought it up, though your ${r.agreement.type} agreement expects you to say so.`,
+      })
+    }
+  })
+
+  it('an honest confession under exclusive is the softer betrayal of hearing it from the player', () => {
+    const e = confessionBetrayal(nova, withAgreement('exclusive'), 6000, () => 0.5, { player: 'Robin' })!
+    expect(e).toMatchObject({ kind: 'agreement', how: 'player', agreement: 'exclusive', note: 'Heard it from you: you broke the exclusive agreement.' })
+    expect(e.about).toBeUndefined()
+    expect(e.memory).toMatch(/^Robin told me to my face that it happened\. At least it wasn't secondhand\. /)
+    const lie = checkBetrayal(nova, withAgreement('exclusive'), '', 'lie', undefined, 6000, () => 0.5)!
+    expect(e.trustDelta).toBeGreaterThan(lie.trustDelta)
+    expect(confessionBetrayal(nova, withAgreement('poly'), 6000, () => 0.5)).toBeNull()
+    expect(confessionBetrayal(nova, withAgreement('none'), 6000, () => 0.5)).toBeNull()
+  })
+
+  it('reads denials and admissions', () => {
+    expect(readsAsDenial("I was home alone all night, I swear.")).toBe(true)
+    expect(readsAsDenial("Kai? I haven't seen Kai in months.")).toBe(true)
+    expect(readsAsDenial('I have to tell you something. I slept with someone.')).toBe(false)
+    expect(readsAsAdmission('I have to tell you something. I slept with someone at the after-party. I am so sorry.')).toBe(true)
+    expect(readsAsAdmission("You heard right. I went out with Kai. I'm sorry.")).toBe(true)
+    expect(readsAsAdmission('Honestly, nothing happened.')).toBe(false)
+    expect(readsAsAdmission('The boardwalk at night is something else.')).toBe(false)
+  })
+
   it('a caught lie is a betrayal of its own, with or without an agreement', () => {
     const e = checkBetrayal(nova, rel('nova'), '', 'lie', undefined, 6000, () => 0.5)!
     expect(e).toMatchObject({ kind: 'lie', how: 'lie', note: 'Caught you in a lie.' })
@@ -233,6 +296,12 @@ describe('applying a betrayal', () => {
   it('records without moving the meters', () => {
     expect(recordBetrayal(rel('nova', { affection: 70, trust: 50 }), e)).toMatchObject({ affection: 70, trust: 50, jealous: true })
   })
+
+  it("a lie about nobody doesn't make them jealous, and a counted betrayal ends the secondhand wait", () => {
+    const lie: BetrayalEvent = { at: 1, kind: 'lie', note: 'Caught you in a lie.', affectionDelta: -12, trustDelta: -20 }
+    expect(recordBetrayal(rel('nova'), lie).jealous).toBe(false)
+    expect(recordBetrayal(rel('nova', { heardSecondhand: ['kai', 'dex'] }), e).heardSecondhand).toEqual(['dex'])
+  })
 })
 
 describe('what the prompts and the map say', () => {
@@ -257,17 +326,53 @@ describe('what the prompts and the map say', () => {
     )
   })
 
-  it('knownOthers marks who breaks the agreement', () => {
+  it('knownOthers marks who breaks the agreement they have now, and only while it is raw', () => {
     expect(knownOthersText(nova, rel('nova'), names)).toBe('nobody, as far as Nova Castellanos knows')
     expect(knownOthersText(nova, rel('nova', { knownOthers: ['kai', 'imani'] }), names)).toBe('Kai Okoro and Imani Clarke')
-    expect(knownOthersText(nova, rel('nova', { knownOthers: ['kai', 'imani'], betrayals: [e] }), names)).toBe(
+    const raw = rel('nova', { agreement: agreement('exclusive', '', 1), knownOthers: ['kai', 'imani'], betrayals: [e], trust: 30 })
+    expect(knownOthersText(nova, raw, names)).toBe(
       'Kai Okoro, which breaks the exclusive agreement Nova Castellanos made with the player; Imani Clarke',
+    )
+    // Worked through: past tense.
+    expect(knownOthersText(nova, { ...raw, trust: 70 }, names)).toBe(
+      'Kai Okoro (that broke the exclusive agreement once; Nova Castellanos has worked through it); Imani Clarke',
+    )
+    // The agreement changed since: no mark at all.
+    expect(knownOthersText(nova, { ...raw, agreement: agreement('open', 'Tell me before, not after.', 50) }, names)).toBe(
+      'Kai Okoro and Imani Clarke',
+    )
+    // Someone the player stopped seeing drops out; gossip they're waiting on, and a rekindle, say so.
+    expect(knownOthersText(nova, raw, names, { seen: (id) => id !== 'kai' })).toBe('Imani Clarke')
+    const poly = rel('nova', { agreement: agreement('poly'), knownOthers: ['kai'], heardSecondhand: ['kai'] })
+    expect(knownOthersText(nova, poly, names)).toBe(
+      'Kai Okoro (Nova Castellanos heard about it from someone else and is waiting to see if the player brings it up)',
+    )
+    expect(knownOthersText(nova, rel('nova', { knownOthers: ['kai'], rekindledWith: 'kai', rekindle: { with: 'kai', invite: false, at: 1 } }), names)).toBe(
+      'Kai Okoro (back together with Nova Castellanos lately; Nova Castellanos is gently closing the door on the player)',
     )
   })
 
-  it('standing lines for the polycule map', () => {
-    expect(standingLine(nova, rel('nova', { knownOthers: ['kai'] }), names)).toBe("Nova knows you're seeing Kai Okoro and doesn't mind.")
-    expect(standingLine(kai, rel('kai', { knownOthers: ['nova'] }), names)).toBe("Kai knows you're seeing Nova Castellanos and minds.")
+  it('opinion: gossip they wait on, a rekindle, and a lapsed person', () => {
+    const poly = rel('nova', { agreement: agreement('poly'), knownOthers: ['kai'], heardSecondhand: ['kai'] })
+    expect(opinionText(nova, poly, names)).toBe(
+      'we agreed on poly; knows about Kai Okoro, as the agreement expects; heard about Kai Okoro from someone else, and is waiting to see if the player brings it up',
+    )
+    expect(opinionText(nova, rel('nova', { knownOthers: ['kai'] }), names, { seen: () => false })).toBe(
+      "we never agreed to anything, and hasn't heard about anyone else",
+    )
+    expect(opinionText(nova, rel('nova', { rekindle: { with: 'kai', invite: true, at: 1 } }), names)).toBe(
+      "we never agreed to anything, and hasn't heard about anyone else; got close again with Kai Okoro lately, and they'd like the player to join them",
+    )
+  })
+
+  it('standing lines for the profile', () => {
+    expect(standingLine(nova, rel('nova', { knownOthers: ['kai'] }), names)).toBe("Nova knows you're seeing Kai and doesn't care.")
+    expect(standingLine(kai, rel('kai', { knownOthers: ['nova'] }), names)).toBe("Kai knows you're seeing Nova and minds.")
+    expect(standingLine(as(nova, { jealousy: 'compersion' }), rel('nova', { knownOthers: ['kai'] }), names)).toBe(
+      "Nova knows you're seeing Kai and is happy for you.",
+    )
+    expect(standingLine(kai, rel('kai', { knownOthers: ['nova'] }), names, { route: 'friend' })).toBe("Kai knows you're seeing Nova and doesn't care.")
+    expect(standingLine(kai, rel('kai', { knownOthers: ['nova'] }), names, { seen: () => false })).toBe("Kai doesn't know about anyone else.")
     expect(standingLine(nova, rel('nova', { agreement: agreement('exclusive') }), names)).toBe('Nova thinks you two agreed to be exclusive.')
     expect(standingLine(nova, rel('nova', { betrayals: [e], trust: 20 }), names)).toBe(
       'Nova heard about Kai through the grapevine after you agreed to be exclusive.',

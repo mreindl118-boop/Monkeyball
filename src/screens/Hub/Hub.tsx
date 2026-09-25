@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
 import { HEAT_LEVELS } from '../../data/heat'
+import { isJealous, seenIn } from '../../engine/agreements'
+import { routeFor } from '../../engine/stages'
 import { useGame } from '../../store/game'
 import { useNav } from '../../store/nav'
 import { SHOW_ME_NONBINARY, useRoster } from '../../store/roster'
 import { useSettings } from '../../store/settings'
-import type { ShowMe } from '../../types'
+import type { Route, ShowMe } from '../../types'
 import { Button, IconButton } from '../../ui/Button'
 import { Coaster } from '../../ui/Coaster'
 import { Field } from '../../ui/Field'
@@ -85,6 +87,7 @@ export default function Hub() {
   const sets = useRoster((s) => s.sets)
   const entries = useRoster((s) => s.entries)
   const relationships = useGame((s) => s.relationships)
+  const dateCount = useGame((s) => s.game.dateCount)
   const ready = useRosterAndGame()
   const [heatOpen, setHeatOpen] = useState(false)
   const greeting = greetingFor(new Date().getHours())
@@ -98,6 +101,26 @@ export default function Hub() {
       ),
     [sets, entries, activeSets, showMe, hubSetFilter, hubSort, orientationMode, relationships, profile],
   )
+  // The jealousy mark, worked out now: they know about someone the player still sees and mind it
+  // (never on a friend route). A raw betrayal shows on the map and the profile instead.
+  const jealousIds = useMemo(() => {
+    const routeOf = (id: string): Route => {
+      const e = entries[id]
+      return e ? routeFor(e.character, profile, orientationMode) : 'romantic'
+    }
+    const out = new Set<string>()
+    for (const g of view.groups) {
+      for (const c of g.cards) {
+        try {
+          const seen = seenIn(relationships, routeOf, dateCount, c.rel)
+          if (isJealous(c.entry.character, c.rel, { route: c.route, seen })) out.add(c.entry.character.id)
+        } catch {
+          // A damaged relationship shows no mark.
+        }
+      }
+    }
+    return out
+  }, [view, entries, profile, orientationMode, relationships, dateCount])
   const heatInfo = HEAT_LEVELS.find((h) => h.level === heat) ?? HEAT_LEVELS[1]
   const setOptions: SelectOption[] = [
     { value: 'all', label: 'All sets' },
@@ -224,7 +247,7 @@ export default function Hub() {
                     discovered={c.discovered}
                     total={c.total}
                     friendRoute={c.route === 'friend'}
-                    jealous={c.rel.jealous}
+                    jealous={jealousIds.has(c.entry.character.id)}
                     tier={c.tier}
                     onClick={() => go({ name: 'profile', id: c.entry.character.id })}
                   />

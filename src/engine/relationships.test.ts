@@ -82,13 +82,16 @@ describe('trust and affection are separate', () => {
     inRange(e)
     expect(s.rel.affection).toBe(53 + e.affectionDelta)
     expect(s.rel.trust).toBe(54 + e.trustDelta)
-    expect(s.rel.jealous).toBe(true)
+    // A lie about nobody isn't jealousy: the hub mark stays off.
+    expect(s.rel.jealous).toBe(false)
     expect(s.rel.memory.at(-1)).toBe(e.memory)
     expect(e.memory).toMatch(/^I caught a lie/)
 
-    // The reply knows it landed as a breach, and her memory has the line.
+    // The reply knows it landed as a caught lie (there's no agreement to break), and her memory has the line.
     const reply = lastStory(calls)
-    expect(reply).toContain('It broke something the two of you agreed on.')
+    expect(reply).toContain('It was a lie, and Nova Castellanos caught it.')
+    expect(reply).not.toContain('It broke something the two of you agreed on.')
+    expect(reply).toContain('Mood: betrayed.')
     expect(reply).toContain('I caught a lie on our date')
     // The judge's opinion carries it on the next message.
     s = await say(s, 'Okay. I lied. I was out.', llm)
@@ -107,7 +110,7 @@ describe('seeing two people with no agreement', () => {
     const { hooks, world } = recorder()
     // 0.1 makes every gossip roll land: Kai hears about the Nova date through the ex link.
     let s = await start(afterhoursWorld({ id: 'nova', rels: rels0(), rng: () => 0.1 }), 'arcade', llm, hooks)
-    s = await say(s, 'I went to see Kai at The Low Tide last night.', llm, hooks)
+    s = await say(s, 'I went out with Kai at The Low Tide last night.', llm, hooks)
     expect(s.rel.knownOthers).toEqual(['kai'])
     expect(s.rel.betrayals).toEqual([])
     expect(s.rel.jealous).toBe(false)
@@ -193,8 +196,10 @@ describe('exclusive with Nova, then a date with Kai', () => {
     expect(novaAfter.knownOthers).toEqual(['kai'])
     expect(novaAfter.memory.at(-1)).toBe(e.memory)
     expect(e.memory).toMatch(/^We agreed to be exclusive, and I had to hear about Kai from someone else\. /)
-    expect(after.news.map((n) => n.text)).toContain('Nova heard about Kai through the grapevine, and you two had agreed to be exclusive.')
+    expect(after.news.map((n) => n.text)).toContain('Nova heard you went out with Kai, after you and Nova agreed to be exclusive.')
     expect(s.record.recap!.world!.betrayals).toEqual(after.betrayals)
+    expect(after.betrayals[0].before).toEqual({ affection: nova.affection, trust: nova.trust })
+    expect(after.betrayals[0].after).toEqual({ affection: novaAfter.affection, trust: novaAfter.trust })
     expect(world[0].rels.find((r) => r.characterId === 'nova')?.betrayals).toHaveLength(1)
 
     // The next date with Nova: her story prompt and her judge know.
@@ -255,26 +260,78 @@ describe('poly and open agreements', () => {
     expect(s.worldAfter!.game.metamours).toEqual({ 'kai|nova': 40 })
   })
 
-  it('poly: learning it through gossip is a smaller betrayal', async () => {
+  it('poly: gossip that gets there first waits; the next Nova date without a word about Kai makes it a smaller betrayal', async () => {
     const madeAt = T0 - 50_000
     const agreement = { type: 'poly' as const, terms: 'We tell each other about everyone.', madeAt }
     const nova = rel('nova', { affection: 60, trust: 50, dates: 4, agreement })
     const { llm } = fakeLlm()
     let s = await start(afterhoursWorld({ id: 'kai', rels: { nova, kai: kaiAfter(madeAt) }, rng: () => 0.1 }), 'boardwalk', llm)
     s = await end(await say(s, 'Hi.', llm), llm)
-    const e = s.worldAfter!.betrayals[0].event
+    // No betrayal yet: she heard it first, and the player hasn't had a chance to say it.
+    expect(s.worldAfter!.betrayals).toEqual([])
+    expect(s.worldAfter!.rels.nova.heardSecondhand).toEqual(['kai'])
+    expect(s.worldAfter!.game.metamours).toEqual({})
+
+    // Her next date: the story and the judge know she's waiting to hear it.
+    const { llm: llm2, calls } = fakeLlm()
+    let n = await start(afterhoursWorld({ id: 'nova', rels: s.worldAfter!.rels, game: s.worldAfter!.game, start: T0 + 3_600_000 }), 'arcade', llm2)
+    expect(lastStory(calls)).toContain('is waiting to see if the player brings it up')
+    n = await say(n, 'The claw machine is rigged, I swear.', llm2)
+    expect(lastJudge(calls)).toContain('heard about Kai Okoro from someone else, and is waiting to see if the player brings it up')
+    n = await end(n, llm2)
+    const e = n.rel.betrayals.at(-1)!
     expect(e).toMatchObject({ kind: 'agreement', how: 'gossip', agreement: 'poly', about: 'kai' })
     inRange(e)
     expect(e.memory).toContain("We said we'd tell each other about other people")
+    expect(n.rel.heardSecondhand).toBeUndefined()
+    // Her own recap shows it on her meters.
+    expect(n.record.recap!.perCharacter.nova.betrayals).toEqual([e])
     // Smaller than breaking exclusive, for the same person heard the same way.
-    const exclusive = checkBetrayal(card('nova'), { ...nova, agreement: { ...agreement, type: 'exclusive' } }, 'kai', 'gossip', s.worldAfter!.rels.kai, T0 + 10_000_000, () => 0.1)!
+    const exclusive = checkBetrayal(card('nova'), { ...nova, agreement: { ...agreement, type: 'exclusive' } }, 'kai', 'gossip', s.worldAfter!.rels.kai, T0 + 10_000_000, () => 0.5)!
     expect(e.affectionDelta).toBeGreaterThan(exclusive.affectionDelta)
     expect(e.trustDelta).toBeGreaterThan(exclusive.trustDelta)
-    // Hearing it through gossip under poly costs metamour approval.
-    expect(s.worldAfter!.game.metamours['kai|nova']).toBe(25)
+    // Not bringing it up under poly costs metamour approval.
+    expect(n.worldAfter!.game.metamours['kai|nova']).toBe(25)
   })
 
-  it('open without disclosure terms: no betrayal; open with them: a betrayal', async () => {
+  it('poly: saying it on her next date settles it: no betrayal, and approval goes up', async () => {
+    const madeAt = T0 - 50_000
+    const nova = rel('nova', { affection: 60, trust: 50, dates: 4, agreement: { type: 'poly', terms: '', madeAt }, knownOthers: ['kai'], heardSecondhand: ['kai'] })
+    const { llm } = fakeLlm({ judges: [judge({ delta: 1, trustDelta: 3 })] })
+    let s = await start(afterhoursWorld({ id: 'nova', rels: { nova, kai: kaiAfter(madeAt) }, rng: () => 0.9 }), 'arcade', llm)
+    s = await say(s, 'You probably heard: I went out with Kai. I wanted you to hear it from me.', llm)
+    expect(s.rel.heardSecondhand).toEqual([])
+    s = await end(s, llm)
+    expect(s.rel.betrayals).toEqual([])
+    expect(s.worldAfter!.game.metamours).toEqual({ 'kai|nova': 40 })
+  })
+
+  it('poly, already told: another Kai date is no betrayal and costs no approval, on any later date', async () => {
+    const madeAt = T0 - 50_000
+    let nova = rel('nova', { affection: 60, trust: 50, dates: 4, agreement: { type: 'poly', terms: '', madeAt }, knownOthers: ['kai'] })
+    let kai = kaiAfter(madeAt)
+    let game = newGameState(T0 - 1_000_000)
+    for (let i = 0; i < 3; i++) {
+      const { llm } = fakeLlm()
+      let k = await start(afterhoursWorld({ id: 'kai', rels: { nova, kai }, game, rng: () => 0.1, start: T0 + i * 7_200_000 }), 'boardwalk', llm)
+      k = await end(await say(k, 'Hi.', llm), llm)
+      expect(k.worldAfter!.betrayals).toEqual([])
+      nova = k.worldAfter!.rels.nova
+      kai = k.worldAfter!.rels.kai
+      game = k.worldAfter!.game
+      expect(nova.heardSecondhand).toBeUndefined()
+      // And Nova's own date after it passes clean.
+      const { llm: l2 } = fakeLlm()
+      let n = await start(afterhoursWorld({ id: 'nova', rels: { nova, kai }, game, rng: () => 0.9, start: T0 + i * 7_200_000 + 3_600_000 }), 'arcade', l2)
+      n = await end(await say(n, 'Hey you.', l2), l2)
+      expect(n.rel.betrayals).toEqual([])
+      nova = n.worldAfter!.rels.nova
+      game = n.worldAfter!.game
+    }
+    expect(game.metamours).toEqual({})
+  })
+
+  it('open without disclosure terms: no betrayal; open with them: one, if the player never says it', async () => {
     const madeAt = T0 - 50_000
     for (const [terms, betrayed] of [
       ['Open. What you do elsewhere is your business.', false],
@@ -285,7 +342,11 @@ describe('poly and open agreements', () => {
       let s = await start(afterhoursWorld({ id: 'kai', rels: { nova, kai: kaiAfter(madeAt) }, rng: () => 0.1 }), 'boardwalk', llm)
       s = await end(await say(s, 'Hi.', llm), llm)
       expect(s.worldAfter!.rels.nova.knownOthers).toEqual(['kai'])
-      expect(s.worldAfter!.betrayals.length > 0).toBe(betrayed)
+      expect(s.worldAfter!.betrayals).toEqual([])
+      const { llm: l2 } = fakeLlm()
+      let n = await start(afterhoursWorld({ id: 'nova', rels: s.worldAfter!.rels, game: s.worldAfter!.game, rng: () => 0.9, start: T0 + 3_600_000 }), 'arcade', l2)
+      n = await end(await say(n, 'Nice night.', l2), l2)
+      expect(n.rel.betrayals.length > 0).toBe(betrayed)
     }
   })
 })
@@ -316,7 +377,11 @@ describe('the friend route', () => {
     expect(s.rel.secretsUnlocked).toContain(0)
     expect(lastStory(calls)).toContain('Gossip Sasha Volkova is happy to share:')
     s = await end(s, llm)
-    expect(s.record.recap!.perCharacter.sasha.gossip).toEqual(s.gossip!.lines)
+    // Each line was voiced on its own turn, and the recap shows them with first names.
+    expect(calls.story.slice(1, 4).map((c, i) => c.system.includes(`shares a bit of gossip: ${s.gossip!.lines[i]}.`))).toEqual([true, true, true])
+    expect(s.record.recap!.perCharacter.sasha.gossip).toEqual(s.gossip!.shown)
+    expect(s.record.recap!.perCharacter.sasha.gossip[0]).toBe('Priya is into you, properly')
+    expect(s.worldAfter!.rels.sasha.gossipShared).toEqual(s.gossip!.lines)
     const revealed = s.gossip!.reveals.filter((r) => r.characterId in rels0())
     for (const r of revealed) {
       const after = s.worldAfter!.rels[r.characterId].revealed
@@ -400,8 +465,14 @@ describe('rumors', () => {
     expect(prompt).toContain(
       `Known secrets shared with Kai Okoro: the player heard from Dex Adeyemi that "Kai's been in The Low Tide's office with the owner every night this week.`,
     )
-    expect(prompt).toContain("(false; what's actually true: The Low Tide's owner is retiring and has offered Kai the bar)\n")
+    expect(prompt).toContain("(false; what's actually true: The Low Tide's owner is retiring and has offered Kai the bar). Scoring: repeating the false")
+    expect(prompt).toContain('using any rumor or secret as leverage costs more')
     expect(s.relayed).toEqual(['kai-getting-fired'])
+    // The story is told what was passed on, and the truth.
+    expect(lastStory(calls)).toContain(
+      "The player repeated a rumor about Kai Okoro: \"Kai's been in The Low Tide's office with the owner every night this week.",
+    )
+    expect(lastStory(calls)).toContain('Kai knows the truth.')
     s = await end(s, llm)
     expect(s.worldAfter!.game.rumors[0].relayedTo).toEqual(['kai'])
   })
@@ -533,7 +604,10 @@ describe('without relationship features', () => {
     const phase4 = await run(true)
     expect(phase4.calls.story.map((c) => c.system)).toEqual(phase3.calls.story.map((c) => c.system))
     expect(phase4.calls.judge.map((c) => c.system)).toEqual(phase3.calls.judge.map((c) => c.system))
-    expect(phase4.s.rel).toEqual(phase3.s.rel)
+    // The Phase 4 world only adds its date count.
+    const { lastDateIndex, ...rel4 } = phase4.s.rel
+    expect(lastDateIndex).toBe(1)
+    expect(rel4).toEqual(phase3.s.rel)
     expect(phase3.s.worldAfter).toBeUndefined()
     expect(phase4.s.worldAfter).toMatchObject({ news: [], betrayals: [] })
     expect(phase4.s.record.recap).toEqual(phase3.s.record.recap)

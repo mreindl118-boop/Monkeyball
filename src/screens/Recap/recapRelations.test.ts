@@ -30,6 +30,8 @@ describe('agreement made or changed', () => {
       made: false,
     })
     expect(agreementChange(undefined, undefined, 'Nova')).toBeNull()
+    // A declined talk records the same agreement on both sides: nothing changed.
+    expect(agreementChange({ type: 'open', terms: 'a', madeAt: 1 }, { type: 'open', terms: 'a', madeAt: 1 }, 'Nova')).toBeNull()
     expect(agreementWords('casual')).toBe('casual')
   })
 

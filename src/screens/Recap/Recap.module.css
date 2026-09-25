@@ -399,3 +399,20 @@
   padding-left: 10px;
   border-left: 3px solid var(--lipstick);
 }
+
+/* Someone else's betrayal from this date: their name, the news, the hit on their meters. */
+.elsewhere {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border-radius: var(--radius-m);
+  border: 1px solid rgb(224 36 94 / 0.55);
+  background: var(--lipstick-soft);
+}
+
+.elsewhereName {
+  font-family: var(--font-display);
+  font-size: 20px;
+  line-height: 1.2;
+}

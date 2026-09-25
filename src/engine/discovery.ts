@@ -6,7 +6,7 @@
 //   the character learns how the player dates when the player says so. detectTopics() is the
 //   keyword heuristic for both (patterns below).
 
-import type { Character, DiscoveredTrait, JudgeHit, JudgeResult, Relationship, Trait, TraitType } from '../types'
+import type { Character, DiscoveredTrait, JudgeHit, JudgeResult, PlayerStyle, Relationship, Trait, TraitType } from '../types'
 import { giftReaction, venueReaction } from './math'
 
 const TRAIT_LISTS: Readonly<Record<TraitType, 'likes' | 'dislikes' | 'turnOns' | 'turnOffs'>> = {
@@ -103,6 +103,8 @@ export interface Topics {
   style: boolean
   /** The player said how they date (only for the player's own messages). */
   playerStyle: boolean
+  /** Optional: which style the player's own words described, when it was clear. */
+  told?: PlayerStyle
 }
 
 export const NO_TOPICS: Readonly<Topics> = { attractions: false, style: false, playerStyle: false }
@@ -204,6 +206,35 @@ function firstPersonStyle(sentence: string): boolean {
   return STYLE_WORDS.test(sentence.slice(fp.index))
 }
 
+const SAID_POLY = /\b(?:polyamor\w*|poly|polycule|metamours?|more than one (?:partner|person))\b/
+const SAID_OPEN =
+  /\b(?:non-?monogam\w*|enm|open (?:relationship|marriage|arrangement|thing)s?|(?:see|seeing|date|dating|sleep with|sleeping with)\s+(?:other people|others|anyone else|someone else|multiple people|a few people)|dat(?:e|ing) around)\b/
+const SAID_NOT_MONO = /\b(?:don'?t|do not|doesn'?t|not|never|no|isn'?t|not really)\b(?:\s+\w+){0,3}?\s+(?:monogam\w*|exclusive|exclusivity|one person at a time)\b/
+const SAID_MONO =
+  /\b(?:monogam\w*|one (?:person|partner) at a time|(?:only|just) one (?:person|partner)|exclusive|exclusivity)\b/
+const SAID_FIGURING =
+  /\b(?:still figuring (?:it|that|this|things) out|figuring out (?:what|how) i|not sure (?:what|how) i (?:want|date)|don'?t know what i want|haven'?t (?:decided|figured it out))\b/
+
+/**
+ * Which style the player's own words describe, reading their first-person sentences: poly, open
+ * (including "non-monogamous" and "I see other people"), monogamous (unless negated: "I don't do
+ * monogamy" reads as open), or still figuring it out. Null when nothing clear was said.
+ */
+export function toldStyleIn(message: string): PlayerStyle | null {
+  const text = normalize(message)
+  if (!text.trim()) return null
+  for (const part of sentences(text)) {
+    const fp = FIRST_PERSON.exec(part)
+    if (!fp) continue
+    const said = part.slice(fp.index)
+    if (SAID_FIGURING.test(said)) return 'figuring'
+    if (SAID_POLY.test(said)) return 'polyamorous'
+    if (SAID_OPEN.test(said) || SAID_NOT_MONO.test(said)) return 'open'
+    if (SAID_MONO.test(said)) return 'monogamous'
+  }
+  return null
+}
+
 /**
  * Which topics a message touches. Keyword heuristics, deliberately narrow (a missed reveal can
  * come up again; a wrong one can't be taken back):
@@ -227,12 +258,15 @@ export function detectTopics(message: string, speaker: 'player' | 'character' = 
       playerStyle: false,
     }
   }
-  const playerStyle = parts.some(firstPersonStyle)
-  return {
+  const told = toldStyleIn(message)
+  const playerStyle = parts.some(firstPersonStyle) || !!told
+  const out: Topics = {
     attractions: ATTRACTION_PATTERNS.some((re) => re.test(text)),
     style: playerStyle || STYLE_WORDS.test(text) || STYLE_QUESTION_PATTERNS.some((re) => re.test(text)),
     playerStyle,
   }
+  if (told) out.told = told
+  return out
 }
 
 /**
@@ -244,10 +278,17 @@ export function applyTopics(rel: Relationship, topics: Topics): Relationship {
   const attractions = revealed.attractions || topics.attractions
   const style = revealed.style || topics.style
   const knowsPlayerStyle = rel.knowsPlayerStyle || topics.playerStyle
-  if (attractions === revealed.attractions && style === revealed.style && knowsPlayerStyle === rel.knowsPlayerStyle) {
+  // What the player actually said about how they date (the story's {knownStyle}); an unclear
+  // style sentence still starts the record, so the profile's style is never assumed.
+  const told = topics.told && rel.toldStyle?.style !== topics.told
+  const startTold = topics.playerStyle && !rel.toldStyle
+  if (attractions === revealed.attractions && style === revealed.style && knowsPlayerStyle === rel.knowsPlayerStyle && !told && !startTold) {
     return rel
   }
-  return { ...rel, revealed: { attractions, style }, knowsPlayerStyle }
+  const out: Relationship = { ...rel, revealed: { attractions, style }, knowsPlayerStyle }
+  if (told) out.toldStyle = { ...rel.toldStyle, style: topics.told }
+  else if (startTold) out.toldStyle = {}
+  return out
 }
 
 /** What a topic step newly revealed (for the recap). */

@@ -21,7 +21,7 @@ describe('define the relationship', () => {
     expect(offerText('Nova Castellanos')).toBe('Nova wants to talk about what you are')
     expect(offerDetail('Nova Castellanos', 'casual')).toBe('Nova has keeping it casual in mind.')
     expect(dtrOpenLine('Nova', 'exclusive', 'player')).toBe('You asked for exclusive. Say what you want, then close the talk.')
-    expect(dtrOpenLine('Nova', 'open', 'character')).toMatch(/^Nova brought it up\. You asked for open\./)
+    expect(dtrOpenLine('Nova', 'open', 'character')).toBe('Nova brought it up and has open in mind. Say what you want, then close the talk.')
     expect(dtrWord('none')).toBe('no agreement')
   })
 
@@ -33,6 +33,9 @@ describe('define the relationship', () => {
     expect(counter.line).toBe('You asked for exclusive. You settled on open.')
     const no = dtrOutcome('Nova', 'exclusive', { agreement: 'none', accepted: false, terms: 'Not yet.', trustDelta: -1 }, { type: 'casual' })
     expect(no).toMatchObject({ kind: 'declined', title: 'Nova said no', line: "You're still casual." })
+    const theirs = dtrOutcome('Nova', 'open', { agreement: 'casual', accepted: true, terms: '', trustDelta: 0 }, undefined, 'character')
+    expect(theirs.line).toBe('Nova had open in mind. You settled on casual.')
+    expect(dtrOutcome('Nova', 'open', { agreement: 'open', accepted: true, terms: '', trustDelta: 0 }, undefined, 'character').title).toBe('You said yes to Nova')
     const nothing = dtrOutcome('Nova', 'poly', { agreement: 'none', accepted: false, terms: '', trustDelta: 0 })
     expect(nothing).toMatchObject({ title: "The talk didn't settle anything", line: 'Nothing is agreed yet.' })
   })

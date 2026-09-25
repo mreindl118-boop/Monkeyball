@@ -33,9 +33,11 @@
 //       mark, a date with a favorite venue and a loved gift stops at 59 (the friend-route cap) and
 //       Jules gossips; Settings, Who's into you, Everyone's into you: the mark goes, the profile says
 //       romantic route, and the next date Jules brings up defining it (the brass offer banner).
-//   (d) Nova seeded at 100: the profile's "Your ending" card, the ending screen, the epilogue (six
-//       turns at her first favorite venue, the ending in the header), its recap with the ending; the
-//       automatic "Before Nova's epilogue" slot exists and restores the game from before it.
+//   (d) Nova seeded at 92: the record store and rare vinyl take her to 100 on a date, and its recap
+//       shows the ending she's on ("See your ending" opens the ending screen); the profile's "Your
+//       ending" card, the ending screen, the epilogue (six turns at her first favorite venue, the
+//       ending in the header), its recap with the ending; the automatic "Before Nova's epilogue" slot
+//       exists and restores the game from before it.
 //   Then the new screens at 360x800.
 // Desktop 1280x800: Nova brings up defining it herself (offer banner), the sheet opens on what she
 // wants, a caught lie and its recap, the map and a person sheet, an ending screen.
@@ -138,15 +140,15 @@ const seedA = () => [
 /** (b): Jules is only into men; three dates in, trust enough to ask once dateable. */
 const seedB = () => [rel('jules', { affection: 55, trust: 55, dates: 3, lastDateAt: weekAgo(), connection: 5, tiersUnlocked: [1, 2] })]
 
-/** (d): Nova at 100, honest the whole way: the good ending. */
+/** (d): Nova at 92, honest the whole way: the record store and rare vinyl take her to 100 (the good ending). */
 const seedD = () => [
   rel('nova', {
-    affection: 100,
+    affection: 92,
     trust: 78,
     dates: 9,
     lastDateAt: weekAgo(),
     connection: 12,
-    tiersUnlocked: [1, 2, 3, 4, 5],
+    tiersUnlocked: [1, 2, 3, 4],
     secretsUnlocked: [0, 1],
     revealed: { attractions: true, style: true },
     memory: ['Nine dates in and you still make me laugh at the worst moments.'],
@@ -464,15 +466,23 @@ async function androidFlow(browser, app, mock, dir) {
       await sendLine(page, 'The boardwalk at night is something else.')
       await endDate(page)
       const text = await mainText(page)
-      checkIncludes(text, ['Word got around', 'Nova heard about Kai through the grapevine, and you two had agreed to be exclusive.'], "Kai's recap")
+      checkIncludes(text, ['Word got around', 'Nova heard you went out with Kai, after you and Nova agreed to be exclusive.'], "Kai's recap")
+      // The breach shows as a hit on Nova's meters, right on Kai's recap.
+      const hit = page.getByRole('region', { name: 'What it did to Nova Castellanos' })
+      await hit.waitFor()
+      checkIncludes(await hit.innerText(), ['Affection fell from', 'Trust fell from', 'Betrayal −'], "the hit on Nova's meters")
+      check((await hit.getByRole('meter').count()) === 2, "Nova's meters on Kai's recap")
       await checkTouchScreen(page, 'recap-word', { full: true, shot: shot('recap-word') })
+      await hit.scrollIntoViewIfNeeded()
+      await sleep(200)
+      await screenshot(page, shot('recap-word-hit'))
     }, page)
 
     await step('(a) the hub: the news, and Nova is marked jealous', async () => {
       await goHash(page, '#/hub')
       const news = page.getByRole('region', { name: 'Word around town' })
       await news.waitFor()
-      checkIncludes(await news.innerText(), ['Nova heard about Kai through the grapevine'], 'the news strip')
+      checkIncludes(await news.innerText(), ['Nova heard you went out with Kai'], 'the news strip')
       const nova = await coasterLabel(page, 'Nova Castellanos')
       check(/jealous/.test(nova), `Nova's coaster isn't marked jealous: "${nova}"`)
       await checkTouchScreen(page, 'hub-news', { shot: shot('hub-news') })
@@ -601,8 +611,31 @@ async function androidFlow(browser, app, mock, dir) {
   }
 
   if (runs('d')) {
-    await step("(d) seed: Nova at 100; her profile shows the ending you're on", async () => {
+    await step("(d) seed: Nova at 92; a date takes her to 100 and its recap shows the ending you're on", async () => {
       await importSave(page, dir, 'seed-d.json', seeded(base, { rels: seedD(), settings: { orientationMode: 'realistic' } }))
+      await startDate(page, 'nova', 'Record store', 'Rare vinyl')
+      const m = await dateMeters(page)
+      check(m.affection === 100, `the record store and rare vinyl should take Nova to 100, she is at ${m.affection}`)
+      await sendLine(page, 'Your banter is ruining me for everyone else.')
+      await endDate(page)
+      checkIncludes(await mainText(page), ['Now Won, up from Lover'], 'the recap at 100')
+      const card = page.getByRole('region', { name: 'Your ending' })
+      await card.waitFor()
+      checkIncludes(
+        await card.innerText(),
+        ['The good ending', 'High trust and affection with Nova, and honest the whole way.', "Before Nova's epilogue", 'See your ending'],
+        "the recap's ending",
+      )
+      await checkTouchScreen(page, 'recap-won', { full: true })
+      await card.scrollIntoViewIfNeeded()
+      await sleep(200)
+      await screenshot(page, shot('recap-won'))
+      await press(card.getByRole('button', { name: 'See your ending' }))
+      await waitForHash(page, '#/ending/nova')
+      await page.getByRole('heading', { name: 'The good ending' }).waitFor()
+    }, page)
+
+    await step("(d) her profile shows the ending you're on", async () => {
       await goHash(page, '#/profile/nova')
       const card = page.getByRole('region', { name: 'Your ending' })
       await card.waitFor()
@@ -738,13 +771,13 @@ async function desktopFlow(browser, app, mock, dir) {
     await checkDesign(page, 'desktop sheet')
     await press(sheet.getByRole('button', { name: 'Ask Nova' }))
     await sheet.waitFor({ state: 'detached' })
-    await dateMain(page).getByText('Nova brought it up.', { exact: false }).waitFor()
+    await dateMain(page).getByText('Nova brought it up and has open in mind.', { exact: false }).waitFor()
     await settle()
     await screenshot(page, shot('dtr-banner'))
     await checkDesign(page, 'desktop talk bar')
     await sendLine(page, 'Open works for me, as long as we keep each other posted.')
     await press(dateMain(page).getByRole('button', { name: 'Close the talk' }))
-    await dateMain(page).getByRole('note').filter({ hasText: 'Nova said yes' }).waitFor({ timeout: 20_000 })
+    await dateMain(page).getByRole('note').filter({ hasText: 'You said yes to Nova' }).waitFor({ timeout: 20_000 })
     await waitIdle(page)
     await settle()
     await screenshot(page, shot('dtr-result'))

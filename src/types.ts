@@ -370,6 +370,37 @@ export interface Relationship {
   lastMood?: string;
   /** True when this character knows about someone the player sees and minds. */
   jealous: boolean;
+
+  // Optional (Phase 4 fixes), all additive.
+  /**
+   * Character ids this character heard about through gossip (not from the player) while their
+   * agreement expects disclosure (poly, or open with telling terms). The player can still bring
+   * them up on the next date with this character; if that date ends without it, it's a betrayal.
+   */
+  heardSecondhand?: string[];
+  /** When a compersion or low-jealousy character's grudge lifted (trust back to 60 after a betrayal). */
+  forgivenAt?: number;
+  /**
+   * A rekindle with someone else (rekindle.ts): the door closing on the player (invite false,
+   * rekindledWith is set too) or an invite to join them. `told` once the story has brought it up.
+   */
+  rekindle?: { with: string; invite: boolean; at: number; told?: boolean };
+  /** What the player has actually said about how they date (the story's {knownStyle}). */
+  toldStyle?: ToldStyle;
+  /** GameState.dateCount when the player last went out with them ("seeing" lapses after a while). */
+  lastDateIndex?: number;
+  /** Gossip lines this friend has already shared (shared again only when there's nothing new). */
+  gossipShared?: string[];
+  /** Secrets unlocked after a date's last reply: their rumor rolls happen at the next date's start. */
+  rumorRollsOwed?: number;
+}
+
+/** What the player conveyed to a character about how they date. */
+export interface ToldStyle {
+  /** The style the player's own words described, if any. */
+  style?: PlayerStyle;
+  /** The agreement the player asked this character for in Define the relationship. */
+  asked?: AgreementType;
 }
 
 export interface NewsItem {
@@ -399,6 +430,8 @@ export interface GameState {
   rekindled: string[];
   /** Ending types already seen, per character id. */
   endingsSeen: Record<string, EndingType[]>;
+  /** Optional: dates finished so far (who still counts as "seeing" someone). */
+  dateCount?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -445,6 +478,10 @@ export interface DateTurn {
   applied?: Record<string, { affection: number; trust: number }>;
   /** True while this turn belongs to a Define-the-relationship conversation. */
   dtr?: boolean;
+  /** Optional (Phase 4), player turns: the betrayal this message set off, per character id. */
+  betrayal?: Record<string, BetrayalEvent>;
+  /** Optional (Phase 4), player turns: rumor ids this message passed on, per character id. */
+  relayed?: Record<string, string[]>;
   /**
    * Optional, system turns only: what the note is about. 'refused' follows a story turn the model
    * declined (suggests a lower heat); 'error' says a reply didn't come through (the date offers a
@@ -539,8 +576,17 @@ export interface DateRecap {
    */
   world?: {
     news: NewsItem[];
-    betrayals: { characterId: string; event: BetrayalEvent }[];
+    betrayals: WorldBetrayal[];
   };
+}
+
+/** A betrayal another character took from a date, with their meters around it (Phase 4). */
+export interface WorldBetrayal {
+  characterId: string;
+  event: BetrayalEvent;
+  /** Optional: their affection and trust just before and just after it landed. */
+  before?: { affection: number; trust: number };
+  after?: { affection: number; trust: number };
 }
 
 // ---------------------------------------------------------------------------

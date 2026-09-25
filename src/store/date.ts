@@ -17,7 +17,7 @@
 // the active sets' relationships and rumors), so the engine can tell who else the player is
 // seeing, settle Define the relationship (openDtr, closeDtr, dismissDtrOffer), and, when the date
 // ends, spread gossip and roll rekindles; what that changes elsewhere comes back through
-// hooks.persistWorld and lands in the game store. startEpilogue plays a character's ending at 100
+// hooks.persistAll and lands in the game store in the same transaction as the date's last save. startEpilogue plays a character's ending at 100
 // affection. The first time someone reaches 100 (and before any epilogue, if missing) the store
 // writes the save slot "Before {name}'s epilogue" (id auto-epilogue-{id}).
 //
@@ -550,6 +550,29 @@ export function createDateStore(deps: DateStoreDeps = {}) {
     }
 
     /**
+     * The date's last save and the world it settled, in one transaction where storage allows: a
+     * crash can't store the other characters' betrayals and the news without the date's outcome,
+     * so a recovery never settles the same date's world twice.
+     */
+    const persistAll = async (rel: Relationship, record: DateRecord, rels: Relationship[], next: GameState) => {
+      const id = get().dateId
+      const withId = record.id == null && id != null ? { ...record, id } : record
+      await game()
+        .load()
+        .catch(() => undefined)
+      const write = async () => {
+        for (const r of rels) await game().saveRel(r)
+        await game().patchGame?.(next)
+        await Promise.all([game().saveRel(rel), saveRecord(withId)])
+      }
+      try {
+        await d.transaction('rw', d.relationships, d.dates, d.kv, write)
+      } catch {
+        await write().catch(() => undefined)
+      }
+    }
+
+    /**
      * The first time a character reaches 100: a save slot from just before their epilogue, so the
      * player can come back and try for another ending. One per character; never throws.
      */
@@ -632,6 +655,7 @@ export function createDateStore(deps: DateStoreDeps = {}) {
         },
         persist,
         persistWorld,
+        persistAll,
       }
       const p = (async (): Promise<DateSession | null> => {
         try {
@@ -806,8 +830,10 @@ export function createDateStore(deps: DateStoreDeps = {}) {
         if (first.status === 'ended') return Promise.resolve(get().finishedId)
         finishing = (async () => {
           if (inflight) {
-            // A date already closing (its last reply landed) finishes on its own.
-            if (get().session?.status !== 'closing') {
+            // A date already closing (its last reply landed) finishes on its own, and a talk being
+            // closed gets its Agreement answer (stopping it would only send the prompt again when
+            // the date settles the talk).
+            if (get().session?.status !== 'closing' && get().running !== 'dtr') {
               chips?.abort()
               ctrl?.abort()
             }
@@ -975,7 +1001,9 @@ export function createDateStore(deps: DateStoreDeps = {}) {
         if (!st.session || st.running) return false
         const s = live(st.session)
         if (!canOpenDtr(s)) return false
-        const by = s.dtrOffer && !st.dtrOfferDismissed ? 'character' : 'player'
+        // Theirs only when the player takes up what the character asked for; picking something else
+        // in the sheet makes it the player's ask.
+        const by = s.dtrOffer && !st.dtrOfferDismissed && requested === s.dtrOffer ? 'character' : 'player'
         const next = (engine.openDtr ?? openDtr)(s, requested, by)
         if (next === s) return false
         set({ session: next })

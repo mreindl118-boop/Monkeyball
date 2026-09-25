@@ -7,7 +7,7 @@
 
 import { useMemo, useState, type CSSProperties } from 'react'
 import { portraitAccent } from '../../art/Portrait.model'
-import { isJealous, opinionText, othersSeen, seeing } from '../../engine/agreements'
+import { isJealous, knownSeen, othersSeen, seeing, seenIn } from '../../engine/agreements'
 import { approval } from '../../engine/metamour'
 import { newRelationship } from '../../engine/relationship'
 import { routeFor } from '../../engine/stages'
@@ -84,26 +84,30 @@ export default function PolyculeMap() {
     const routes = new Map<string, Route>(active.map((e) => [e.character.id, routeFor(e.character, profile, mode)]))
     const routeOf = (id: string): Route => routes.get(id) ?? 'romantic'
     const relations = activeRelations(data, activeSets)
+    const inPlay: Record<string, Relationship> = {}
+    for (const e of active) inPlay[e.character.id] = relOf(e.character.id)
+    const count = game.dateCount
     const people: PersonFacts[] = active.map((e) => {
       const c = e.character
       const rel = relOf(c.id)
+      const seen = seenIn(inPlay, routeOf, count, rel)
       let jealous = false
-      let opinion: string | undefined
       let isSeeing = false
+      let known: string[] | undefined
       try {
-        isSeeing = seeing(rel, routeOf(c.id))
-        jealous = isJealous(c, rel)
-        opinion = opinionText(c, rel, names)
+        isSeeing = seeing(rel, routeOf(c.id), count)
+        jealous = isJealous(c, rel, { route: routeOf(c.id), seen })
+        // Who they know you're seeing, as it stands: not someone you stopped seeing, not the
+        // partner they got back together with.
+        known = knownSeen(c, rel, { seen })
       } catch {
         // A damaged relationship draws without the engine's reading of it.
       }
-      return personFacts(c, e.setId, rel, { seeing: isSeeing, jealous, opinion })
+      return personFacts(c, e.setId, rel, { seeing: isSeeing, jealous, ...(known ? { known } : {}) })
     })
-    const inPlay: Record<string, Relationship> = {}
-    for (const e of active) inPlay[e.character.id] = relOf(e.character.id)
-    const youSee = othersSeen(inPlay, routeOf, '')
+    const youSee = othersSeen(inPlay, routeOf, '', count)
     return { people, relations, names, youSee }
-  }, [sets, entries, activeSets, relationships, profile, mode])
+  }, [sets, entries, activeSets, relationships, game.dateCount, profile, mode])
 
   const mapRelations: MapRelation[] = world.relations
   const threads = useMemo(() => buildThreads(world.people, mapRelations), [world.people, mapRelations])
@@ -311,12 +315,6 @@ export default function PolyculeMap() {
               <p className={styles.terms}>
                 <span className={styles.termsLabel}>In {shortName(person.name, person.id)}'s words</span>
                 <q>{termsLine(person)}</q>
-              </p>
-            )}
-            {person.opinion && (
-              <p className={styles.opinion}>
-                <span className={styles.termsLabel}>In {shortName(person.name, person.id)}'s head</span>
-                <q>{person.opinion}</q>
               </p>
             )}
           </div>

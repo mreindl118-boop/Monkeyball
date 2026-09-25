@@ -8,6 +8,7 @@ import {
   applyTrustDelta,
   BASE_TRUST_RULES,
   consistencyTrust,
+  forgive,
   GRUDGE_FACTOR,
   grudgeFactor,
   TRUST_RULES,
@@ -88,6 +89,23 @@ describe('the grudge (Phase 4)', () => {
     expect(applyTrustDelta(same, 1, j('high'))).toBe(same)
   })
 
+  it('lifts for compersion and low jealousy once trust is back to 60, until the next betrayal', () => {
+    const low = j('low')
+    expect(forgive(low, betrayed(59), 100)).toEqual(betrayed(59))
+    const forgiven = forgive(low, betrayed(60), 100)
+    expect(forgiven.forgivenAt).toBe(100)
+    expect(grudgeFactor(low, forgiven)).toBe(1)
+    expect(withGrudge(4, low, forgiven)).toBe(4)
+    // Stamped once; a new betrayal brings the grudge back.
+    expect(forgive(low, forgiven, 200)).toBe(forgiven)
+    const again = { ...forgiven, betrayals: [...forgiven.betrayals, { at: 150, kind: 'lie' as const, note: '', affectionDelta: -10, trustDelta: -15 }] }
+    expect(grudgeFactor(low, again)).toBe(0.75)
+    expect(forgive(j('compersion'), betrayed(70), 5).forgivenAt).toBe(5)
+    // Medium and high hold it for the rest of the game.
+    expect(forgive(j('medium'), betrayed(90), 5).forgivenAt).toBeUndefined()
+    expect(forgive(j('high'), betrayed(90), 5).forgivenAt).toBeUndefined()
+  })
+
   it('thins the +1 for a completed date to a share of dates', () => {
     const landed = (jealousy: Character['jealousy']) =>
       Array.from({ length: 12 }, (_, i) => consistencyTrust(betrayed(10, i + 1), 'completed', j(jealousy)).applied).reduce((a, b) => a + b, 0)
@@ -96,5 +114,18 @@ describe('the grudge (Phase 4)', () => {
     expect(landed('high')).toBe(4)
     expect(consistencyTrust(rel(10), 'completed', j('high')).applied).toBe(1)
     expect(consistencyTrust(betrayed(10, 2), 'ended', j('low')).applied).toBe(0)
+  })
+})
+
+describe('misgendering', () => {
+  const hit = (trustDelta: number): JudgeResult => ({ ...neutralJudge(), trustDelta, hits: [{ type: 'turnOff', id: 'misgendering' }] })
+
+  it('always costs trust, whatever the judge picked', () => {
+    expect(trustDeltaFor({ character: nova, rel: rel(40), judge: hit(0) }, TRUST_RULES)).toBe(-5)
+    expect(trustDeltaFor({ character: nova, rel: rel(40), judge: hit(3) }, TRUST_RULES)).toBe(-5)
+    expect(trustDeltaFor({ character: nova, rel: rel(40), judge: hit(-9) }, TRUST_RULES)).toBe(-9)
+    // Other turn-offs are left to the judge.
+    const other: JudgeResult = { ...neutralJudge(), trustDelta: 0, hits: [{ type: 'turnOff', id: 'cute' }] }
+    expect(trustDeltaFor({ character: nova, rel: rel(40), judge: other }, TRUST_RULES)).toBe(0)
   })
 })

@@ -46,11 +46,26 @@ describe('rekindles', () => {
     expect(roll({ nova: high('nova') }, () => 0).news).toEqual([])
   })
 
-  it('invites the player in when both are open to more', () => {
+  it('invites the player in when both are open to more, and leaves it on both relationships', () => {
     const r = roll({ dex: high('dex'), imani: high('imani') }, () => 0)
-    expect(r.news[0].text).toBe("Dex and Imani fell for each other all over again while you were busy, and they'd like you to join them some night.")
+    expect(r.news[0].text).toBe("Dex and Imani have been falling for each other again while you were busy, and they'd like you to join them some night.")
     expect(r.rels.dex.rekindledWith).toBeUndefined()
+    expect(r.rels.dex.rekindle).toEqual({ with: 'imani', invite: true, at: 5000 })
+    expect(r.rels.imani.rekindle).toEqual({ with: 'dex', invite: true, at: 5000 })
+    // Each knows about the other now, and they approve of sharing the player.
+    expect(r.rels.dex.knownOthers).toEqual(['imani'])
+    expect(r.rels.imani.knownOthers).toEqual(['dex'])
+    expect(r.game.metamours['dex|imani'] ?? 70).toBeGreaterThanOrEqual(60)
     expect(r.game.rekindled).toEqual(['dex|imani'])
+  })
+
+  it('keeps the door-closing outcome on both, and skips pairs with someone from the date that just ended', () => {
+    const r = roll({ nova: high('nova'), kai: high('kai') }, () => 0)
+    expect(r.rels.nova.rekindle).toEqual({ with: 'kai', invite: false, at: 5000 })
+    expect(r.rels.kai.rekindle).toEqual({ with: 'nova', invite: false, at: 5000 })
+    const away = rollRekindles({ characters, rels: { nova: high('nova'), kai: high('kai') }, relations, game: newGameState(0), now: 5000, rng: () => 0, names, exclude: ['nova'] })
+    expect(away.news).toEqual([])
+    expect(away.game.rekindled).toEqual([])
   })
 
   it('reads flexible characters by their agreement with the player', () => {

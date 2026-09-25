@@ -51,6 +51,8 @@ import {
   gainCapped,
   inputLocked,
   lastApplied,
+  lastBetrayal,
+  betrayalHint,
   lastCharacterLine,
   moodWord,
   statusText,
@@ -190,7 +192,9 @@ function StatusStrip({
   const judge = session.lastJudge
   const character = session.world.character
   const applied = lastApplied(session.record, character.id)
-  const hint = hints && judge ? judge.hint.trim() : ''
+  // A betrayal turn says what broke, not the judge's reaction to the words.
+  const betrayal = judge ? lastBetrayal(session.record, character.id) : undefined
+  const hint = hints && judge ? (betrayal ? betrayalHint(betrayal, character.name) : judge.hint.trim()) : ''
   const wanted = judge ? applyDifficulty(judge.delta, character.difficulty) : 0
   const capped = gainCapped(wanted, applied?.affection, dateGainUsed(session), session.world.settings.gainCap)
   const heat = useSettings((s) => s.settings.heat)
@@ -213,7 +217,7 @@ function StatusStrip({
         />
         <span className={styles.moodText}>
           <span className={styles.moodLabel}>Mood</span>
-          <span className={styles.mood}>{moodWord(judge?.mood)}</span>
+          <span className={styles.mood}>{moodWord(betrayal ? (betrayal.kind === 'lie' ? 'betrayed' : 'hurt') : judge?.mood)}</span>
         </span>
         <LipstickStamps stage={stage} size="small" />
         <span className={styles.toggleText}>{open ? 'Less' : 'More'}</span>
@@ -244,7 +248,7 @@ function StatusStrip({
             </Button>
           </div>
           {!hints && <p className={styles.caption}>Turn on Hints in Settings to see how each message landed.</p>}
-          {dtrVisible(rel.affection) && session.record.kind !== 'epilogue' && (
+          {dtrVisible(rel.affection) && route === 'romantic' && session.record.kind !== 'epilogue' && (
             <div className={styles.dtr}>
               <Button variant="brass" disabled={!dtr.can} aria-describedby={dtrNote} onClick={dtr.onOpen}>
                 Define the relationship

@@ -14,7 +14,7 @@ import { useDate } from '../../store/date'
 import { useGame } from '../../store/game'
 import { useNav } from '../../store/nav'
 import { useRoster } from '../../store/roster'
-import type { Character, DateRecord, NewsItem } from '../../types'
+import type { Character, DateRecord, NewsItem, WorldBetrayal } from '../../types'
 import { Backdrop } from '../../ui/Backdrop'
 import { Button } from '../../ui/Button'
 import { cx } from '../../ui/cx'
@@ -24,8 +24,8 @@ import { Note, Panel } from '../../ui/Panel'
 import { TopBar } from '../../ui/TopBar'
 import { firstName, signed } from '../DateScreen/dateModel'
 import { dtrOutcome } from '../DateScreen/dtrModel'
-import { possessive } from '../Ending/endingModel'
-import { endingTitle } from '../Ending/useEnding'
+import { epilogueSlotLabel, possessive, reasonSentence } from '../Ending/endingModel'
+import { endingTitle, useEnding } from '../Ending/useEnding'
 import { useRosterAndGame } from '../Hub/useRosterGame'
 import { RUMOR_WARNING } from '../Profile/profileModel'
 import styles from './Recap.module.css'
@@ -163,14 +163,26 @@ function RecapView({ record, recap, character }: { record: DateRecord; recap: Ch
     return out
   }, [entries])
   const agreement = agreementChange(recap.agreementBefore, recap.agreementAfter, first)
-  const talk = recap.dtr?.result ? dtrOutcome(name, recap.dtr.requested, recap.dtr.result, recap.agreementBefore ?? undefined) : null
+  const standing = recap.agreementAfter ?? recap.agreementBefore
+  const talk = recap.dtr?.result ? dtrOutcome(name, recap.dtr.requested, recap.dtr.result, standing ?? undefined, recap.dtr.by) : null
   const hit = betrayalHit(recap.betrayals)
   const gossip = gossipLines(recap.gossip)
   const heard = rumorLines(recap.rumors, sets.flatMap((x) => x.rumors ?? []), names)
-  const world: NewsItem[] = record.recap?.world?.news ?? dateNews(record, news)
+  const allNews: NewsItem[] = record.recap?.world?.news ?? dateNews(record, news)
   const elsewhere = (record.recap?.world?.betrayals ?? []).filter((b) => b.characterId !== character.id)
+  // Someone else's betrayal shows as a hit on their meters (with the news as its caption); the plain
+  // list keeps the gossip and rekindles.
+  const hits = elsewhere.map((b) => ({
+    b,
+    caption:
+      allNews.find((n) => n.kind === 'betrayal' && n.characterIds[0] === b.characterId)?.text ??
+      betrayalLine(b.event, firstName(names[b.characterId] ?? b.characterId), names),
+  }))
+  const world = allNews.filter((n) => !(n.kind === 'betrayal' && elsewhere.some((b) => b.characterId === n.characterIds[0])))
   const epilogue = record.kind === 'epilogue'
   const ending = epilogue ? endingTitle(record.endingType) : ''
+  // Reaching 100 on this date: the ending they're on shows right here.
+  const wonNow = !epilogue && recap.stageAfter === 'won' && recap.stageBefore !== 'won'
 
   return (
     <main className={`screen ${styles.root}`} style={style}>
@@ -198,6 +210,8 @@ function RecapView({ record, recap, character }: { record: DateRecord; recap: Ch
           <p className={styles.plain}>It's kept on {possessive(first)} profile, and it can play again.</p>
         </Panel>
       )}
+
+      {wonNow && <WonEnding character={character} />}
 
       {left && (
         <Note tone="lipstick" title="What it cost">
@@ -336,25 +350,20 @@ function RecapView({ record, recap, character }: { record: DateRecord; recap: Ch
         </Panel>
       )}
 
-      {(world.length > 0 || elsewhere.length > 0) && (
+      {(world.length > 0 || hits.length > 0) && (
         <Panel title="Word got around" description="What this date set off elsewhere." className={styles.section}>
-          <ul className={styles.plainList}>
-            {world.map((n) => (
-              <li key={n.id} className={cx(n.kind === 'rekindle' && styles.brassLine, n.kind === 'betrayal' && styles.lipstickLine)}>
-                {n.text}
-              </li>
-            ))}
-            {elsewhere
-              .filter((b) => !world.some((n) => n.kind === 'betrayal' && n.characterIds.includes(b.characterId)))
-              .map((b, i) => {
-                const who = firstName(names[b.characterId] ?? b.characterId)
-                return (
-                  <li key={`${b.characterId}-${i}`} className={styles.lipstickLine}>
-                    {betrayalLine(b.event, who, names)} Affection {signed(b.event.affectionDelta)}, trust {signed(b.event.trustDelta)}.
-                  </li>
-                )
-              })}
-          </ul>
+          {hits.map(({ b, caption }, i) => (
+            <ElsewhereHit key={`${b.characterId}-${i}`} hit={b} caption={caption} name={names[b.characterId] ?? b.characterId} />
+          ))}
+          {world.length > 0 && (
+            <ul className={styles.plainList}>
+              {world.map((n) => (
+                <li key={n.id} className={cx(n.kind === 'rekindle' && styles.brassLine, n.kind === 'betrayal' && styles.lipstickLine)}>
+                  {n.text}
+                </li>
+              ))}
+            </ul>
+          )}
         </Panel>
       )}
 
@@ -374,6 +383,65 @@ function RecapView({ record, recap, character }: { record: DateRecord; recap: Ch
         </Button>
       </div>
     </main>
+  )
+}
+
+/**
+ * Someone else took a betrayal from this date: their name, what happened, and the hit on their
+ * meters (before and after, with the lipstick "Betrayal" badges). Older records without the meters
+ * say the numbers in words.
+ */
+function ElsewhereHit({ hit, caption, name }: { hit: WorldBetrayal; caption: string; name: string }) {
+  const e = hit.event
+  const who = name.trim() || hit.characterId
+  return (
+    <section className={styles.elsewhere} aria-label={`What it did to ${who}`}>
+      <p className={styles.elsewhereName}>
+        <span className="name">{who}</span>
+      </p>
+      <p className={styles.plain}>{caption}</p>
+      {hit.before && hit.after ? (
+        <div className={styles.meters}>
+          <MeterChange kind="affection" label="Affection" before={hit.before.affection} after={hit.after.affection} hit={e.affectionDelta} />
+          <MeterChange kind="trust" label="Trust" before={hit.before.trust} after={hit.after.trust} hit={e.trustDelta} />
+        </div>
+      ) : (
+        <p className={styles.plain}>
+          Affection {signed(e.affectionDelta)}, trust {signed(e.trustDelta)}.
+        </p>
+      )}
+    </section>
+  )
+}
+
+/**
+ * They reached 100 on this date: the ending they're on (title and why), with the way to it, and the
+ * automatic slot from before it.
+ */
+function WonEnding({ character }: { character: Character }) {
+  const go = useNav((s) => s.go)
+  const reset = useNav((s) => s.reset)
+  const { ready, ending } = useEnding(character.id)
+  if (!ready || !ending) return null
+  const name = character.name.trim() || character.id
+  return (
+    <Panel title="Your ending" tone="brass" className={styles.section}>
+      <p className={styles.endingTitle}>{ending.title}</p>
+      <p className={styles.plain}>{reasonSentence(ending.reason)}</p>
+      <p className={styles.caption}>
+        You won {possessive(firstName(name))} heart. One last date plays this ending, and it can still change before you play it. "
+        {epilogueSlotLabel(name)}" is in Settings, Saves.
+      </p>
+      <Button
+        variant="brass"
+        onClick={() => {
+          reset({ name: 'hub' })
+          go({ name: 'ending', id: character.id })
+        }}
+      >
+        See your ending
+      </Button>
+    </Panel>
   )
 }
 

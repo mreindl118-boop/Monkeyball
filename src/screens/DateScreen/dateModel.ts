@@ -3,7 +3,7 @@
 
 import type { DateStatus } from '../../engine/dateFlow'
 import { stageFor, stageIndex } from '../../engine/stages'
-import type { DateRecord, DateTurn, Route, Suggestions } from '../../types'
+import type { BetrayalEvent, DateRecord, DateTurn, Route, Suggestions } from '../../types'
 
 // ---------------------------------------------------------------------------
 // Names
@@ -105,6 +105,29 @@ export function lastApplied(
     return t.applied?.[characterId]
   }
   return undefined
+}
+
+/** The betrayal the player's last message set off with this character, if it did. */
+export function lastBetrayal(record: Pick<DateRecord, 'turns'>, characterId: string): BetrayalEvent | undefined {
+  const turns = record.turns ?? []
+  for (let i = turns.length - 1; i >= 0; i--) {
+    const t = turns[i]
+    if (t.role !== 'player') continue
+    return t.betrayal?.[characterId]
+  }
+  return undefined
+}
+
+/**
+ * The hints line on a betrayal turn: the betrayal's note about them ("Nova heard about Kai from you
+ * after you agreed to be exclusive."), in place of the judge's hint.
+ */
+export function betrayalHint(b: BetrayalEvent, name: string): string {
+  const first = firstName(name)
+  const note = (b.note ?? '').trim().replace(/[.!]+$/, '')
+  if (!note) return b.kind === 'lie' ? `${first} caught you in a lie.` : `${first} is hurt.`
+  const lead = /^[A-Z][a-z]/.test(note) ? note.charAt(0).toLowerCase() + note.slice(1) : note
+  return `${first} ${lead}.`
 }
 
 /** "+4", "-3" (with a real minus sign) or "0". */

@@ -50,7 +50,7 @@ const judgeOf = (over: Partial<JudgeResult> = {}): JudgeResult => ({
   ...over,
 })
 
-function fakeLlm(opts: { judge?: () => JudgeResult; agreement?: AgreementResult } = {}) {
+function fakeLlm(opts: { judge?: () => JudgeResult; agreement?: AgreementResult; agreementGate?: Promise<void> } = {}) {
   const calls = { story: 0, judge: 0, agreement: 0, memory: 0 }
   const stories: string[] = []
   const llm: DateLlm = {
@@ -72,6 +72,7 @@ function fakeLlm(opts: { judge?: () => JudgeResult; agreement?: AgreementResult 
     },
     agreement: async () => {
       calls.agreement++
+      if (opts.agreementGate) await opts.agreementGate
       return { value: opts.agreement ?? { agreement: 'none', accepted: false, terms: '', trustDelta: 0 }, ok: true }
     },
   }
@@ -178,6 +179,39 @@ describe('useDate: Define the relationship', () => {
     expect(await store.getState().openDtr('open')).toBe(true)
     expect(store.getState().session?.record.dtr).toMatchObject({ requested: 'open', by: 'character' })
     expect(store.getState().session?.dtrOffer).toBeUndefined()
+  })
+
+  it('makes it the player\'s ask when they pick something other than what the character wanted', async () => {
+    const { store } = await setup([{ characterId: 'nova', affection: 50, trust: 60, dates: 3, lastDateAt: 1 }], {}, () => 0.1)
+    await started(store)
+    expect(store.getState().session?.dtrOffer).toBe('open')
+    expect(await store.getState().openDtr('exclusive')).toBe(true)
+    expect(store.getState().session?.record.dtr).toMatchObject({ requested: 'exclusive', by: 'player' })
+  })
+
+  it('End date while the talk is closing waits for the Agreement answer instead of asking twice', async () => {
+    let release: () => void = () => undefined
+    const agreementGate = new Promise<void>((r) => {
+      release = r
+    })
+    const { store, game, fake } = await setup(
+      [{ characterId: 'nova', affection: 45, trust: 30, dates: 1, lastDateAt: 1 }],
+      { agreement: { agreement: 'casual', accepted: true, terms: 'No labels.', trustDelta: 1 }, agreementGate },
+      () => 0.5,
+      { dateLength: 5 },
+    )
+    await started(store)
+    await store.getState().openDtr('casual')
+    await store.getState().send('Can we keep it easy?')
+    const closing = store.getState().closeDtr()
+    await waitFor(() => fake.calls.agreement === 1, 'the Agreement call')
+    const ending = store.getState().end()
+    release()
+    await closing
+    expect(await ending).not.toBeNull()
+    expect(fake.calls.agreement).toBe(1)
+    expect(game.getState().relationships.nova?.agreement.type).toBe('casual')
+    expect(store.getState().lastRecord?.dtr?.result?.agreement).toBe('casual')
   })
 
   it('settles an open talk when the date is ended', async () => {

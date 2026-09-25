@@ -7,9 +7,12 @@
 // Phase 4, betrayal recovery: after any betrayal, positive trust gains are multiplied by a grudge
 // factor (compersion and low 0.75, medium 0.5, high 0.34, rounded down), so trust rebuilds slower
 // than it was earned; losses are never softened. The +1 for a completed date thins out the same way
-// (it lands on a share of dates: 3 in 4, 1 in 2, 1 in 3). A caught lie always costs more trust than
-// affection: the date flow turns a judge breach into a betrayal whose trust drop (-15 to -30) is
-// larger than its affection drop (-10 to -20) (agreements.ts).
+// (it lands on a share of dates: 3 in 4, 1 in 2, 1 in 3). Compersion and low-jealousy characters
+// forgive: once trust is back to 60 their grudge lifts (Relationship.forgivenAt) until the next
+// betrayal; medium and high hold it for the rest of the game. A caught lie always costs more trust
+// than affection: the date flow turns a judge breach into a betrayal whose trust drop (-15 to -30)
+// is larger than its affection drop (-10 to -20) (agreements.ts). Misgendering always costs trust
+// (misgenderingRule), whatever the judge's trustDelta says.
 
 import type { Character, DateRecord, Jealousy, JudgeResult, Relationship } from '../types'
 import { applyDifficulty, clampTrust } from './math'
@@ -42,14 +45,43 @@ export const GRUDGE_FACTOR: Readonly<Record<Jealousy, number>> = {
   high: 0.34,
 }
 
-/** 1 before any betrayal; the character's grudge factor after one. */
-export function grudgeFactor(c: Pick<Character, 'jealousy'>, rel: Pick<Relationship, 'betrayals'>): number {
-  if ((rel.betrayals ?? []).length === 0) return 1
+/** Trust at which a compersion or low-jealousy character forgives (their grudge lifts). */
+export const FORGIVE_TRUST = 60
+
+type GrudgeRel = Pick<Relationship, 'betrayals'> & Partial<Pick<Relationship, 'forgivenAt'>>
+
+/** The grudge lifted after the last betrayal (a forgiving character got back to 60 since). */
+export function forgiven(rel: GrudgeRel): boolean {
+  const betrayals = rel.betrayals ?? []
+  if (betrayals.length === 0 || rel.forgivenAt == null) return false
+  const last = Math.max(...betrayals.map((b) => (Number.isFinite(b.at) ? b.at : 0)))
+  return rel.forgivenAt >= last
+}
+
+/** 1 before any betrayal (or once a forgiving character forgave it); the grudge factor after one. */
+export function grudgeFactor(c: Pick<Character, 'jealousy'>, rel: GrudgeRel): number {
+  if ((rel.betrayals ?? []).length === 0 || forgiven(rel)) return 1
   return GRUDGE_FACTOR[c.jealousy] ?? GRUDGE_FACTOR.medium
 }
 
+/** Compersion and low jealousy forgive; medium and high hold a grudge for the rest of the game. */
+export function forgives(c: Pick<Character, 'jealousy'>): boolean {
+  return c.jealousy === 'compersion' || c.jealousy === 'low'
+}
+
+/**
+ * A forgiving character (compersion or low) whose trust is back to 60 since their last betrayal
+ * forgives it: forgivenAt is stamped, so the grudge stays lifted (until a new betrayal). Returns the
+ * same object otherwise.
+ */
+export function forgive(c: Pick<Character, 'jealousy'>, rel: Relationship, now: number): Relationship {
+  if (!forgives(c) || (rel.betrayals ?? []).length === 0 || forgiven(rel)) return rel
+  if ((rel.trust ?? 0) < FORGIVE_TRUST) return rel
+  return { ...rel, forgivenAt: now }
+}
+
 /** A trust change after the grudge: gains scaled and rounded down, losses as they are. */
-export function withGrudge(delta: number, c: Pick<Character, 'jealousy'>, rel: Pick<Relationship, 'betrayals'>): number {
+export function withGrudge(delta: number, c: Pick<Character, 'jealousy'>, rel: GrudgeRel): number {
   if (!Number.isFinite(delta)) return 0
   if (delta <= 0) return Math.trunc(delta) || 0
   return Math.floor(delta * grudgeFactor(c, rel))
@@ -58,8 +90,25 @@ export function withGrudge(delta: number, c: Pick<Character, 'jealousy'>, rel: P
 /** After a betrayal, positive gains are slowed by the grudge factor. */
 export const grudgeRule: TrustRule = (delta, ctx) => (delta > 0 ? delta * grudgeFactor(ctx.character, ctx.rel) : delta)
 
-/** The Phase 4 trust rules the date flow uses: difficulty, then the grudge. */
-export const TRUST_RULES: readonly TrustRule[] = [difficultyRule, grudgeRule]
+/** The universal turn-off every character has (discovery.ts UNIVERSAL_TRAITS). */
+export const MISGENDERING_ID = 'misgendering'
+
+/** Trust a misgendering hit costs at least (softer than a caught lie). */
+export const MISGENDERING_TRUST = -5
+
+/** Affection a misgendering hit costs at least (the judge's range is -8 to -15). */
+export const MISGENDERING_AFFECTION = -8
+
+/** The judge reported the misgendering turn-off on this message. */
+export function misgendered(judge: Pick<JudgeResult, 'hits'>): boolean {
+  return (judge.hits ?? []).some((h) => h.type === 'turnOff' && h.id === MISGENDERING_ID)
+}
+
+/** Misgendering drops trust for every character, whatever trustDelta the judge picked. */
+export const misgenderingRule: TrustRule = (delta, ctx) => (misgendered(ctx.judge) ? Math.min(delta, MISGENDERING_TRUST) : delta)
+
+/** The Phase 4 trust rules the date flow uses: difficulty, misgendering, then the grudge. */
+export const TRUST_RULES: readonly TrustRule[] = [difficultyRule, misgenderingRule, grudgeRule]
 
 /**
  * Move trust by a delta that doesn't come from the judge (an agreement talk, metamour approval):
@@ -103,7 +152,7 @@ export const CONSISTENCY_TRUST = 1
  * After a betrayal the +1 for a completed date lands on a share of dates set by the grudge factor
  * (floor(n x f) steps up), counted on `rel.dates` (the finished date already included).
  */
-export function consistencyLands(c: Pick<Character, 'jealousy'>, rel: Pick<Relationship, 'betrayals' | 'dates'>): boolean {
+export function consistencyLands(c: Pick<Character, 'jealousy'>, rel: Pick<Relationship, 'betrayals' | 'dates'> & Partial<Pick<Relationship, 'forgivenAt'>>): boolean {
   const f = grudgeFactor(c, rel)
   if (f >= 1) return true
   const n = Math.max(1, Math.trunc(rel.dates ?? 1))

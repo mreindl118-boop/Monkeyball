@@ -300,8 +300,7 @@
   line-height: 1.45;
 }
 
-.terms,
-.opinion {
+.terms {
   display: grid;
   gap: 4px;
   padding: 10px 12px;
@@ -310,17 +309,9 @@
   font-style: italic;
   font-size: 16px;
   line-height: 1.4;
-}
-
-.terms {
   border: 1px solid rgb(201 164 92 / 0.45);
   background: var(--brass-soft);
   color: color-mix(in srgb, var(--brass) 55%, var(--blush));
-}
-
-.opinion {
-  border: 1px solid var(--line);
-  background: var(--blush-soft);
 }
 
 .termsLabel {

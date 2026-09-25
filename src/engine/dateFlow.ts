@@ -13,12 +13,19 @@
 //                  turnNote, then the Agreement prompt once (closing the talk or ending the date)
 //   createEpilogue -> the 6-turn epilogue at their first favorite venue, the ending's direction in
 //                  every turnNote
-//   openDate may set `dtrOffer` (the character wants to define it) and friend-route gossip
-//   the turn steps add name-mention disclosure, betrayal (agreements and caught lies), the grudge,
-//   heat pushes and the jealousy mark; secrets that unlock pass rumors on
-//   finishDate, given the world (DateWorld.characters and .game), spreads gossip, rolls rekindles,
-//   records an epilogue's ending, and hands the other relationships and the game state to
-//   hooks.persistWorld (also on session.worldAfter)
+//   openDate may set `dtrOffer` (the character wants to define it; the opening beat raises it),
+//   friend-route gossip (one line voiced per reply from turn 1), and rumors owed from a secret
+//   reached after the last date's final reply
+//   the turn steps add name-mention disclosure (a name in a dating context), the judge's breach read
+//   against what the engine knows (once per date; honesty isn't a lie), rumors relayed (a wrong one
+//   costs trust), the grudge, misgendering, heat pushes and the jealousy mark; secrets that unlock
+//   pass rumors on (the next reply lets them slip); the story's LANDED section follows the betrayal
+//   a turn set off, not the judge's mood
+//   finishDate, given the world (DateWorld.characters and .game), counts the date (who still
+//   counts as "seeing"), settles gossip the character was waiting to hear from the player, spreads
+//   word of the date, rolls rekindles, records an epilogue's ending, and saves the date with the
+//   other relationships and the game state in one go (hooks.persistAll; also on
+//   session.worldAfter)
 //
 // Sessions are immutable: every step returns a new object and hands it to hooks.onUpdate, so a
 // store can simply replace its copy. Model problems never throw past the caller: a failed judge is
@@ -28,7 +35,7 @@
 
 import { giftById, giftNoun } from '../data/gifts'
 import { dragNightNote, venueById } from '../data/venues'
-import { coerceAgreement, coerceJudge, coerceSuggestions, neutralJudge, noAgreementResult } from '../llm/coerce'
+import { coerceAgreement, coerceJudge, coerceSuggestions, neutralJudge } from '../llm/coerce'
 import type { ChatMessage } from '../llm/client'
 import { explainRoleError, REFUSAL_NOTE, refusalBeat } from '../llm/index'
 import {
@@ -38,6 +45,7 @@ import {
   buildSuggestionsPrompt,
   giftReactionFor,
   makeAgreementMessages,
+  requestedAgreementText,
   makeJudgeMessages,
   makeStoryMessages,
   makeSuggestionsMessages,
@@ -73,28 +81,39 @@ import type {
   TierNumber,
 } from '../types'
 import {
+  alreadyCounted,
   applyAgreementResult,
   characterDtrWish,
   checkBetrayal,
+  confessionBetrayal,
+  datedSinceAgreement,
+  disclosureRequired,
   dtrAvailable,
   firstName,
-  jealousNow,
+  isJealous,
   knownOthersText,
+  knownSeen,
   opinionText,
   othersSeen,
+  readsAsAdmission,
+  readsAsDenial,
   recordBetrayal,
   seeing,
+  seenIn,
 } from './agreements'
 import { applyTopics, detectTopics, knownHits, recordGift, recordVenue, revealHits, UNIVERSAL_TRAITS } from './discovery'
-import { endingDirection } from './endings'
+import { endingDirection, unpromised } from './endings'
 import {
   afterDateWorld,
   applyGossipReveals,
   friendGossipLines,
   GOSSIP_AFFECTION,
   type GossipLines,
+  misleading,
   relaysRumor,
+  revealsOfFirst,
   rumorsOnSecretUnlock,
+  settleSecondhand,
   sharedSecretsText,
   type WorldUpdate,
 } from './gossip'
@@ -119,7 +138,7 @@ import { adjustApproval, DISCLOSURE_APPROVAL, metamourTrust } from './metamour'
 import { buildRecap } from './recap'
 import { rollRekindles } from './rekindle'
 import { effectiveHeat, routeFor } from './stages'
-import { applyTrust, applyTrustDelta, consistencyTrust, TRUST_RULES } from './trust'
+import { applyTrust, applyTrustDelta, consistencyTrust, forgive, MISGENDERING_AFFECTION, misgendered, TRUST_RULES } from './trust'
 import { applyUnlocks } from './unlocks'
 
 // ---------------------------------------------------------------------------
@@ -218,6 +237,12 @@ export interface DateSession {
   relayed?: string[]
   /** People this character learned about from the player on this date (name mentions). */
   disclosed?: string[]
+  /** Everyone the player talked about going out with on this date (known before or not). */
+  mentioned?: string[]
+  /** Rumor ids passed on to the player that the story hasn't voiced yet (the next reply lets them slip). */
+  slips?: string[]
+  /** How many of the friend-route gossip lines the story has voiced (one per reply from turn 1). */
+  gossipVoiced?: number
   /** After finishDate with the world given: every relationship, the game state, news, betrayals. */
   worldAfter?: WorldUpdate
 }
@@ -237,6 +262,12 @@ export interface DateHooks {
    * persist. A rejection is swallowed.
    */
   persistWorld?(rels: Relationship[], game: GameState): Promise<void>
+  /**
+   * Optional: the date's last save together with the world in one go (one transaction), so a crash
+   * can't land the world without the date's outcome and a recovery never settles the world twice.
+   * When given, finishDate calls it instead of persistWorld and the last persist.
+   */
+  persistAll?(rel: Relationship, record: DateRecord, rels: Relationship[], game: GameState): Promise<void>
   signal?: AbortSignal
 }
 
@@ -308,16 +339,32 @@ function relsInPlay(world: DateWorld): Record<string, Relationship> | undefined 
   return Object.fromEntries(Object.entries(rels).filter(([x]) => x in characters))
 }
 
+/** The game's finished-date count when the date started ("seeing" lapses against it). */
+function dateCountOf(world: DateWorld): number | undefined {
+  return world.game?.dateCount
+}
+
 /**
  * The other people the player is seeing (the judge's {others}): from world.rels when given
- * (romantic route, a date, affection 20+; characters of sets switched off don't count), else
- * world.others.
+ * (romantic route, a date, affection 20+, recent enough; characters of sets switched off don't
+ * count), else world.others.
  */
 export function othersOf(world: DateWorld): string[] {
   const id = world.character.id
   const rels = relsInPlay(world)
-  if (rels) return othersSeen(rels, (x) => routeOfId(world, x), id)
+  if (rels) return othersSeen(rels, (x) => routeOfId(world, x), id, dateCountOf(world))
   return (world.others ?? []).filter((x) => x !== id)
+}
+
+/**
+ * "The player is still going out with this id" (recentlyDated), from world.rels (undefined without
+ * them: nothing lapses). With `rel`, under an exclusive agreement only people dated since it count,
+ * so someone the player saw before promising is never talked about as someone they're seeing now.
+ */
+export function seenPredicate(world: DateWorld, rel?: Relationship): ((id: string) => boolean) | undefined {
+  const rels = relsInPlay(world)
+  if (!rels) return undefined
+  return seenIn(rels, (x) => routeOfId(world, x), dateCountOf(world), rel)
 }
 
 /** A Define-the-relationship talk is open on this date. */
@@ -369,6 +416,43 @@ export function mentions(message: string, name: string): boolean {
 }
 
 /**
+ * Words that put a name in a dating context in the same sentence: dates, seeing, going out, a
+ * drink or dinner with them, kissing, sleeping with, hooking up, spending the night...
+ */
+const DATING_WORDS =
+  /\b(?:dat(?:e|es|ed|ing)|seeing|see each other|seeing each other|went out|go out|going out|gone out|out with|been out|kiss(?:ed|es|ing)?|slept with|sleep(?:ing)? with|hook(?:ed|ing)? up|spent the night|stay(?:ed|ing)? (?:over|the night)|made out|make out|making out|fool(?:ed|ing)? around|involved with|in love with|girlfriend|boyfriend|(?:a |some )?(?:drinks?|dinner|coffee|lunch|breakfast) with)\b/i
+
+/** A time word right after "with {name}": "with Kai last night", "with Kai on Tuesday". */
+const WITH_THEN = /^\s*(?:last night|last week|the other night|yesterday|on (?:mon|tues|wednes|thurs|fri|satur|sun)day|this weekend|last weekend|tonight)\b/i
+
+function splitSentences(text: string): string[] {
+  return String(text ?? '')
+    .split(/(?<=[.?!;])\s+|\n+/)
+    .filter(Boolean)
+}
+
+/**
+ * The message names this person in a dating context (disclosure, not a passing mention): a
+ * sentence that names them also has a dating word ("I went out with Kai", "I had a drink with Kai
+ * last night", "I've been seeing Imani too"), or "with {name}" followed by a time. "Kai poured me
+ * the worst drink of my life" doesn't count. Names are matched as mentions() does.
+ */
+export function talksAboutDating(message: string, name: string): boolean {
+  if (!mentions(message, name)) return false
+  const full = String(name ?? '').trim()
+  const first = firstName(full)
+  const re = new RegExp(`\\b(?:${escapeRe(full)}|${escapeRe(first)})\\b`, 'i')
+  for (const part of splitSentences(message)) {
+    const m = re.exec(part)
+    if (!m) continue
+    if (DATING_WORDS.test(part)) return true
+    const before = part.slice(0, m.index)
+    if (/\bwith\s*$/i.test(before) && WITH_THEN.test(part.slice(m.index + m[0].length))) return true
+  }
+  return false
+}
+
+/**
  * People whose names count as the player telling this character about them: anyone the player is
  * seeing, and (with world.rels) anyone the player went out with since this character's agreement.
  */
@@ -376,13 +460,14 @@ function disclosable(world: DateWorld, rel: Relationship): string[] {
   const id = world.character.id
   const rels = relsInPlay(world)
   if (!rels) return othersOf(world)
+  const count = dateCountOf(world)
   const madeAt = rel.agreement?.type && rel.agreement.type !== 'none' ? rel.agreement.madeAt ?? 0 : Number.POSITIVE_INFINITY
   return Object.keys(rels)
     .filter((x) => {
       if (x === id) return false
       const r = rels[x]
       if (routeOfId(world, x) !== 'romantic' || (r.dates ?? 0) < 1) return false
-      return seeing(r, 'romantic') || (r.lastDateAt ?? 0) > madeAt
+      return seeing(r, 'romantic', count) || (r.lastDateAt ?? 0) > madeAt
     })
     .sort()
 }
@@ -533,23 +618,40 @@ export interface TurnState {
   betrayal?: BetrayalEvent
   /** Optional (Phase 4): people this character learned about from the player's message. */
   learned?: string[]
+  /** Optional (Phase 4): everyone the message talked about going out with (dating context). */
+  named?: string[]
+  /** Optional (Phase 4): when the date started (a breach counts as a betrayal once per date). */
+  dateStart?: number
+  /** Optional (Phase 4): rumors the player has heard, and ids already passed on to this character. */
+  heard?: HeardRumor[]
+  alreadyRelayed?: string[]
+  /** Optional (Phase 4): rumor ids about this character that this message passed on. */
+  relayed?: string[]
 }
 
 export type TurnStep = (t: TurnState) => TurnState
 
 /**
- * Name-mention disclosure: naming someone the player is seeing (or went out with since this
- * character's agreement) tells this character about them (knownOthers), and may break the
- * agreement (checkBetrayal, how 'player'). Only the first betrayal of a turn counts.
+ * Name-mention disclosure: talking about going out with someone the player is seeing (or went out
+ * with since this character's agreement) tells this character about them (knownOthers; no longer
+ * only secondhand), and may break the agreement (checkBetrayal, how 'player'). A name needs a dating
+ * context (talksAboutDating, or the judge's jealousy flag): "Kai poured me a drink" tells nothing.
+ * Only the first betrayal of a turn counts.
  */
 export const disclosureStep: TurnStep = (t) => {
   const { world } = t
   const c = world.character
-  const named = disclosable(world, t.rel).filter((id) => mentions(t.message, world.names[id] ?? id))
+  const named = disclosable(world, t.rel).filter((id) => {
+    const name = world.names[id] ?? id
+    return t.judge.jealousy ? mentions(t.message, name) : talksAboutDating(t.message, name)
+  })
   if (named.length === 0) return t
   const known = t.rel.knownOthers ?? []
   const learned = named.filter((id) => !known.includes(id))
-  let rel = learned.length ? { ...t.rel, knownOthers: [...known, ...learned] } : t.rel
+  let rel: Relationship = learned.length ? { ...t.rel, knownOthers: [...known, ...learned] } : t.rel
+  if ((rel.heardSecondhand ?? []).some((id) => named.includes(id))) {
+    rel = { ...rel, heardSecondhand: (rel.heardSecondhand ?? []).filter((id) => !named.includes(id)) }
+  }
   let betrayal = t.betrayal
   for (const id of named) {
     if (betrayal) break
@@ -559,22 +661,87 @@ export const disclosureStep: TurnStep = (t) => {
   return {
     ...t,
     rel,
+    named: [...new Set([...(t.named ?? []), ...named])],
     ...(learned.length ? { learned: [...(t.learned ?? []), ...learned] } : {}),
     ...(betrayal ? { betrayal } : {}),
   }
 }
 
-/** A lie the judge caught (breach) is a betrayal, unless this turn already set one off. */
+/**
+ * A breach the judge flagged, read against what the engine knows (at most one breach betrayal per
+ * date, and none on a turn that already set one off):
+ * - no agreement that could break (none, casual, open without telling terms): a caught lie, unless
+ *   the message reads as honest (the judge's trustDelta above 0, or owning up without a denial),
+ *   which isn't a breach of anything.
+ * - a message naming only people who were dated before the agreement, or whose break is already
+ *   counted: owning up (or just talking about it) is nothing new; denying it is a lie.
+ * - naming someone dated since the agreement and not yet counted: denying it is a lie, owning up is
+ *   the player's own disclosure (checkBetrayal, how 'player').
+ * - naming nobody: under exclusive an honest confession (the judge's trustDelta above 0, or it
+ *   reads as owning up) is the softer confession betrayal, and anything else is a lie; under poly or
+ *   telling terms, owning up is exactly what the agreement asks for.
+ */
 export const breachStep: TurnStep = (t) => {
   if (!t.judge.breach || t.betrayal) return t
-  const e = checkBetrayal(t.world.character, t.rel, '', 'lie', undefined, t.at, t.world.rng, { names: t.world.names })
-  return e ? { ...t, betrayal: e } : t
+  const { world } = t
+  const c = world.character
+  const since = t.dateStart ?? Number.POSITIVE_INFINITY
+  if ((t.rel.betrayals ?? []).some((b) => b.at >= since)) return t
+  const opts = { names: world.names, player: world.profile.name }
+  const lie = () => checkBetrayal(c, t.rel, '', 'lie', undefined, t.at, world.rng, opts)
+  const denial = readsAsDenial(t.message)
+  const honest = !denial && (t.judge.trustDelta > 0 || readsAsAdmission(t.message))
+  const type = t.rel.agreement?.type ?? 'none'
+  const binding = type === 'exclusive' || disclosureRequired(t.rel.agreement)
+  const withBetrayal = (e: BetrayalEvent | null) => (e ? { ...t, betrayal: e } : t)
+  if (!binding) return honest ? t : withBetrayal(lie())
+
+  const rels = world.rels ?? {}
+  const pool = new Set([...disclosable(world, t.rel), ...(t.rel.knownOthers ?? []), ...(t.learned ?? [])])
+  const named = [...pool].filter((id) => id !== c.id && mentions(t.message, world.names[id] ?? id))
+  if (named.length > 0) {
+    const open = named.filter((id) => datedSinceAgreement(t.rel, rels[id]) && !alreadyCounted(t.rel, id, rels[id]))
+    if (open.length === 0) return denial ? withBetrayal(lie()) : t
+    if (!honest) return withBetrayal(lie())
+    for (const id of open) {
+      const e = checkBetrayal(c, t.rel, id, 'player', rels[id], t.at, world.rng, opts)
+      if (e) return withBetrayal(e)
+    }
+    return t
+  }
+  if (honest) return type === 'exclusive' ? withBetrayal(confessionBetrayal(c, t.rel, t.at, world.rng, opts)) : t
+  return withBetrayal(lie())
 }
 
 /**
- * Trust: the judge's trustDelta through the trust rules (difficulty, then the grudge after a
- * betrayal), clamped 0-100. On a betrayal turn the betrayal's own drop (-15 to -30) counts instead,
- * so a caught lie always costs more trust than affection.
+ * Rumors about this character that the message passes on (relaysRumor), each counted once per
+ * character. Runs before trust: relaying a false or exaggerated one costs trust (trustStep).
+ */
+export const relayStep: TurnStep = (t) => {
+  const { world } = t
+  const id = world.character.id
+  const byId = new Map((world.rumors ?? []).map((r) => [r.id, r]))
+  const done = new Set([...(t.alreadyRelayed ?? []), ...(t.relayed ?? [])])
+  const out: string[] = []
+  for (const h of t.heard ?? []) {
+    const r = byId.get(h.rumorId)
+    if (!r || !r.about.includes(id) || done.has(r.id) || (h.relayedTo ?? []).includes(id)) continue
+    if (relaysRumor(t.message, r, id, world.names)) {
+      out.push(r.id)
+      done.add(r.id)
+    }
+  }
+  return out.length ? { ...t, relayed: [...(t.relayed ?? []), ...out] } : t
+}
+
+/** Trust at most, before the rules, on a turn that relays a false or exaggerated rumor. */
+export const WRONG_RELAY_TRUST = -4
+
+/**
+ * Trust: the judge's trustDelta through the trust rules (difficulty, misgendering, then the grudge
+ * after a betrayal), clamped 0-100. Relaying a false or exaggerated rumor to its subject caps the
+ * judge's trustDelta at -4 first. On a betrayal turn the betrayal's own drop (-15 to -30) counts
+ * instead, so a caught lie always costs more trust than affection.
  */
 export const trustStep: TurnStep = (t) => {
   if (t.betrayal) {
@@ -588,17 +755,22 @@ export const trustStep: TurnStep = (t) => {
       applied: { ...t.applied, trust: applied },
     }
   }
-  const r = applyTrust({ character: t.world.character, rel: t.rel, judge: t.judge }, TRUST_RULES)
+  const byId = new Map((t.world.rumors ?? []).map((r) => [r.id, r]))
+  const wrong = (t.relayed ?? []).some((id) => misleading(byId.get(id)))
+  const judge = wrong ? { ...t.judge, trustDelta: Math.min(t.judge.trustDelta, WRONG_RELAY_TRUST) } : t.judge
+  const r = applyTrust({ character: t.world.character, rel: t.rel, judge }, TRUST_RULES)
   return { ...t, rel: r.rel, totals: addTrust(t.totals, r.applied), applied: { ...t.applied, trust: r.applied } }
 }
 
 /**
  * Affection: difficulty, then the date's gain cap (on the ledger and on the meter's rise since the
- * date began), then 0-100 and the friend-route cap. On a betrayal turn the betrayal's drop (-10 to
- * -20) counts instead of the judge's delta (it counts toward the date's -20 exit like any loss).
+ * date began), then 0-100 and the friend-route cap. Misgendering costs at least -8 before
+ * difficulty, whatever the judge's delta. On a betrayal turn the betrayal's drop (-10 to -20)
+ * counts instead of the judge's delta (it counts toward the date's -20 exit like any loss).
  */
 export const affectionStep: TurnStep = (t) => {
-  const scaled = t.betrayal ? t.betrayal.affectionDelta : applyDifficulty(t.judge.delta, t.world.character.difficulty)
+  const raw = misgendered(t.judge) ? Math.min(t.judge.delta, MISGENDERING_AFFECTION) : t.judge.delta
+  const scaled = t.betrayal ? t.betrayal.affectionDelta : applyDifficulty(raw, t.world.character.difficulty)
   const r = applyAffection(t.totals, scaled, t.world.settings.gainCap, meterRoom(t.world, t.rel.affection, t.route))
   const affection = clampAffection(t.rel.affection + r.applied, t.route, t.rel.affection)
   return {
@@ -662,21 +834,24 @@ export const moodStep: TurnStep = (t) => {
 }
 
 /**
- * The hub's jealousy mark: they know about someone and mind, or a betrayal is still raw
- * (jealousNow); always on in the turn a betrayal lands.
+ * The hub's jealousy mark: they know about someone the player still sees and mind it (isJealous;
+ * never on a friend route); always on in the turn a betrayal about someone else lands.
  */
 export const jealousStep: TurnStep = (t) => {
-  const jealous = t.betrayal ? true : jealousNow(t.world.character, t.rel)
+  const seen = seenPredicate(t.world, t.rel)
+  const jealous = t.betrayal?.about ? true : isJealous(t.world.character, t.rel, { route: t.route, ...(seen ? { seen } : {}) })
   return jealous === !!t.rel.jealous ? t : { ...t, rel: { ...t.rel, jealous } }
 }
 
 /**
- * The order: disclosure and betrayal first (they decide what counts), then trust and affection
- * with the caps, the betrayal's record, reveals, topics, connection, heat, unlocks, mood, jealousy.
+ * The order: disclosure and betrayal first (they decide what counts), rumors relayed, then trust
+ * and affection with the caps, the betrayal's record, reveals, topics, connection, heat, unlocks,
+ * mood, jealousy.
  */
 export const TURN_STEPS: readonly TurnStep[] = [
   disclosureStep,
   breachStep,
+  relayStep,
   trustStep,
   affectionStep,
   betrayalStep,
@@ -705,29 +880,18 @@ function rumorsForSecrets(s: DateSession, secrets: readonly number[]): HeardRumo
   return out
 }
 
-/** Add rumors passed on for these new secrets to the session. */
+/** Add rumors passed on for these new secrets to the session (the next reply lets them slip). */
 function passRumors(s: DateSession, secrets: readonly number[]): DateSession {
   const heard = rumorsForSecrets(s, secrets)
-  return heard.length ? { ...s, heard: [...(s.heard ?? []), ...heard] } : s
-}
-
-/** Rumors about this character that the player's message passes on to them. */
-function noteRelays(s: DateSession, message: string): DateSession {
-  const id = s.world.character.id
-  const byId = new Map((s.world.rumors ?? []).map((r) => [r.id, r]))
-  const relayed = [...(s.relayed ?? [])]
-  for (const h of heardAll(s)) {
-    const r = byId.get(h.rumorId)
-    if (!r || !r.about.includes(id) || relayed.includes(r.id) || (h.relayedTo ?? []).includes(id)) continue
-    if (relaysRumor(message, r, id, s.world.names)) relayed.push(r.id)
-  }
-  return relayed.length === (s.relayed ?? []).length ? s : { ...s, relayed }
+  if (heard.length === 0) return s
+  return { ...s, heard: [...(s.heard ?? []), ...heard], slips: [...(s.slips ?? []), ...heard.map((h) => h.rumorId)] }
 }
 
 /**
  * Apply a judge result to the session's last player turn: the steps above, the judge and applied
- * deltas on the turn, the date's totals, and `leaving` once the total reaches -20. Phase 4: people
- * the player named (disclosed), rumors passed on for new secrets, rumors the player relayed.
+ * deltas on the turn (and the betrayal and rumors relayed, when any), the date's totals, and
+ * `leaving` once the total reaches -20. Phase 4: people the player named (disclosed, mentioned),
+ * rumors passed on for new secrets, rumors the player relayed.
  */
 export function applyJudge(
   s: DateSession,
@@ -749,6 +913,9 @@ export function applyJudge(
       found: [],
       tiers: [],
       secrets: [],
+      dateStart: s.record.startedAt,
+      heard: heardAll(s),
+      alreadyRelayed: s.relayed ?? [],
     },
     steps,
   )
@@ -759,6 +926,8 @@ export function applyJudge(
       ...turns[i],
       judge: { ...turns[i].judge, [id]: judge },
       applied: { ...turns[i].applied, [id]: result.applied },
+      ...(result.betrayal ? { betrayal: { ...turns[i].betrayal, [id]: result.betrayal } } : {}),
+      ...(result.relayed?.length ? { relayed: { ...turns[i].relayed, [id]: result.relayed } } : {}),
     }
     break
   }
@@ -772,8 +941,13 @@ export function applyJudge(
   if (result.learned?.length) {
     next = { ...next, disclosed: [...new Set([...(s.disclosed ?? []), ...result.learned])] }
   }
-  next = passRumors(next, result.secrets)
-  return noteRelays(next, message)
+  if (result.named?.length) {
+    next = { ...next, mentioned: [...new Set([...(s.mentioned ?? []), ...result.named])] }
+  }
+  if (result.relayed?.length) {
+    next = { ...next, relayed: [...new Set([...(s.relayed ?? []), ...result.relayed])] }
+  }
+  return passRumors(next, result.secrets)
 }
 
 // ---------------------------------------------------------------------------
@@ -797,6 +971,95 @@ function venueNote(venueId: string, at: number): string | null {
 export function giftPhrase(giftId: string): string {
   const gift = giftById(giftId)
   return gift ? giftNoun(gift) : giftId
+}
+
+/** The last player turn, if any. */
+function lastPlayerTurn(s: DateSession): DateTurn | undefined {
+  for (let i = s.record.turns.length - 1; i >= 0; i--) {
+    const t = s.record.turns[i]
+    if (t.role === 'player') return t
+  }
+  return undefined
+}
+
+/**
+ * What the story's LANDED section says for the last message, read against what the engine made of
+ * it: a betrayal overrides the judge's mood ("betrayed" for a lie, "hurt" for a broken agreement)
+ * and marks the breach, with a private sentence saying what broke; a breach the engine didn't count
+ * (old news, nothing to break) isn't a breach; a rumor passed on comes with its truth.
+ */
+export function landedFor(s: DateSession, judge: JudgeResult): { judge: JudgeResult; landed: string[] } {
+  const { character, names } = s.world
+  const id = character.id
+  const turn = lastPlayerTurn(s)
+  const betrayal = turn?.betrayal?.[id]
+  const landed: string[] = []
+  let out: JudgeResult = judge
+  if (betrayal) {
+    out = { ...judge, breach: true, mood: betrayal.kind === 'lie' ? 'betrayed' : 'hurt' }
+    if (betrayal.kind === 'agreement') {
+      const type = betrayal.agreement ?? s.rel.agreement?.type ?? 'exclusive'
+      if (betrayal.about) {
+        const other = names[betrayal.about] ?? betrayal.about
+        landed.push(
+          betrayal.how === 'player'
+            ? `It told ${character.name} about ${other}, which breaks the ${type} agreement.`
+            : `${character.name} heard about ${other} from someone else, which breaks the ${type} agreement.`,
+        )
+      } else {
+        landed.push(`It admitted breaking the ${type} agreement: honest, and it still hurts.`)
+      }
+    }
+  } else if (judge.breach) {
+    out = { ...judge, breach: false }
+  }
+  const byId = new Map((s.world.rumors ?? []).map((r) => [r.id, r]))
+  const first = firstName(character.name)
+  for (const rid of turn?.relayed?.[id] ?? []) {
+    const r = byId.get(rid)
+    if (!r) continue
+    const truth =
+      r.truth === 'true'
+        ? "It's true."
+        : `It's ${r.truth}${r.actually ? `; what's actually true: ${noDot(r.actually)}` : ''}. ${first} knows the truth.`
+    landed.push(`The player repeated a rumor about ${character.name}: "${noDot(r.text)}". ${truth}`)
+  }
+  return { judge: out, landed }
+}
+
+function noDot(t: string): string {
+  return String(t ?? '').trim().replace(/[.\s]+$/, '')
+}
+
+/**
+ * One-shot direction for this reply (appended to the turnNote): on the opening beat, the
+ * character's wish to define the relationship and a rekindle the story hasn't told yet; rumors just
+ * passed on (they let them slip in this reply); and on turns 1 to 3, one gossip line each.
+ */
+export function replyNotes(s: DateSession, turn: number): string[] {
+  const { character, names } = s.world
+  const name = character.name
+  const notes: string[] = []
+  if (turn === 0 && s.dtrOffer && !s.record.dtr) {
+    notes.push(`${name} wants to talk about what you two are (thinking ${requestedAgreementText(s.dtrOffer)}); bring it up early`)
+  }
+  const rk = s.rel.rekindle
+  if (turn === 0 && rk?.with && !rk.told && s.record.kind !== 'epilogue') {
+    const other = names[rk.with] ?? rk.with
+    notes.push(
+      rk.invite
+        ? `Early on, ${name} tells the player that they and ${other} got close again while the player was busy, and that they'd like the player to join them some night; funny, awkward or hot, depending on how things stand`
+        : `Early on, ${name} tells the player that they and ${other} got back together while the player was busy; the door is closing, kindly`,
+    )
+  }
+  const byId = new Map((s.world.rumors ?? []).map((r) => [r.id, r]))
+  for (const rid of s.slips ?? []) {
+    const r = byId.get(rid)
+    if (r) notes.push(`In this reply, ${name} lets something slip about other people: "${noDot(r.text)}"`)
+  }
+  const line = turn >= 1 ? s.gossip?.lines[turn - 1] : undefined
+  if (line) notes.push(`Somewhere in this reply, ${name} shares a bit of gossip: ${noDot(line)}`)
+  return notes
 }
 
 /** The story call for a turn: turn 0 is the opening beat; a judge result fills the LANDED section. */
@@ -829,28 +1092,40 @@ export function storyRequest(
     ctx.gift = { name: giftPhrase(giftId), reaction }
   }
   if (opts.special) ctx.special = opts.special
-  if (opts.turn > 0 && opts.judge) ctx.judge = opts.judge
+  if (opts.turn > 0 && opts.judge) {
+    const read = landedFor(s, opts.judge)
+    ctx.judge = read.judge
+    if (read.landed.length) ctx.landed = read.landed
+  }
   if (relations) ctx.relations = relations
-  // Phase 4: who they know about (marked where it breaks the agreement), gossip, rumors passed on,
-  // and the traits every character has (the LANDED line names a misgendering hit).
-  if ((s.rel.knownOthers ?? []).length > 0) ctx.knownOthersText = knownOthersText(character, s.rel, names)
+  // Phase 4: who they know about (marked where it breaks the agreement; people the player no longer
+  // sees left out), gossip, rumors passed on, a rekindle, this reply's one-shot notes, and the
+  // traits every character has (the LANDED line names a misgendering hit).
+  if ((s.rel.knownOthers ?? []).length > 0) {
+    const seen = seenPredicate(s.world, s.rel)
+    ctx.knownOthersText = knownOthersText(character, s.rel, names, seen ? { seen } : {})
+  }
   if (s.gossip?.lines.length) ctx.gossip = s.gossip.lines
   const rumors = rumorsTold(s)
   if (rumors.length) ctx.rumors = rumors
+  const rk = s.rel.rekindle ?? (s.rel.rekindledWith ? { with: s.rel.rekindledWith, invite: false } : undefined)
+  if (rk?.with) ctx.rekindle = { with: rk.with, invite: !!rk.invite }
+  const notes = replyNotes(s, opts.turn)
+  if (notes.length) ctx.notes = notes
   ctx.extraTraits = UNIVERSAL_TRAITS
   const system = buildStoryPrompt(ctx, character.prompts?.story)
   return { system, messages: makeStoryMessages(system, conversation(s.record.turns), opts.turn === 0) }
 }
 
 /**
- * The turnNote's special for a story call: the exit, else an open Define-the-relationship talk,
- * else the epilogue's direction, else the last turn. (The last-turn note is added by turn number
- * whatever the special.)
+ * The turnNote's special for a story call: the exit, else an open Define-the-relationship talk
+ * (who brought it up), else the epilogue's direction, else the last turn. (The last-turn note is
+ * added by turn number whatever the special.)
  */
 export function storySpecial(s: DateSession, turn: number): StorySpecial | undefined {
   if (s.leaving) return { kind: 'exit' }
   const dtr = s.record.dtr
-  if (dtr && dtr.closedAt == null) return { kind: 'dtr', requested: dtr.requested }
+  if (dtr && dtr.closedAt == null) return { kind: 'dtr', requested: dtr.requested, by: dtr.by }
   if (s.ending) return { kind: 'epilogue', direction: s.ending.direction }
   if (turn >= s.record.maxTurns && turn > 0) return { kind: 'final' }
   return undefined
@@ -858,14 +1133,17 @@ export function storySpecial(s: DateSession, turn: number): StorySpecial | undef
 
 /**
  * The judge call for the player's new message, with the turns before it. {others} is everyone else
- * the player is seeing plus anyone this character knows about; {opinion} where they think the two
- * of them stand (opinionText); {sharedSecrets} the rumors the player has heard about them, with
- * the truth, and secrets the player earned that concern them.
+ * the player is still seeing (under exclusive, only people dated since the agreement) plus anyone
+ * this character knows about that way; {opinion} where they think the two of them stand
+ * (opinionText); {sharedSecrets} the rumors the player has heard about them, with the truth and how
+ * to score relaying them, and secrets the player earned that concern them.
  */
 export function judgeRequest(s: DateSession, message: string, before: readonly DateTurn[]): ModelRequest {
   const { character, names } = s.world
-  const known = s.rel.knownOthers ?? []
-  const others = [...new Set([...othersOf(s.world), ...known])].filter((x) => x !== character.id)
+  const seen = seenPredicate(s.world, s.rel)
+  const knowsOpts = seen ? { seen } : {}
+  const known = knownSeen(character, s.rel, knowsOpts)
+  const others = [...new Set([...othersOf(s.world).filter((x) => !seen || seen(x)), ...known])].filter((x) => x !== character.id)
   const shared = sharedSecretsText(character.id, heardAll(s), s.world.rumors ?? [], earnedSecretsAbout(s.world), names)
   const system = buildJudgePrompt(
     {
@@ -874,7 +1152,8 @@ export function judgeRequest(s: DateSession, message: string, before: readonly D
       route: routeOf(s.world),
       names,
       others,
-      opinion: opinionText(character, s.rel, names),
+      knownOthersIds: known,
+      opinion: opinionText(character, s.rel, names, knowsOpts),
       ...(shared !== 'none' ? { sharedSecretsText: shared } : {}),
       extraTraits: UNIVERSAL_TRAITS,
       recent: conversation(before),
@@ -893,6 +1172,7 @@ export function agreementRequest(s: DateSession): ModelRequest {
     character,
     rel: s.rel,
     requested,
+    ...(s.record.dtr?.by ? { by: s.record.dtr.by } : {}),
     names,
     turns: conversation(s.record.turns).filter((t) => t.dtr),
     ...(relations ? { relations } : {}),
@@ -968,8 +1248,15 @@ function storyFailed(s: DateSession, err: unknown): DateSession {
   }
 }
 
-/** Add the character's reply (and the refusal note when the model declined). */
-function landReply(s: DateSession, result: { text: string; refused: boolean }): DateSession {
+/**
+ * Add the character's reply (and the refusal note when the model declined). `voiced`: the rumor
+ * slips and the gossip line this reply's notes carried, now said.
+ */
+function landReply(
+  s: DateSession,
+  result: { text: string; refused: boolean },
+  voiced: { slips: readonly string[]; turn: number } = { slips: [], turn: 0 },
+): DateSession {
   const { character } = s.world
   const at = s.world.now()
   const text = String(result.text ?? '').trim()
@@ -987,8 +1274,13 @@ function landReply(s: DateSession, result: { text: string; refused: boolean }): 
     rel = unlocked.rel
     secrets = unlocked.secrets
   }
-  const { error: _error, ...rest } = s
-  return passRumors({ ...rest, rel, streaming: '', record: { ...s.record, turns } }, secrets)
+  const { error: _error, slips: _slips, ...rest } = s
+  const slips = (s.slips ?? []).filter((id) => !voiced.slips.includes(id))
+  const next: DateSession = { ...rest, rel, streaming: '', record: { ...s.record, turns }, ...(slips.length ? { slips } : {}) }
+  if (!result.refused && s.gossip?.lines.length && voiced.turn >= 1) {
+    next.gossipVoiced = Math.min(s.gossip.lines.length, Math.max(s.gossipVoiced ?? 0, voiced.turn))
+  }
+  return passRumors(next, secrets)
 }
 
 /** The story call for the current turn, then either the end of the date or the chips. */
@@ -1026,7 +1318,7 @@ async function replyStep(s0: DateSession, llm: DateLlm, hooks: DateHooks): Promi
     return s
   }
 
-  s = landReply(s, result)
+  s = landReply(s, result, { slips: s0.slips ?? [], turn })
   const over = s.leaving || (final && turn > 0)
   if (!over) s = { ...s, status: aborted(hooks) ? 'awaiting-player' : 'suggesting' }
   await save(s, hooks)
@@ -1082,8 +1374,16 @@ export function withDateStart(s: DateSession): DateSession {
       names: s.world.names,
       rng,
       ...(s.world.setOf ? { setOf: s.world.setOf } : {}),
+      ...(s.rel.gossipShared?.length ? { shared: s.rel.gossipShared } : {}),
     })
     if (gossip.lines.length) out = { ...out, gossip }
+  }
+  // Secrets that unlocked after the last date's final reply: their rumor rolls happen now, so the
+  // opening beat can let what they pass on slip.
+  const owed = Math.max(0, Math.trunc(s.rel.rumorRollsOwed ?? 0))
+  if (owed > 0) {
+    const { rumorRollsOwed: _owed, ...rel } = out.rel
+    out = passRumors({ ...out, rel }, Array.from({ length: owed }, (_, i) => i))
   }
   return out
 }
@@ -1183,9 +1483,11 @@ export function dismissDtrOffer(s: DateSession): DateSession {
 /**
  * Close the talk: the Agreement prompt once over the talk's turns (skipped when the player said
  * nothing in it, or when the model call isn't there), its result applied (applyAgreementResult:
- * trust for how it went, the agreement when accepted), the character's style and the player's out
- * in the open, and record.dtr closed with the result. `keepOpen`: when the call fails or is stopped
- * the talk stays open (unchanged session) instead of closing with nothing settled. Not persisted or
+ * trust for how it went, the agreement when accepted), and when the player spoke in it, the
+ * character's style and the player's out in the open (with what the player asked for, when the
+ * player opened it); record.dtr closed with the result. `keepOpen`: when the call fails, is stopped
+ * or comes back unusable (ok false) the talk stays open (unchanged session) instead of closing with
+ * nothing settled; at the end of the date it closes without a result instead. Not persisted or
  * emitted.
  */
 async function settleDtr(s: DateSession, llm: DateLlm, hooks: DateHooks, keepOpen = false): Promise<DateSession> {
@@ -1201,7 +1503,9 @@ async function settleDtr(s: DateSession, llm: DateLlm, hooks: DateHooks, keepOpe
     } else {
       try {
         const r = await llm.agreement({ ...agreementRequest(s), signal: hooks.signal })
-        result = coerceAgreement(r?.value) ?? noAgreementResult()
+        const value = r?.ok === false ? null : coerceAgreement(r?.value)
+        if (!value && keepOpen) return s
+        result = value ?? undefined
       } catch {
         if (keepOpen) return s
         result = undefined
@@ -1220,7 +1524,10 @@ async function settleDtr(s: DateSession, llm: DateLlm, hooks: DateHooks, keepOpe
     rel = applyAgreementResult(rel, result, now, character)
     totals = addTrust(totals, clampTrust(rel.trust) - before)
   }
-  rel = applyTopics(rel, { attractions: false, style: true, playerStyle: true })
+  if (talked) {
+    rel = applyTopics(rel, { attractions: false, style: true, playerStyle: true })
+    if (dtr.by === 'player' && dtr.requested !== 'none') rel = { ...rel, toldStyle: { ...rel.toldStyle, asked: dtr.requested } }
+  }
   const unlocked = applyUnlocks(character, rel, routeOf(s.world))
   const record: DateRecord = {
     ...s.record,
@@ -1268,12 +1575,15 @@ export function createEpilogue(world: DateWorld, ending: { type: EndingType; gro
   const venueId = c.favoriteVenues?.find(Boolean) ?? 'rooftop-bar'
   const base = createDate(world, { venueId, maxTurns: EPILOGUE_TURNS, kind: 'epilogue' })
   const rival = world.rel.rekindledWith ? world.names[world.rel.rekindledWith] ?? world.rel.rekindledWith : undefined
+  const agreement = world.rel.agreement?.type
   const direction = endingDirection(ending, {
     characterId: c.id,
     name: c.name,
     ...(world.profile.name?.trim() ? { player: world.profile.name.trim() } : {}),
     names: world.names,
     ...(rival && ending.type === 'sacrifice' ? { rival } : {}),
+    ...(agreement && agreement !== 'none' ? { agreement } : {}),
+    ...(!rival && ending.type === 'sacrifice' && unpromised(c, world.rel) ? { unpromised: true } : {}),
   })
   return {
     ...base,
@@ -1286,24 +1596,37 @@ export function createEpilogue(world: DateWorld, ending: { type: EndingType; gro
 // Finishing
 
 /**
- * The world after this date (Phase 4, when DateWorld.characters and .game are given): rumors heard
- * and relayed, metamour approval for what the player disclosed under poly, friend-route gossip
- * reveals, then word of the date spreading (afterDateWorld) and rekindle rolls (not after an
- * epilogue), and an epilogue's ending recorded. Returns the date character's relationship as it
- * stands after all that, and the update.
+ * The world after this date (Phase 4, when DateWorld.characters and .game are given): the date is
+ * counted (GameState.dateCount, the character's lastDateIndex), rumors heard and relayed, gossip
+ * they were waiting to hear from the player (settleSecondhand: a betrayal when the player never
+ * brought that person up), metamour approval for each metamour the player talked about under poly
+ * (once per person per date), friend-route gossip reveals (and what this friend has now shared),
+ * then word of the date spreading (afterDateWorld) and rekindle rolls (not for pairs with this
+ * character; not after an epilogue), and an epilogue's ending recorded. Returns the date character's
+ * relationship as it stands after all that (a secondhand betrayal is on it) and the update.
  */
-function settleWorld(s: DateSession, rel: Relationship, now: number): { rel: Relationship; world?: WorldUpdate } {
+function settleWorld(
+  s: DateSession,
+  rel: Relationship,
+  now: number,
+): { rel: Relationship; world?: WorldUpdate } {
   const w = s.world
   const id = w.character.id
   const epilogue = s.record.kind === 'epilogue'
   const endingType = epilogue ? (s.ending?.type ?? s.record.endingType) : undefined
   let out = rel
   if (endingType) out = { ...out, ending: { type: endingType, playedAt: now } }
+  if (out.rekindle && !out.rekindle.told && !epilogue) out = { ...out, rekindle: { ...out.rekindle, told: true } }
+  const voiced = s.gossip ? s.gossip.lines.slice(0, s.gossipVoiced ?? 0) : []
+  if (voiced.length) out = { ...out, gossipShared: [...new Set([...(out.gossipShared ?? []), ...voiced])].slice(-30) }
   if (!w.characters || !w.game) return { rel: out }
   const characters = { ...w.characters, [id]: w.character }
   const relations = w.setRelations ?? []
-  let rels: Record<string, Relationship> = { ...(w.rels ?? {}), [id]: out }
   let game: GameState = w.game
+  const dateCount = (game.dateCount ?? 0) + 1
+  game = { ...game, dateCount }
+  out = { ...out, lastDateIndex: dateCount }
+  let rels: Record<string, Relationship> = { ...(w.rels ?? {}), [id]: out }
   const news: WorldUpdate['news'] = []
   const betrayals: WorldUpdate['betrayals'] = []
 
@@ -1314,10 +1637,29 @@ function settleWorld(s: DateSession, rel: Relationship, now: number): { rel: Rel
     )
     game = { ...game, rumors }
   }
-  if (out.agreement?.type === 'poly') {
-    for (const o of s.disclosed ?? []) game = adjustApproval(game, id, o, DISCLOSURE_APPROVAL, relations)
+  if (!epilogue && (out.heardSecondhand ?? []).length) {
+    const settled = settleSecondhand({
+      character: w.character,
+      rel: out,
+      mentioned: s.mentioned ?? [],
+      rels,
+      relations,
+      game,
+      now,
+      rng: w.rng,
+      names: w.names,
+    })
+    out = settled.rel
+    game = settled.game
+    rels = { ...rels, [id]: out }
   }
-  if (s.gossip?.reveals.length) rels = applyGossipReveals(rels, s.gossip.reveals)
+  if (out.agreement?.type === 'poly') {
+    for (const o of s.mentioned ?? []) game = adjustApproval(game, id, o, DISCLOSURE_APPROVAL, relations)
+  }
+  if (s.gossip?.reveals.length) {
+    const reveals = revealsOfFirst(s.gossip, voiced.length)
+    if (reveals.length) rels = applyGossipReveals(rels, reveals)
+  }
 
   if (!epilogue) {
     const routeOfX = (x: string) => routeOfId(w, x)
@@ -1345,6 +1687,7 @@ function settleWorld(s: DateSession, rel: Relationship, now: number): { rel: Rel
       now,
       rng: w.rng,
       names: w.names,
+      exclude: [id],
       ...(w.setOf ? { setOf: w.setOf } : {}),
     })
     rels = rk.rels
@@ -1437,16 +1780,22 @@ export async function finishDate(
       trustMoved += clampTrust(rel.trust) - before
     }
   }
+  // Secrets reached after the last reply: their rumors wait for the next date's opening, so the
+  // story can tell them (withDateStart).
   const unlocked = applyUnlocks(character, rel, route)
   rel = unlocked.rel
-  s = passRumors({ ...s, rel }, unlocked.secrets)
+  if (unlocked.secrets.length && (s.world.rumors ?? []).some((r) => r.teller === id)) {
+    rel = { ...rel, rumorRollsOwed: (rel.rumorRollsOwed ?? 0) + unlocked.secrets.length }
+  }
+  s = { ...s, rel }
 
   const settled = settleWorld(s, rel, now)
-  rel = settled.rel
-  // The jealousy mark follows what they know and how raw a betrayal still is (kept on through the
-  // date a betrayal landed on).
-  const jealous = jealousNow(character, rel)
-  if (jealous !== !!rel.jealous && !(rel.betrayals ?? []).some((b) => b.at >= s.record.startedAt)) rel = { ...rel, jealous }
+  rel = forgive(character, settled.rel, now)
+  // The jealousy mark: they know about someone the player still sees and mind it (kept on through
+  // the date a betrayal about someone landed on).
+  const seen = seenPredicate(s.world, rel)
+  const jealous = isJealous(character, rel, { route, ...(seen ? { seen } : {}) })
+  if (jealous !== !!rel.jealous && !(rel.betrayals ?? []).some((b) => b.at >= s.record.startedAt && b.about)) rel = { ...rel, jealous }
   const world = settled.world ? { ...settled.world, rels: { ...settled.world.rels, [id]: rel } } : undefined
 
   const totals = addTrust(totalsOf(s.record, id), trustMoved)
@@ -1456,21 +1805,30 @@ export async function finishDate(
     outcome,
     totals: { ...s.record.totals, [id]: totals },
   }
+  const voiced = s.gossip ? (s.gossip.shown ?? s.gossip.lines).slice(0, s.gossipVoiced ?? 0) : []
   const recap = buildRecap(s.relBefore, rel, ended, character, route, {
     memory: summary,
-    ...(s.gossip?.lines.length ? { gossip: s.gossip.lines } : {}),
+    ...(voiced.length ? { gossip: voiced } : {}),
     ...((s.heard ?? []).length ? { rumors: (s.heard ?? []).map((h) => h.rumorId) } : {}),
     ...(world ? { world: { news: world.news, betrayals: world.betrayals } } : {}),
   })
   s = { ...s, rel, status: 'ended', record: { ...ended, recap }, ...(world ? { worldAfter: world } : {}) }
-  if (world && hooks.persistWorld) {
+  if (world && hooks.persistAll) {
     try {
-      await hooks.persistWorld(changedOthers(s, world), world.game)
+      await hooks.persistAll(s.rel, s.record, changedOthers(s, world), world.game)
     } catch {
       // The store reports storage problems itself.
     }
+  } else {
+    if (world && hooks.persistWorld) {
+      try {
+        await hooks.persistWorld(changedOthers(s, world), world.game)
+      } catch {
+        // The store reports storage problems itself.
+      }
+    }
+    await save(s, hooks)
   }
-  await save(s, hooks)
   emit(s, hooks)
   return { session: s, recap, ...(world ? { world } : {}) }
 }

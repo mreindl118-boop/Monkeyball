@@ -7,8 +7,11 @@ import {
   GOSSIP_CHANCE,
   listeners,
   relaysRumor,
+  revealsOfFirst,
   rumorsOnSecretUnlock,
   SAME_SET_CHANCE,
+  SECRETS_SCORING,
+  settleSecondhand,
   sharedSecretsText,
 } from './gossip'
 import { newGameState } from './relationship'
@@ -89,15 +92,53 @@ describe('afterDateWorld', () => {
     expect(r.rels.nova.betrayals).toHaveLength(1)
     expect(r.rels.nova.jealous).toBe(true)
     expect(r.news.map((n) => n.kind)).toEqual(['betrayal'])
+    expect(r.news[0].text).toBe('Nova heard you went out with Kai, after you and Nova agreed to be exclusive.')
+    // The recap draws the hit on her meters from these.
+    expect(r.betrayals[0].before).toEqual({ affection: 50, trust: 40 })
+    expect(r.betrayals[0].after).toEqual({ affection: r.rels.nova.affection, trust: r.rels.nova.trust })
     // The same date heard again changes nothing.
     const again = world(r.rels, () => 0.1)
     expect(again.betrayals).toEqual([])
     expect(again.news).toEqual([])
   })
 
-  it('costs metamour approval when heard through gossip under poly', () => {
-    const rels = { ...base(), nova: { ...base().nova, agreement: { type: 'poly' as const, terms: '', madeAt: 1000 } } }
-    expect(world(rels, () => 0.1).game.metamours).toEqual({ 'kai|nova': 25 })
+  it('under poly, gossip that gets there first waits for the player to say it (no betrayal, no approval cost yet)', () => {
+    const poly = { type: 'poly' as const, terms: '', madeAt: 1000 }
+    const rels = { ...base(), nova: { ...base().nova, agreement: poly } }
+    const r = world(rels, () => 0.1)
+    expect(r.betrayals).toEqual([])
+    expect(r.game.metamours).toEqual({})
+    expect(r.rels.nova.knownOthers).toEqual(['kai'])
+    expect(r.rels.nova.heardSecondhand).toEqual(['kai'])
+    expect(r.news.map((n) => n.text)).toEqual(["Nova heard you've been out with Kai. Your poly agreement with Nova expects you to say so first."])
+    // Already told by the player: another Kai date is nothing, and costs nothing.
+    const told = { ...base(), nova: { ...base().nova, agreement: poly, knownOthers: ['kai'] } }
+    const again = world(told, () => 0.1)
+    expect(again.betrayals).toEqual([])
+    expect(again.news).toEqual([])
+    expect(again.game.metamours).toEqual({})
+    expect(again.rels.nova.heardSecondhand).toBeUndefined()
+  })
+
+  it('settles secondhand gossip at the end of their next date: said, nothing; unsaid, a betrayal and an approval cost', () => {
+    const poly = { type: 'poly' as const, terms: '', madeAt: 1000 }
+    const nova = rel('nova', { dates: 4, affection: 50, trust: 40, agreement: poly, knownOthers: ['kai'], heardSecondhand: ['kai'] })
+    const others = { kai: rel('kai', { dates: 2, affection: 30, lastDateAt: 8000 }) }
+    const input = { character: card('nova'), rel: nova, rels: others, relations, game: newGameState(0), now: 20_000, rng: () => 0.5, names }
+    const said = settleSecondhand({ ...input, mentioned: ['kai'] })
+    expect(said.betrayals).toEqual([])
+    expect(said.rel.heardSecondhand).toBeUndefined()
+    expect(said.rel.knownOthers).toEqual(['kai'])
+    expect(said.game.metamours).toEqual({})
+    const unsaid = settleSecondhand({ ...input, mentioned: [] })
+    expect(unsaid.betrayals).toHaveLength(1)
+    expect(unsaid.betrayals[0]).toMatchObject({ kind: 'agreement', how: 'gossip', about: 'kai', agreement: 'poly' })
+    expect(unsaid.rel.heardSecondhand).toBeUndefined()
+    expect(unsaid.rel.trust).toBeLessThan(40)
+    expect(unsaid.game.metamours).toEqual({ 'kai|nova': 25 })
+    // Nothing waiting: the same object back.
+    const clean = rel('nova')
+    expect(settleSecondhand({ ...input, rel: clean, mentioned: [] }).rel).toBe(clean)
   })
 
   it('is seeded: the same seed spreads the same way', () => {
@@ -128,6 +169,23 @@ describe('friendGossipLines', () => {
     expect(g.lines[0]).toBe('Priya Raman is into you, properly')
     for (const line of g.lines.slice(1)) expect(line).toMatch(/^(Priya Raman|Dex Adeyemi) /)
     expect(g.reveals.length).toBeGreaterThan(0)
+  })
+
+  it('shows first names to the player, keeps one "into you" line, and puts what they shared before last', () => {
+    const rels = { priya: rel('priya', { affection: 65 }), dex: rel('dex', { affection: 70 }), imani: rel('imani', { affection: 70 }) }
+    const into = (lines: string[]) => lines.filter((l) => l.includes('is into you')).length
+    for (let seed = 1; seed < 20; seed++) {
+      const g = friendGossipLines(card('sasha'), { ...ctx(rels, seeded(seed)), setOf })
+      expect(into(g.lines)).toBeLessThanOrEqual(1)
+      expect(g.shown).toHaveLength(g.lines.length)
+      expect(g.revealOf).toHaveLength(g.lines.length)
+    }
+    const g = friendGossipLines(card('sasha'), ctx({ priya: rel('priya', { affection: 65 }) }, seeded(3)))
+    expect(g.shown![0]).toBe('Priya is into you, properly')
+    const next = friendGossipLines(card('sasha'), { ...ctx({ priya: rel('priya', { affection: 65 }) }, seeded(3)), shared: g.lines })
+    expect(next.lines[0]).not.toBe(g.lines[0])
+    expect(revealsOfFirst(g, 0)).toEqual([])
+    expect(revealsOfFirst(g, g.lines.length).length).toBe(g.reveals.length)
   })
 
   it('tells who is with whom from the relationships', () => {
@@ -172,6 +230,8 @@ describe('rumors', () => {
     expect(text).toContain('; the player has already brought it up with them)')
     expect(text).not.toContain('staff party')
     expect(text).toContain('the player knows this secret: Rook Halvorsen saw the ring')
+    // How to score relaying one wrong or using it as leverage rides in the value.
+    expect(text.endsWith(`. ${SECRETS_SCORING}`)).toBe(true)
     expect(sharedSecretsText('sasha', heard, rumors, [])).toBe('none')
   })
 

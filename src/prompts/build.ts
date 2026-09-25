@@ -16,6 +16,7 @@ import type {
   Agreement,
   AgreementType,
   Character,
+  DtrBy,
   HeatLevel,
   JudgeResult,
   PlayerProfile,
@@ -140,10 +141,26 @@ const PLAYER_STYLE_WORDS: Record<PlayerStyle, string> = {
   figuring: "Still figuring it out: hasn't settled on monogamous, open or poly.",
 }
 
-/** {knownStyle}: the player's style in plain words, once the character knows it. */
-export function knownStyleText(profile: PlayerProfile, rel: Pick<Relationship, 'knowsPlayerStyle'>): string {
-  if (!rel.knowsPlayerStyle) return "Nothing yet; they haven't talked about it."
-  return PLAYER_STYLE_WORDS[profile.relationshipStyle] ?? PLAYER_STYLE_WORDS.figuring
+/**
+ * {knownStyle}: what the character knows about how the player dates, from what the player actually
+ * said (rel.toldStyle): the style their words described, and what they asked this character for in
+ * Define the relationship ("Asked for exclusive."). Never the profile's style unless the player's
+ * words matched it; an older save that only has knowsPlayerStyle keeps the profile's words.
+ */
+export function knownStyleText(
+  profile: PlayerProfile,
+  rel: Pick<Relationship, 'knowsPlayerStyle'> & Partial<Pick<Relationship, 'toldStyle'>>,
+): string {
+  const told = rel.toldStyle
+  if (!told) {
+    if (!rel.knowsPlayerStyle) return "Nothing yet; they haven't talked about it."
+    return PLAYER_STYLE_WORDS[profile.relationshipStyle] ?? PLAYER_STYLE_WORDS.figuring
+  }
+  const parts: string[] = []
+  if (told.style) parts.push(PLAYER_STYLE_WORDS[told.style] ?? PLAYER_STYLE_WORDS.figuring)
+  if (told.asked && told.asked !== 'none') parts.push(`Asked for ${REQUESTED_WORDS[told.asked] ?? told.asked}.`)
+  if (parts.length === 0) return "They've talked about it, but nothing clear came out of it."
+  return parts.join(' ')
 }
 
 const REQUESTED_WORDS: Record<AgreementType, string> = {
@@ -154,9 +171,14 @@ const REQUESTED_WORDS: Record<AgreementType, string> = {
   none: 'no agreement',
 }
 
-/** {requestedAgreement}, e.g. "exclusive (only each other)". Always contains the type word. */
-export function requestedAgreementText(type: AgreementType): string {
-  return REQUESTED_WORDS[type] ?? type
+/**
+ * {requestedAgreement}, e.g. "exclusive (only each other)". Always contains the type word. When the
+ * character brought it up (`by` 'character' with their name), it says so: "..., which Nova
+ * Castellanos proposed".
+ */
+export function requestedAgreementText(type: AgreementType, by?: { by: DtrBy; name: string }): string {
+  const words = REQUESTED_WORDS[type] ?? type
+  return by?.by === 'character' && by.name ? `${words}, which ${by.name} proposed` : words
 }
 
 /** {agreement}: "none yet", or "exclusive: <terms>". */
@@ -218,9 +240,10 @@ export function withExtraTraits(list: readonly Trait[] | undefined, extra: reado
 /**
  * {hitsLine}: "It touched a turn-on: Slow dancing in an empty room." per known hit, or
  * "It hit nothing in particular." Unknown ids are ignored (optional `extra` traits count as known).
- * Jealousy and breach add a sentence.
+ * Jealousy and breach add a sentence: with an agreement (`agreement`, the type they have) a breach
+ * "broke something the two of you agreed on"; with none it was a lie they caught.
  */
-export function hitsLine(character: Character, judge: JudgeResult, extra?: ExtraTraits): string {
+export function hitsLine(character: Character, judge: JudgeResult, extra?: ExtraTraits, agreement?: AgreementType): string {
   const parts: string[] = []
   const seen = new Set<string>()
   for (const hit of judge.hits ?? []) {
@@ -234,7 +257,11 @@ export function hitsLine(character: Character, judge: JudgeResult, extra?: Extra
   }
   if (parts.length === 0) parts.push('It hit nothing in particular.')
   if (judge.jealousy) parts.push('It stirred up some jealousy.')
-  if (judge.breach) parts.push('It broke something the two of you agreed on.')
+  if (judge.breach) {
+    parts.push(
+      agreement && agreement !== 'none' ? 'It broke something the two of you agreed on.' : `It was a lie, and ${character.name} caught it.`,
+    )
+  }
   return parts.join(' ')
 }
 
@@ -268,16 +295,36 @@ function romanticLines(
   return out
 }
 
-/** Story {partners}: "Kai Okoro (ex): Dated for a year; it ended loud." with gossip appended. */
+/** A rekindle on the character's relationship, as {partners} tells it. */
+export interface RekindleNote {
+  with: string
+  invite: boolean
+}
+
+/**
+ * Story {partners}: "Kai Okoro (ex): Dated for a year; it ended loud." with gossip appended. A
+ * rekindle marks that partner: "Kai Okoro (ex, back together lately: they got close again while the
+ * player was busy, and Nova Castellanos is gently closing the door on the player)".
+ */
 export function partnersText(
   character: Character,
   names: Record<string, string> | undefined,
   relations?: readonly RelationLine[],
   gossip?: readonly string[],
+  rekindle?: RekindleNote,
 ): string {
-  const lines = romanticLines(character, relations).map((r) =>
-    sentence(`${nameOf(r.characterId, names)} (${r.kind})${r.note ? `: ${noPeriod(r.note)}` : ''}`),
-  )
+  const rk = rekindle?.with ? rekindle : undefined
+  const list = romanticLines(character, relations)
+  if (rk && !list.some((r) => r.characterId === rk.with)) list.push({ characterId: rk.with, kind: 'ex' })
+  const lines = list.map((r) => {
+    const kind =
+      rk && r.characterId === rk.with
+        ? `${r.kind}, back together lately: they got close again while the player was busy, and ${
+            rk.invite ? 'they would like the player to join them some night' : `${character.name} is gently closing the door on the player`
+          }`
+        : r.kind
+    return sentence(`${nameOf(r.characterId, names)} (${kind})${r.note ? `: ${noPeriod(r.note)}` : ''}`)
+  })
   const base = lines.length ? lines.join(' ') : 'none'
   const g = (gossip ?? []).map(noPeriod).filter(Boolean)
   if (g.length === 0) return base
@@ -345,7 +392,7 @@ export function renderTranscript(turns: readonly TurnLike[], labels: TranscriptL
 export type StorySpecial =
   | { kind: 'final' }
   | { kind: 'exit' }
-  | { kind: 'dtr'; requested: AgreementType }
+  | { kind: 'dtr'; requested: AgreementType; by?: DtrBy }
   | { kind: 'epilogue'; direction: string }
 
 export interface StoryContext {
@@ -379,31 +426,50 @@ export interface StoryContext {
   knownOthersText?: string
   /** Optional: traits every character has (the LANDED line names a hit on one). */
   extraTraits?: ExtraTraits
+  /** Optional: one-shot direction for this reply, appended to {turnNote} (a rumor to let slip...). */
+  notes?: string[]
+  /** Optional: private sentences appended to the LANDED line (a betrayal, a rumor relayed). */
+  landed?: string[]
+  /** Optional: a rekindle with one of their partners (marks that partner in {partners}). */
+  rekindle?: RekindleNote
 }
 
 const LANDED_HEADER = "HOW THE PLAYER'S LAST MESSAGE LANDED"
 
-/** {turnNote} per SPEC: opening, final turn, early exit, define-the-relationship, epilogue. */
-export function turnNote(ctx: Pick<StoryContext, 'character' | 'turn' | 'maxTurns' | 'firstDate' | 'special'>): string {
+/**
+ * {turnNote} per SPEC: opening, final turn, early exit, define-the-relationship (asked by the
+ * player, or brought up by the character), epilogue (its last turn closes the story rather than
+ * asking about another date), then any one-shot notes for this reply.
+ */
+export function turnNote(ctx: Pick<StoryContext, 'character' | 'turn' | 'maxTurns' | 'firstDate' | 'special' | 'notes'>): string {
   const name = ctx.character.name
   const special = ctx.special
   if (special?.kind === 'exit') return `The date has gone badly: write ${name} leaving.`
   const parts: string[] = []
+  const last = special?.kind === 'final' || (ctx.turn > 0 && ctx.turn >= ctx.maxTurns)
   if (ctx.turn === 0) {
     parts.push(`Open the date: ${name} arrives and greets the player.`)
     const opener = str(ctx.character.opener)
     if (ctx.firstDate && opener) parts.push(`Use this line: ${opener}`)
-  } else if (special?.kind === 'final' || ctx.turn >= ctx.maxTurns) {
+  } else if (last && special?.kind === 'epilogue') {
+    parts.push(`Last turn: close the epilogue; this is how the story with ${name} ends.`)
+  } else if (last) {
     parts.push(`Last turn: bring the date to a natural close and hint at whether ${name} wants another.`)
   }
   if (special?.kind === 'dtr') {
     parts.push(
-      `The player wants to define what you two are and is asking for ${requestedAgreementText(special.requested)}. Answer as ${name} would, given their style, their partners and how much they trust the player: accept, counter with different terms, or decline, all in character.`,
+      special.by === 'character'
+        ? `${name} brought up what you two are and wants ${requestedAgreementText(special.requested)}. The player agreed to talk: make the case in character, react to what they say, and land on accepting, countering or letting it go, given ${name}'s style, partners and how much ${name} trusts the player.`
+        : `The player wants to define what you two are and is asking for ${requestedAgreementText(special.requested)}. Answer as ${name} would, given their style, their partners and how much they trust the player: accept, counter with different terms, or decline, all in character.`,
     )
   }
   if (special?.kind === 'epilogue') {
     const d = str(special.direction)
     if (d) parts.push(`Epilogue: ${sentence(d)}`)
+  }
+  for (const n of ctx.notes ?? []) {
+    const t = sentence(str(n))
+    if (t) parts.push(t)
   }
   return parts.join(' ')
 }
@@ -435,7 +501,7 @@ export function storyValues(ctx: StoryContext): FillValues {
     relationshipStyle: c.relationshipStyle,
     jealousy: c.jealousy,
     aceNote: aceNote(c),
-    partners: partnersText(c, ctx.names, ctx.relations, ctx.gossip),
+    partners: partnersText(c, ctx.names, ctx.relations, ctx.gossip, ctx.rekindle),
     personality: sentence(c.personality),
     voice: sentence(c.voice),
     backstory: sentence(c.backstory),
@@ -467,7 +533,8 @@ export function storyValues(ctx: StoryContext): FillValues {
   }
   if (ctx.judge) {
     values.mood = noPeriod(ctx.judge.mood) || 'neutral'
-    values.hitsLine = hitsLine(c, ctx.judge, ctx.extraTraits)
+    const extra = (ctx.landed ?? []).map((l) => sentence(str(l))).filter(Boolean)
+    values.hitsLine = [hitsLine(c, ctx.judge, ctx.extraTraits, rel.agreement?.type), ...extra].join(' ')
   }
   return values
 }
@@ -521,7 +588,7 @@ export function defaultOpinion(
         ? "doesn't mind"
         : character.jealousy === 'medium'
           ? "isn't sure how to feel about it"
-          : 'minds more than they let on'
+          : 'minds more than it shows'
   switch (type) {
     case 'exclusive':
       return who
@@ -592,6 +659,8 @@ export interface AgreementContext {
   character: Character
   rel: Relationship
   requested: AgreementType
+  /** Optional: who opened the talk (the character: {requestedAgreement} says they proposed it). */
+  by?: DtrBy
   names: Record<string, string>
   /** The define-the-relationship conversation. If any turn is flagged `dtr`, only those are used. */
   turns: TurnLike[]
@@ -606,7 +675,7 @@ export function agreementValues(ctx: AgreementContext): FillValues {
   const dtr = ctx.turns.some((t) => t.dtr) ? ctx.turns.filter((t) => t.dtr) : ctx.turns
   return {
     name: c.name,
-    requestedAgreement: requestedAgreementText(ctx.requested),
+    requestedAgreement: requestedAgreementText(ctx.requested, ctx.by ? { by: ctx.by, name: c.name } : undefined),
     relationshipStyle: c.relationshipStyle,
     jealousy: c.jealousy,
     trust: Math.round(rel.trust),

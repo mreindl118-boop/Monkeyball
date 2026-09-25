@@ -6,19 +6,24 @@
 // with a chance by what they are to X (partner, situationship, housemate, roommate or bandmate
 // 0.5; coworker, friend or family 0.35; ex 0.3; rival or neighbor 0.25; anyone else in X's set 0.1).
 // Characters in different sets never talk unless a manifest's relationship links them. Only people
-// who have met the player care: they add X to what they know, and checkBetrayal decides whether
-// that breaks an agreement.
+// who have met the player care: they add X to what they know. Under exclusive, checkBetrayal
+// decides on the spot whether that breaks the agreement. Under poly (or open with telling terms)
+// the player still gets to say it first: X goes on heardSecondhand, and settleSecondhand makes it
+// a betrayal only if their next date ends without the player bringing X up.
 //
 // Friend-route characters share gossip on a date: another character's attractions or style, who is
-// into the player (60+), who is with whom. The lines ride in the story's {partners}; the facts they
-// carry reveal on those characters' profiles.
+// into the player (60+, one of those per date), who is with whom; what a friend already shared comes
+// last next time. The lines ride in the story's {partners} (full names) and the recap shows them
+// with first names; the facts they carry reveal on those characters' profiles.
 //
 // Rumors: when a teller's secret unlocks, each of their unheard rumors is passed on with a 50%
 // chance. The judge sees the rumors the player has heard about the character on the date, with the
-// truth, so relaying one wrong (or using it as leverage) can be scored.
+// truth and how to score relaying one wrong or using it as leverage (the date flow also makes a
+// false or exaggerated relay cost trust).
 
 import { noPeriod } from '../prompts/build'
 import type {
+  AgreementType,
   BetrayalEvent,
   Character,
   GameState,
@@ -30,8 +35,17 @@ import type {
   SetRelationKind,
   SetRelationship,
   Style,
+  WorldBetrayal,
 } from '../types'
-import { applyBetrayal, checkBetrayal, disclosureRequired, firstName, jealousNow } from './agreements'
+import {
+  applyBetrayal,
+  checkBetrayal,
+  datedSinceAgreement,
+  disclosureRequired,
+  firstName,
+  isJealous,
+  seenIn,
+} from './agreements'
 import { adjustApproval, GOSSIP_APPROVAL } from './metamour'
 import { describeAttractions } from './stages'
 
@@ -113,25 +127,31 @@ export interface WorldUpdate {
   game: GameState
   /** News this produced (also appended to game.news). */
   news: NewsItem[]
-  betrayals: { characterId: string; event: BetrayalEvent }[]
+  /** Betrayals other characters took, with their meters just before and after. */
+  betrayals: WorldBetrayal[]
 }
 
 function newsItem(kind: NewsItem['kind'], id: string, at: number, text: string, characterIds: string[]): NewsItem {
   return { id: `${kind}-${at.toString(36)}-${id}`, at, kind, text, characterIds, read: false }
 }
 
+function meters(rel: Relationship): { affection: number; trust: number } {
+  return { affection: rel.affection ?? 0, trust: rel.trust ?? 0 }
+}
+
 /**
- * After a date: word of it spreads (one hop, seeded), people who hear it add the person to what
- * they know, and a broken agreement becomes a betrayal (applyBetrayal: meters, memory line,
- * jealousy). Under a poly agreement, hearing it through gossip also costs metamour approval. Only
- * romantic-route dates spread, and only to characters who have been on a date with the player.
+ * After a date: word of it spreads (one hop, seeded), and people who hear it add the person to
+ * what they know. Under exclusive a date after the agreement is a betrayal on the spot
+ * (applyBetrayal: meters, memory line, jealousy). Under poly or open with telling terms, someone
+ * they didn't know about goes on heardSecondhand (settleSecondhand decides after their next date).
+ * Only romantic-route dates spread, and only to characters who have been on a date with the player.
  * Returns the whole relationship map, the game state with the news appended, the news and the
- * betrayals.
+ * betrayals (with the meters around them).
  */
 export function afterDateWorld(input: AfterDateInput): WorldUpdate {
   const { characters, relations, routeOf, now, rng, names } = input
   const rels: Record<string, Relationship> = { ...input.rels }
-  let game = input.game
+  const game = input.game
   const news: NewsItem[] = []
   const betrayals: WorldUpdate['betrayals'] = []
   const dated = [...new Set(input.datedIds)]
@@ -146,28 +166,79 @@ export function afterDateWorld(input: AfterDateInput): WorldUpdate {
       if (!(rng() < chance)) continue
       const knew = (oRel.knownOthers ?? []).includes(x)
       let next: Relationship = knew ? oRel : { ...oRel, knownOthers: [...(oRel.knownOthers ?? []), x] }
-      const event = checkBetrayal(observer, next, x, 'gossip', xRel, now, rng, { names })
+      const type = oRel.agreement?.type ?? 'none'
+      let event: BetrayalEvent | null = null
+      if (type === 'exclusive') {
+        event = checkBetrayal(observer, next, x, 'gossip', xRel, now, rng, { names })
+      } else if (!knew && disclosureRequired(oRel.agreement) && datedSinceAgreement(oRel, xRel)) {
+        next = { ...next, heardSecondhand: [...(next.heardSecondhand ?? []).filter((id) => id !== x), x] }
+      }
       if (event) {
+        const before = meters(next)
         next = applyBetrayal(next, event)
-        betrayals.push({ characterId: o, event })
-        const why =
-          event.agreement === 'exclusive'
-            ? 'and you two had agreed to be exclusive'
-            : `and your ${event.agreement ?? 'poly'} agreement expects you to say so`
-        news.push(newsItem('betrayal', `${o}-${x}`, now, `${short(o, names)} heard about ${short(x, names)} through the grapevine, ${why}.`, [o, x]))
+        betrayals.push({ characterId: o, event, before, after: meters(next) })
+        news.push(
+          newsItem(
+            'betrayal',
+            `${o}-${x}`,
+            now,
+            `${short(o, names)} heard you went out with ${short(x, names)}, after you and ${short(o, names)} agreed to be exclusive.`,
+            [o, x],
+          ),
+        )
       } else if (!knew) {
-        news.push(newsItem('gossip', `${o}-${x}`, now, `${short(o, names)} heard you've been out with ${short(x, names)}.`, [o, x]))
+        const waits = (next.heardSecondhand ?? []).includes(x)
+        const text = waits
+          ? `${short(o, names)} heard you've been out with ${short(x, names)}. Your ${type} agreement with ${short(o, names)} expects you to say so first.`
+          : `${short(o, names)} heard you've been out with ${short(x, names)}.`
+        news.push(newsItem('gossip', `${o}-${x}`, now, text, [o, x]))
       }
-      if ((!knew || event) && (next.agreement?.type === 'poly' || (event && disclosureRequired(next.agreement)))) {
-        game = adjustApproval(game, o, x, GOSSIP_APPROVAL, relations)
-      }
-      const jealous = event ? true : jealousNow(observer, next)
-      if (jealous !== next.jealous) next = { ...next, jealous }
+      const jealous = event ? true : isJealous(observer, next, { route: routeOf(o), seen: seenIn(rels, routeOf, game.dateCount, next) })
+      if (jealous !== !!next.jealous) next = { ...next, jealous }
       if (next !== oRel) rels[o] = next
     }
   }
-  if (news.length) game = { ...game, news: [...(game.news ?? []), ...news] }
-  return { rels, game, news, betrayals }
+  return { rels, game: news.length ? { ...game, news: [...(game.news ?? []), ...news] } : game, news, betrayals }
+}
+
+export interface SecondhandInput {
+  character: Character
+  /** Their relationship at the end of their date. */
+  rel: Relationship
+  /** People the player talked about going out with on this date (dating context). */
+  mentioned: readonly string[]
+  rels: Readonly<Record<string, Relationship>>
+  relations: SetRelationship[]
+  game: GameState
+  now: number
+  rng: () => number
+  names: Record<string, string>
+}
+
+/**
+ * The end of a date with someone who heard about others through gossip under an agreement that
+ * expects disclosure (heardSecondhand): each person the player brought up on the date is simply
+ * known now; each one the player didn't is a betrayal (checkBetrayal, 'gossip': the note, the memory
+ * line, the meters) and costs metamour approval under poly. heardSecondhand is cleared either way.
+ */
+export function settleSecondhand(input: SecondhandInput): { rel: Relationship; game: GameState; betrayals: BetrayalEvent[] } {
+  const { character, now, rng, names } = input
+  const pending = input.rel.heardSecondhand ?? []
+  if (pending.length === 0) return { rel: input.rel, game: input.game, betrayals: [] }
+  const { heardSecondhand: _pending, ...rest } = input.rel
+  let rel: Relationship = rest
+  let game = input.game
+  const betrayals: BetrayalEvent[] = []
+  const agreement: AgreementType = rel.agreement?.type ?? 'none'
+  for (const x of pending) {
+    if (input.mentioned.includes(x) || !disclosureRequired(rel.agreement)) continue
+    const event = checkBetrayal(character, { ...rel, heardSecondhand: [x] }, x, 'gossip', input.rels[x], now, rng, { names })
+    if (!event) continue
+    rel = applyBetrayal(rel, event)
+    betrayals.push(event)
+    if (agreement === 'poly') game = adjustApproval(game, character.id, x, GOSSIP_APPROVAL, input.relations)
+  }
+  return { rel, game, betrayals }
 }
 
 // ---------------------------------------------------------------------------
@@ -204,6 +275,8 @@ export interface GossipContext {
   rng: () => number
   /** Optional: set id per character (same-set characters count as people they know). */
   setOf?: Record<string, string>
+  /** Optional: lines this friend already shared on earlier dates (they come last). */
+  shared?: readonly string[]
 }
 
 export interface GossipReveal {
@@ -213,45 +286,74 @@ export interface GossipReveal {
 }
 
 export interface GossipLines {
+  /** The lines as the story prompt carries them (full names). */
   lines: string[]
   reveals: GossipReveal[]
+  /** Optional: the same lines for the player (first names), in the same order. */
+  shown?: string[]
+  /** Optional: what each line gives away, in the same order (null for a line that reveals nothing). */
+  revealOf?: (GossipReveal | null)[]
+}
+
+/** The reveals of the first `count` lines (the ones the story actually voiced), merged per person. */
+export function revealsOfFirst(g: GossipLines, count: number): GossipReveal[] {
+  if (!g.revealOf) return count >= g.lines.length ? g.reveals : []
+  const out: GossipReveal[] = []
+  for (const r of g.revealOf.slice(0, Math.max(0, count))) {
+    if (!r) continue
+    const have = out.find((x) => x.characterId === r.characterId)
+    if (have) Object.assign(have, r.attractions ? { attractions: true } : {}, r.style ? { style: true } : {})
+    else out.push({ ...r })
+  }
+  return out
 }
 
 function lowerFirst(s: string): string {
   return s ? s.charAt(0).toLowerCase() + s.slice(1) : s
 }
 
+/** Rank added to a line the friend already shared on an earlier date. */
+const SHARED_RANK = 10
+
 /**
  * What a friend shares on a date: up to three lines about people they know (declared relations,
- * and their set when `setOf` is given): who's into the player, someone's attractions or style
- * (facts the player hasn't found yet come first), and who is with whom. The lines are appended to
- * the story's {partners}; `reveals` are the attractions and styles they give away.
+ * and their set when `setOf` is given): who's into the player (one of those at most), someone's
+ * attractions or style (facts the player hasn't found yet come first), and who is with whom. Lines
+ * they shared before (`ctx.shared`) come last. The lines are appended to the story's {partners};
+ * `shown` is the same lines with first names for the recap; `reveals` are the attractions and styles
+ * they give away.
  */
 export function friendGossipLines(c: Character, ctx: GossipContext): GossipLines {
   const { characters, rels, relations, routeOf, names, rng } = ctx
+  const shared = new Set(ctx.shared ?? [])
   const known = listeners(c.id, relations, ctx.setOf, characters)
     .map((l) => l.id)
     .filter((id) => !!characters[id] && id !== c.id)
-  type Fact = { line: string; rank: number; reveal?: GossipReveal }
+  type Fact = { line: string; shown: string; rank: number; into?: boolean; reveal?: GossipReveal }
   const pool: Fact[] = []
   for (const id of known) {
     const o = characters[id]
     const rel = rels[id]
     const name = nameOf(id, names)
+    const first = short(id, names)
     if (rel && routeOf(id) === 'romantic' && (rel.affection ?? 0) >= INTO_YOU_AFFECTION) {
-      pool.push({ line: `${name} is into you, properly`, rank: 0 })
+      pool.push({ line: `${name} is into you, properly`, shown: `${first} is into you, properly`, rank: 0, into: true })
     }
     const attractions = describeAttractions(o.attractedTo ?? [])
     if (attractions) {
       const label = String(o.orientation ?? '').trim()
+      const what = `${label ? `${label}: ` : ''}into ${attractions}`
       pool.push({
-        line: `${name} is ${label ? `${label}: ` : ''}into ${attractions}`,
+        line: `${name} is ${what}`,
+        shown: `${first} is ${what}`,
         rank: rel?.revealed?.attractions ? 3 : 1,
         reveal: { characterId: id, attractions: true },
       })
     }
+    const style = STYLE_GOSSIP[o.relationshipStyle] ?? STYLE_GOSSIP.flexible
     pool.push({
-      line: `${name} ${STYLE_GOSSIP[o.relationshipStyle] ?? STYLE_GOSSIP.flexible}`,
+      line: `${name} ${style}`,
+      shown: `${first} ${style}`,
       rank: rel?.revealed?.style ? 3 : 1,
       reveal: { characterId: id, style: true },
     })
@@ -266,18 +368,31 @@ export function friendGossipLines(c: Character, ctx: GossipContext): GossipLines
     if (seen.has(key)) continue
     seen.add(key)
     const note = noPeriod(String(r.note ?? ''))
-    pool.push({ line: `${nameOf(r.a, names)} and ${nameOf(r.b, names)} ${phrase}${note ? `: ${lowerFirst(note)}` : ''}`, rank: 2 })
+    const tail = `${phrase}${note ? `: ${lowerFirst(note)}` : ''}`
+    pool.push({
+      line: `${nameOf(r.a, names)} and ${nameOf(r.b, names)} ${tail}`,
+      shown: `${short(r.a, names)} and ${short(r.b, names)} ${tail}`,
+      rank: 2,
+    })
   }
+  for (const f of pool) if (shared.has(f.line)) f.rank += SHARED_RANK
   // Shuffle with the seeded rng, then keep the most interesting kinds first.
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1))
     ;[pool[i], pool[j]] = [pool[j], pool[i]]
   }
-  const picked = pool
+  const ordered = pool
     .map((f, i) => ({ f, i }))
     .sort((a, b) => a.f.rank - b.f.rank || a.i - b.i)
-    .slice(0, MAX_GOSSIP_LINES)
     .map((x) => x.f)
+  const picked: Fact[] = []
+  let into = false
+  for (const f of ordered) {
+    if (picked.length >= MAX_GOSSIP_LINES) break
+    if (f.into && into) continue
+    if (f.into) into = true
+    picked.push(f)
+  }
   const reveals: GossipReveal[] = []
   for (const f of picked) {
     if (!f.reveal) continue
@@ -285,7 +400,12 @@ export function friendGossipLines(c: Character, ctx: GossipContext): GossipLines
     if (have) Object.assign(have, f.reveal.attractions ? { attractions: true } : {}, f.reveal.style ? { style: true } : {})
     else reveals.push({ ...f.reveal })
   }
-  return { lines: picked.map((f) => f.line), reveals }
+  return {
+    lines: picked.map((f) => f.line),
+    reveals,
+    shown: picked.map((f) => f.shown),
+    revealOf: picked.map((f) => (f.reveal ? { ...f.reveal } : null)),
+  }
 }
 
 /** Apply gossip reveals to the relationships they concern (flags only turn on). */
@@ -363,7 +483,20 @@ export function sharedSecretsText(
     const t = noPeriod(String(s ?? ''))
     if (t) items.push(`the player knows this secret: ${t}`)
   }
-  return items.length ? items.join('; ') : 'none'
+  if (items.length === 0) return 'none'
+  return `${items.join('; ')}. ${SECRETS_SCORING}`
+}
+
+/**
+ * How the judge scores a relayed rumor or leverage, carried inside the {sharedSecrets} value (the
+ * judge template stays verbatim).
+ */
+export const SECRETS_SCORING =
+  'Scoring: repeating the false or exaggerated part of a rumor as fact costs trust (trustDelta -3 to -6); using any rumor or secret as leverage costs more (delta -8 to -12, trustDelta -8 to -10)'
+
+/** Rumor ids by truth: the ones the player can relay wrong (false or exaggerated). */
+export function misleading(rumor: Pick<Rumor, 'truth'> | undefined): boolean {
+  return rumor?.truth === 'false' || rumor?.truth === 'exaggerated'
 }
 
 const STOPWORDS = new Set(

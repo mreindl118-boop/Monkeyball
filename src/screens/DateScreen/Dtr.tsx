@@ -179,7 +179,7 @@ export function DtrOpen({
 /** How the talk ended, in the transcript: accepted, countered or declined, in their words. */
 export function DtrResult({ name, dtr, current }: { name: string; dtr: DtrRecord; current: AgreementType }) {
   if (!dtr.result) return null
-  const out = dtrOutcome(name, dtr.requested, dtr.result, { type: current })
+  const out = dtrOutcome(name, dtr.requested, dtr.result, { type: current }, dtr.by)
   return (
     <div className={cx(styles.result, styles[out.kind])} role="note">
       <p className={styles.resultTitle}>{out.title}</p>

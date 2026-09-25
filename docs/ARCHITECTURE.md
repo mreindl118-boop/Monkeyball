@@ -202,8 +202,13 @@ Decisions:
 - On turn 0 the whole "HOW THE PLAYER'S LAST MESSAGE LANDED" section (header + 3 lines) is removed.
 - `{playerBodyNotes}` is only included at heat 4–5 and only when set; otherwise empty. `{bodyNotes}`
   (character) is included at heat 4–5; below that it renders as "Not relevant at this heat."
-- `{playerGender}` uses the custom label when set. `{knownStyle}` is the player's style in plain
-  words when `rel.knowsPlayerStyle`, else "Nothing yet; they haven't talked about it."
+- `{playerGender}` uses the custom label when set. `{knownStyle}` is what the player actually told
+  this character (`rel.toldStyle`): the style their own first-person words described
+  (`discovery.toldStyleIn`: poly, open, monogamous or still figuring it out) and what they asked for
+  in Define the relationship ("Asked for exclusive (only each other)."), never the profile's style
+  unless their words matched it; "They've talked about it, but nothing clear came out of it." when
+  a style sentence was unclear; "Nothing yet; they haven't talked about it." before that. An older
+  save with only `knowsPlayerStyle` keeps the profile's words.
 - `{heatDescription}` = `heat.ts` description for `effectiveHeat(character, rel, settings.heat)`:
   `min(heat, aceSpectrum.heatCap)`; and when `heatUnlockTrust` is set and trust is below it,
   `min(heat, 2)`.
@@ -214,6 +219,17 @@ Decisions:
   past someone's pace can be scored.
 - Friend-route gossip and earned rumors ride inside existing placeholders: gossip the character is
   happy to share is appended to `{partners}`; rumors they've passed on are appended to `{secrets}`.
+  To have them actually said, `{turnNote}` carries one-shot notes (`StoryContext.notes`): one gossip
+  line per reply on turns 1 to 3, a rumor passed on in the next reply ("lets something slip"), the
+  character's wish to define the relationship and a rekindle not told yet on the opening beat.
+- Other values carry what the verbatim templates have no room for: `{requestedAgreement}` says when
+  the character proposed it ("open (free to see other people), which Nova Castellanos proposed");
+  `{sharedSecrets}` ends with how to score a wrong relay or leverage (`gossip.SECRETS_SCORING`);
+  `{hitsLine}` says a breach "broke something the two of you agreed on" only when there is an
+  agreement (else "It was a lie, and {name} caught it."), followed by private sentences from the
+  engine (`StoryContext.landed`: what a betrayal broke, a rumor repeated and its truth); `{partners}`
+  marks a rekindled partner; the epilogue's last turn closes the story instead of asking about
+  another date.
 - Phase 7 overrides are appended after the full base prompt under a `MOD DIRECTION` header; the
   base prompt (WORLD RULES and CONTENT) is never replaced or edited.
 - Messages sent for the story call: `system` = story prompt, then the date so far as alternating
@@ -249,35 +265,58 @@ Decisions:
   route: trust ≥ unlockAt — friends earn secrets through trust, since affection caps at 59).
   Each tier/secret unlocks exactly once (persisted lists).
 - `trust.ts` — the judge's trustDelta runs through a list of `TrustRule`s (`BASE_TRUST_RULES`:
-  difficulty; Phase 4 appends its own) and lands clamped 0–100 (`applyTrust`); +1 trust for a
-  `'completed'` date only (`consistencyTrust`; not for `'ended'` or `'left'`, so ending dates early
-  can't farm trust). Phase 4: after any betrayal, positive trust gains are multiplied by a grudge
-  factor (compersion/low 0.75, medium 0.5, high 0.34); `breach` → extra trust penalty so a caught
-  lie always costs more trust than affection.
+  difficulty; Phase 4's `TRUST_RULES` add misgendering and the grudge) and lands clamped 0–100
+  (`applyTrust`); +1 trust for a `'completed'` date only (`consistencyTrust`; not for `'ended'` or
+  `'left'`, so ending dates early can't farm trust). Phase 4: after any betrayal, positive trust
+  gains are multiplied by a grudge factor (compersion/low 0.75, medium 0.5, high 0.34); compersion
+  and low forgive once trust is back to 60 (`forgive` stamps `rel.forgivenAt`; the next betrayal
+  brings the grudge back), medium and high hold it for the rest of the game. `misgenderingRule`: a
+  misgendering hit costs at least −5 trust whatever the judge picked (and the date flow at least −8
+  affection before difficulty). A caught lie always costs more trust than affection (the betrayal's
+  own deltas replace the judge's).
 - `memory.ts` — `appendMemory`, `needsCompression(memory, 250)`, `compressionSplit` /
   `applyCompression` (everything older than the last two dates becomes one paragraph),
   `memoryRequest`, `compressionRequest`, `cleanSummary`.
 - `recap.ts` — `buildRecap(relBefore, relAfter, record, character, route, { memory })` →
   `DateRecap` (meters before and after, stages, traits, venue and gift reactions, tiers, secrets,
   what came up for the first time, the memory line, `left`).
-- `agreements.ts` — `seeing(rel, route)` (romantic route, ≥1 date, affection ≥ 20),
-  `othersSeen(playerRels, exceptId)`, `disclosureRequired(agreement)` (poly always; open when terms
-  mention telling/knowing/disclosing), `checkBetrayal(observer, learnedAbout, how)` → a
-  `BetrayalEvent | null` (exclusive: any other person dated after `agreement.madeAt`; poly/open-with-
-  disclosure: only when learned through gossip rather than from the player), severity scaled by
-  jealousy within the spec ranges (affection −10..−20, trust −15..−30), `isJealous(character, rel)`.
+- `agreements.ts` — `seeing(rel, route, dateCount?)` (romantic route, ≥1 date, affection ≥ 20, and
+  recent: it lapses once `SEEING_WINDOW` = 6 dates were finished since, `GameState.dateCount`
+  against `rel.lastDateIndex`), `othersSeen(rels, routeOf, exceptId, dateCount?)`,
+  `recentlyDated`/`seenIn` (what a character "knows you're seeing" lapses on recency, not affection;
+  under an exclusive agreement only people dated since it count), `disclosureRequired(agreement)`
+  (poly always; open when terms mention telling/knowing/disclosing), `checkBetrayal(observer,
+  learnedAbout, how)` → a `BetrayalEvent | null` (exclusive: any other person dated after
+  `agreement.madeAt`; poly/open-with-disclosure: only gossip the player never confirmed, never
+  someone they heard about from the player), `confessionBetrayal` (owning up under exclusive
+  without a name), `readsAsDenial`/`readsAsAdmission`, severity scaled by jealousy within the spec
+  ranges (affection −10..−20, trust −15..−30), `isJealous(character, rel, { route, seen })` (never on
+  a friend route, never over a lapsed person or the partner they rekindled with),
+  `dtrAvailable(rel, route)` (Friend+ on a romantic route only), `opinionText`, `knownOthersText`,
+  `standingLine`.
 - `gossip.ts` — after each date, propagate "the player is seeing X" to characters connected to X
   (manifest relationships and partners) with a seeded RNG: partner/housemate/roommate/bandmate
   0.5, coworker/friend 0.35, ex 0.3, rival 0.25, same-set otherwise 0.1. Different sets never
-  talk unless a manifest `knows` links them. Friend-route gossip facts (another character's
-  attractions/style, who's into you = anyone at 60+, who's seeing whom). Rumors: when a teller's
-  secret unlocks, 50% chance each of their unheard rumors is passed on.
+  talk unless a manifest `knows` links them. Under exclusive, a date after the agreement is a
+  betrayal on the spot; under poly or open with telling terms, someone they didn't know about goes
+  on `rel.heardSecondhand` and `settleSecondhand` makes it a betrayal only if their next date ends
+  without the player bringing that person up. Betrayals carry the observer's meters before and
+  after (`WorldBetrayal`) for the recap. Friend-route gossip facts (another character's
+  attractions/style, who's into you = anyone at 60+, at most one of those per date, who's seeing
+  whom), with first-name `shown` lines for the recap and what a friend already shared ranked last
+  (`rel.gossipShared`). Rumors: when a teller's secret unlocks, 50% chance each of their unheard
+  rumors is passed on.
 - `metamour.ts` — pair approval baseline by relation (partner 70, friend/housemate 60, situationship
-  55, none 50, rival 40, ex 35), moved by disclosure (+5), learning through gossip under poly (−10),
-  group dates (±judge-driven). Threshold for the Polycule ending: 60.
+  55, none 50, rival 40, ex 35), moved by disclosure (+5 per metamour the player talks about on a
+  date under poly, once per date), gossip the player never confirmed under poly (−10, when that
+  betrayal lands), a rekindle invite (at least 60), group dates (Phase 6). Threshold for the
+  Polycule ending: 60.
 - `rekindle.ts` — exes/partners in one set, both affection ≥ 80 and trust ≥ 60, neither exclusive
-  with the player: 20% roll per date end, once per pair. Poly/open pair → invite; otherwise a door
-  closing (sets `rekindledWith`, which feeds the Sacrifice ending).
+  with the player, neither on the date that just ended: 20% roll per date end, once per pair.
+  Poly/open pair → invite (`rel.rekindle` with invite true on both, each knows about the other,
+  approval at least 60); otherwise a door closing (`rel.rekindle` and `rekindledWith`, which feeds
+  the Sacrifice ending). The story marks the partner in `{partners}`, the judge's opinion says it,
+  and the next date with either of them brings it up once (`rekindle.told`); the map draws both.
 - `endings.ts` — `selectEnding(ctx)` in this priority order:
   1. polycule — this character and ≥1 other at ≥80 with `poly` agreements, all pairwise metamour
      approval ≥ 60 (returns the group ids).
@@ -289,6 +328,10 @@ Decisions:
   6. open — agreement is open or poly.
   7. good — otherwise.
   Each ending has a title, a one-line description and a story direction for the epilogue turnNote.
+  Good and Open also play at trust 40 to 59; their reason then says trust is steady at that number
+  instead of calling it high. Directions never pick a pronoun for the character: Sacrifice names
+  the rival, or (monogamous, never promised anything) "wanted a promise {player} never asked for",
+  or "chooses work, or a life that was already waiting"; Open says open or poly as agreed.
 - `dateFlow.ts` — orchestration with injected dependencies (`DateLlm`, `DateWorld.now/rng`,
   `DateHooks.persist/onUpdate/signal`) so tests run a full date against a fake LLM:
   `createDate`, `openDate`, `sendPlayerMessage`, `retryLastReply`, `finishDate`, the helpers
@@ -305,9 +348,12 @@ Decisions:
 1. Player sends message → append player turn (persist).
 2. Judge call per character on the date (group dates: one per character, in parallel).
 3. Apply: difficulty scale → trust rules → affection with gain cap and friend-route cap →
-   `revealHits` → `detectTopics` → name-mention disclosure (mentioning someone the player is seeing
-   adds them to `knownOthers`, which may trigger `checkBetrayal` with how='player') → tiers/secrets/
-   rumors → persist relationship immediately (so a reload keeps affection and discoveries).
+   `revealHits` → `detectTopics` → name-mention disclosure (talking about going out with someone the
+   player is seeing, a dating word in the same sentence as the name or the judge's jealousy flag,
+   adds them to `knownOthers`, which may trigger `checkBetrayal` with how='player'; "Kai poured me a
+   drink" tells nothing) → the judge's breach read against the engine (`breachStep`) → rumors relayed
+   → tiers/secrets/rumors → persist relationship immediately (so a reload keeps affection and
+   discoveries).
 4. Story call streams the reply with the judge result in the LANDED section. If the date total is
    ≤ −20, the turnNote is the early-exit note and the date ends after this reply. The final turn
    gets the last-turn note.
@@ -374,21 +420,65 @@ rekindle.ts, endings.ts and the extended dateFlow.ts, trust.ts, discovery.ts, re
   carries it for everyone and the LANDED line names it. It is never added to the profile's
   discovered traits, so discovered/total counts stay right.
 - Who counts as "seeing": with `world.rels`, the judge's `{others}` follows `seeing` (romantic
-  route, a date, affection 20+) plus anyone the character already knows about; characters of sets
-  switched off are left out. The old store helper `othersSeen` only feeds `world.others`, which the
+  route, a date, affection 20+, not lapsed) plus anyone the character still knows about that way
+  (under exclusive, only people dated since the agreement); characters of sets switched off are
+  left out. The old store helper `othersSeen` only feeds `world.others`, which the
   engine ignores once `world.rels` is given.
 - Gossip after a date reaches only characters who have been on a date with the player, and only
   romantic-route dates spread. Friend-route gossip starts at affection 20, at most 3 lines per date.
-  Gossip news reads "{Kai} heard you've been out with {Nova}." (the hub strip is "Word around town").
+  Gossip news reads "{Kai} heard you've been out with {Nova}." (the hub strip is "Word around town");
+  under poly or telling terms it adds "Your poly agreement with {Kai} expects you to say so first.";
+  an exclusive betrayal reads "{Nova} heard you went out with {Kai}, after you and {Nova} agreed to
+  be exclusive."
 - Rekindles: every eligible pair is rolled at every date end; a pair is recorded in
   `game.rekindled` only once it fires.
 - Define the relationship opens once per date; its note rides on every story reply while the talk
   is open. The Agreement call is skipped if the player said nothing in the talk. Re-agreeing the
   same type keeps the original `madeAt`. If `closeDtr` fails or is stopped the talk stays open;
   ending the date always settles it. No new date status: closing uses `'judging'`.
-- The grudge is permanent after any betrayal: positive trust gains are scaled (compersion/low
-  0.75, medium 0.5, high 0.34), and the +1 trust for a completed date lands on only that share of
-  dates.
+- The grudge after a betrayal scales positive trust gains (compersion/low 0.75, medium 0.5, high
+  0.34), and the +1 trust for a completed date lands on only that share of dates. Compersion and
+  low forgive once trust is back to 60 (`rel.forgivenAt`, until the next betrayal); medium and high
+  keep the grudge for the rest of the game.
+
+Phase 4 review decisions:
+- A judge breach is read against what the engine knows (`breachStep`), at most one breach
+  betrayal per date and none on a turn that already set one off. With nothing that could break
+  (no agreement, casual, open without telling terms) it's a caught lie unless the message reads as
+  honest. Naming only people whose break is already counted, or who were dated before the
+  agreement, adds nothing unless it's a denial (then a lie). Naming someone dated since and not yet
+  counted: a denial is a lie, owning up is the player's disclosure. Naming nobody under exclusive:
+  an honest confession (judge trustDelta above 0, or it reads as owning up) is
+  `confessionBetrayal` (the softer "heard it from you"), anything else a lie; under poly, owning up
+  is what the agreement asks for.
+- The turn keeps its betrayal and the rumors it relayed (`DateTurn.betrayal`, `.relayed`), so the
+  story's LANDED section says what broke (mood "hurt", or "betrayed" for a lie) and the hints line
+  shows the betrayal's note instead of the judge's hint. A breach the engine didn't count isn't
+  told to the story as one.
+- Poly (and open with telling terms): gossip that gets there first isn't a betrayal; it waits for
+  the observer's next date (`heardSecondhand`, which the story and the judge see), and only a date
+  that ends without the player bringing that person up counts, with the −10 approval. Someone the
+  player already told them about is never a gossip betrayal again.
+- Relaying a false or exaggerated rumor to its subject caps the judge's trustDelta at −4 before the
+  trust rules (`relayStep`, `WRONG_RELAY_TRUST`); leverage is left to the judge, whose
+  `{sharedSecrets}` value says how to score both.
+- Rumors from a secret reached after the date's last reply are rolled at the next date's start
+  (`rel.rumorRollsOwed`), so the opening beat can let them slip; the recap lists only rumors from
+  this date's replies. Gossip lines the story didn't get to voice aren't on the recap and reveal
+  nothing.
+- The hub's jealousy mark is `isJealous` worked out when the hub renders (someone the player still
+  sees, and minds); a raw betrayal shows on the profile and the map ("hasn't let it go") instead.
+  The map's person sheet no longer quotes the judge's `{opinion}`.
+- A character who opened the talk is told to the story as theirs, the opening beat raises their
+  wish, and the Agreement prompt says they proposed it. An Agreement reply that comes back unusable
+  (ok false) keeps the talk open like a failed call; the end of the date closes it without a result.
+  End date while the talk is closing waits for that answer.
+- The date's last save and the world it settled go in one Dexie transaction (`hooks.persistAll`),
+  so a crash can't store other characters' betrayals without the date's outcome. `patchGame` keeps
+  news under `MAX_NEWS` like `addNews`.
+- The recap shows someone else's betrayal from this date as a hit on their meters (before and
+  after from `WorldBetrayal`), shows the ending when the date reached 100 (with "See your ending"),
+  and after a declined talk keeps the agreement that stands.
 - Copy never picks a pronoun for a named character ("In Nova's words", "at Nova's pace").
 - Screens: the polycule map (`#/map`: SVG constellation, tap a circle or the list under it for the
   person sheet; the legend covers agreement, seeing with no agreement, tension, partners, exes,
@@ -397,7 +487,7 @@ rekindle.ts, endings.ts and the extended dateFlow.ts, trust.ts, discovery.ts, re
   hits on the meters, gossip, rumors and "Word got around", the DTR sheet, offer banner and talk bar
   on the date screen. Automatic save slots carry a brass "Automatic" tag.
 
-Define the relationship: from Friend stage (affection ≥ 40) the date screen offers it. The player
+Define the relationship: from Friend stage (affection ≥ 40) on a romantic route the date screen offers it. The player
 picks exclusive/open/poly/casual; the next story call carries the DTR turnNote; turns are flagged
 `dtr` until the player closes the talk or the date ends, then the agreement prompt runs once and its
 result (if accepted) replaces `rel.agreement` with `madeAt = now`. Characters can open it too: at
@@ -509,10 +599,12 @@ film becomes a fade; stamp press and sheet slides become instant.
   it in node and importing it back; pins the rolls to "succeed" so gossip always spreads. Pixel 7:
   Nova to Friend, Define the relationship (sheet, talk bar, "Nova said yes"), the agreement on the
   profile and map; Kai's date with a misgendering line (affection and trust drop); gossip tells Nova
-  (hub news, jealousy mark, "What they know", map tension and person sheet, her next story prompt
-  in the debug panel); a caught lie (trust drops more than affection; betrayal recap); Jules on the
-  friend route (mark, 59 cap, gossip) and dateable in everyone mode (the offer banner); Nova at 100
-  (ending card, ending screen, six-turn epilogue, recap, the automatic slot restores). Then 360x800
+  (the hit on her meters on Kai's recap, hub news, jealousy mark, "What they know", map tension and
+  person sheet, her next story prompt in the debug panel); a caught lie (trust drops more than
+  affection; betrayal recap); Jules on the friend route (mark, 59 cap, gossip) and dateable in
+  everyone mode (the offer banner); Nova from 92 to 100 on a date (the recap's "Your ending" and "See
+  your ending"), then the ending card, ending screen, six-turn epilogue, recap, and the automatic
+  slot restores. Then 360x800
   and a desktop pass. Screenshots `p4-android-*`, `p4-360-*`, `p4-desktop-*`. `E2E_ONLY=a|b|d|desktop`.
 - `scripts/e2e/phase3.mjs` (`npm run e2e:phase3`) — the dating core against the mock, Pixel 7
   profile first: connection through Other providers, Custom; Nova at the record store with hot

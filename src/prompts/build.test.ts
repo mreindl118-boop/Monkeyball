@@ -12,6 +12,7 @@ import {
   buildSuggestionsPrompt,
   DATE_BEGINS,
   fill,
+  knownStyleText,
   makeJudgeMessages,
   makeMemoryMessages,
   makeStoryMessages,
@@ -186,7 +187,39 @@ describe('story prompt', () => {
     const none = buildStoryPrompt(story({ judge: judge({ hits: [{ type: 'like', id: 'not-a-trait' }], mood: 'calm' }) }))
     expect(none).toContain('Mood: calm. It hit nothing in particular.')
     const bad = buildStoryPrompt(story({ judge: judge({ hits: [{ type: 'turnOff', id: 'cute' }], breach: true }) }))
-    expect(bad).toContain('It hit a turn-off: Being called cute. It broke something the two of you agreed on.')
+    // No agreement: a breach is a lie they caught.
+    expect(bad).toContain(`It hit a turn-off: Being called cute. It was a lie, and ${nova.name} caught it.`)
+    const agreed = rel({ agreement: { type: 'exclusive', terms: 'Just us.', madeAt: 1 } })
+    const broke = buildStoryPrompt(story({ rel: agreed, judge: judge({ hits: [], breach: true }) }))
+    expect(broke).toContain('It hit nothing in particular. It broke something the two of you agreed on.')
+    // Private sentences from the engine ride after it.
+    const told = buildStoryPrompt(story({ rel: agreed, judge: judge({ hits: [], breach: true }), landed: ['It told Nova about Kai Okoro, which breaks the exclusive agreement'] }))
+    expect(told).toContain('It broke something the two of you agreed on. It told Nova about Kai Okoro, which breaks the exclusive agreement.\nReact so')
+  })
+
+  it('says who brought up defining the relationship, closes an epilogue for good, and carries one-shot notes', () => {
+    const dtr = buildStoryPrompt(story({ turn: 3, special: { kind: 'dtr', requested: 'open', by: 'character' } }))
+    expect(dtr).toContain(`${nova.name} brought up what you two are and wants open (free to see other people). The player agreed to talk`)
+    expect(dtr).not.toContain('The player wants to define what you two are')
+    const last = buildStoryPrompt(story({ turn: 6, maxTurns: 6, special: { kind: 'epilogue', direction: 'They are together.' } }))
+    expect(last).toContain(`Last turn: close the epilogue; this is how the story with ${nova.name} ends. Epilogue: They are together.`)
+    expect(last).not.toContain('wants another')
+    const notes = buildStoryPrompt(story({ turn: 0, judge: undefined, notes: ['Somewhere in this reply, Nova shares a bit of gossip: Kai is into you'] }))
+    expect(notes).toContain('Somewhere in this reply, Nova shares a bit of gossip: Kai is into you.')
+  })
+
+  it('says what the player actually told them about how they date, never the profile unasked', () => {
+    const poly = profile({ relationshipStyle: 'polyamorous' })
+    expect(knownStyleText(poly, rel({ knowsPlayerStyle: true, toldStyle: { asked: 'exclusive' } }))).toBe('Asked for exclusive (only each other).')
+    expect(knownStyleText(poly, rel({ knowsPlayerStyle: true, toldStyle: { style: 'monogamous' } }))).toBe('Monogamous: one partner at a time.')
+    expect(knownStyleText(poly, rel({ knowsPlayerStyle: true, toldStyle: {} }))).toBe("They've talked about it, but nothing clear came out of it.")
+    // An older save with only the flag keeps the profile's words.
+    expect(knownStyleText(poly, rel({ knowsPlayerStyle: true }))).toBe('Polyamorous: has or wants more than one relationship, openly.')
+  })
+
+  it('marks a rekindled partner in {partners}', () => {
+    const p = buildStoryPrompt(story({ relations: [{ characterId: 'kai', kind: 'ex', note: 'Dated for a year.' }], rekindle: { with: 'kai', invite: false } }))
+    expect(p).toContain(`Kai Okoro (ex, back together lately: they got close again while the player was busy, and ${nova.name} is gently closing the door on the player): Dated for a year.`)
   })
 
   it('changes with the heat level', () => {

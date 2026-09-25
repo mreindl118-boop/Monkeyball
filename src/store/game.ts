@@ -120,6 +120,8 @@ export function createGameStore(d: CrushDB = db) {
       patchGame: async (patch) => {
         await load()
         const game = { ...get().game, ...patch }
+        // News written by the date flow comes in whole; keep only the newest, like addNews does.
+        if (patch.news && game.news.length > MAX_NEWS) game.news = game.news.slice(-MAX_NEWS)
         set({ game })
         await persistGame(game)
       },

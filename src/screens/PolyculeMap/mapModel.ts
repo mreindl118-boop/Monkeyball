@@ -575,7 +575,7 @@ export function personFacts(
   c: { id: string; name: string; accent: string; jealousy: Jealousy },
   setId: string,
   rel: Relationship,
-  derived: { seeing: boolean; jealous: boolean; opinion?: string },
+  derived: { seeing: boolean; jealous: boolean; opinion?: string; known?: string[] },
 ): PersonFacts {
   const out: PersonFacts = {
     id: c.id,
@@ -586,12 +586,14 @@ export function personFacts(
     agreement: { type: rel.agreement?.type ?? 'none', terms: rel.agreement?.terms ?? '' },
     seeing: derived.seeing,
     jealous: derived.jealous,
-    knownOthers: [...(rel.knownOthers ?? [])],
+    knownOthers: [...(derived.known ?? rel.knownOthers ?? [])],
     betrayals: [...(rel.betrayals ?? [])],
     trust: rel.trust ?? 0,
     dates: rel.dates ?? 0,
   }
-  if (rel.rekindledWith) out.rekindledWith = rel.rekindledWith
+  // A rekindle draws its thread either way: a door closing or an invite to join them.
+  const rekindled = rel.rekindledWith || rel.rekindle?.with
+  if (rekindled) out.rekindledWith = rekindled
   const opinion = derived.opinion?.trim()
   if (opinion) out.opinion = opinion
   return out

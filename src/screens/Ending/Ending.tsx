@@ -139,7 +139,7 @@ export default function Ending() {
             <p className={styles.where}>
               {venue
                 ? `One last date, six turns, at ${venuePhrase(venue.id, venue.name)}.`
-                : 'One last date, six turns, at their favorite place.'}
+                : `One last date, six turns, at ${possessive(first)} favorite place.`}
             </p>
           </Panel>
 

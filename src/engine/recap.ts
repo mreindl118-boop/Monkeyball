@@ -53,7 +53,9 @@ export function characterRecap(
     route,
     revealed: topicsGained(relBefore, relAfter),
   }
-  if (!sameAgreement(relBefore.agreement, relAfter.agreement)) {
+  // A changed agreement, or a talk that was had: before and after, so a declined talk still shows
+  // the agreement that stands (the recap's agreementChange says nothing when both are the same).
+  if (!sameAgreement(relBefore.agreement, relAfter.agreement) || record.dtr) {
     out.agreementBefore = relBefore.agreement
     out.agreementAfter = relAfter.agreement
   }

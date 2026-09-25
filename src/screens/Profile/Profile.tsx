@@ -3,7 +3,7 @@ import { Portrait } from '../../art/Portrait'
 import { portraitAccent } from '../../art/Portrait.model'
 import { GIFTS, giftById } from '../../data/gifts'
 import { VENUES, venueById } from '../../data/venues'
-import { standingLine } from '../../engine/agreements'
+import { seenIn, standingLine } from '../../engine/agreements'
 import { newRelationship } from '../../engine/relationship'
 import { affectionCap, routeFor, stageFor } from '../../engine/stages'
 import { liveCharacterId, useDate } from '../../store/date'
@@ -138,15 +138,14 @@ function ProfileView({ character, setId, ready }: { character: Character; setId:
     () => rumorsAbout(id, heard, sets.flatMap((s) => s.rumors ?? []), names),
     [id, heard, sets, names],
   )
-  // Where they think the two of you stand, once there's something to stand on.
-  const standing = useMemo(() => {
-    if ((rel.dates ?? 0) === 0 && (rel.knownOthers ?? []).length === 0) return ''
-    try {
-      return standingLine(character, rel, names)
-    } catch {
-      return ''
-    }
-  }, [character, rel, names])
+  // Where they think the two of you stand, once there's something to stand on. People the player
+  // no longer sees drop out of what they "know you're seeing".
+  const relationships = useGame((s) => s.relationships)
+  const dateCount = useGame((s) => s.game.dateCount)
+  const standing = standingText(character, rel, names, route, (x: string): Route => {
+    const e = entries[x]
+    return e ? routeFor(e.character, profile, mode) : 'romantic'
+  }, relationships, dateCount)
 
   return (
     <main className={`screen ${styles.root}`} style={style} aria-busy={!ready || undefined}>
@@ -430,4 +429,22 @@ function ProfileView({ character, setId, ready }: { character: Character; setId:
       </div>
     </main>
   )
+}
+
+/** The profile's "What they know" line, or '' before there's anything to stand on. */
+function standingText(
+  character: Character,
+  rel: Relationship,
+  names: Record<string, string>,
+  route: Route,
+  routeOf: (id: string) => Route,
+  relationships: Record<string, Relationship>,
+  dateCount: number | undefined,
+): string {
+  if ((rel.dates ?? 0) === 0 && (rel.knownOthers ?? []).length === 0) return ''
+  try {
+    return standingLine(character, rel, names, { route, seen: seenIn(relationships, routeOf, dateCount, rel) })
+  } catch {
+    return ''
+  }
 }
