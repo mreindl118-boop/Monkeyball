@@ -1,0 +1,283 @@
+.root {
+  overflow-wrap: anywhere;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 16px;
+  max-width: 880px;
+  /* The accent glow fades out before the column's edges, so a wide screen shows no seam. */
+  background: radial-gradient(50% 36% at 50% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 100%);
+}
+
+.caption {
+  font-size: 14px;
+  color: var(--smoke-text);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* The pills size themselves to their container (container queries), so give it a width. */
+.filter {
+  justify-self: start;
+  width: min(100%, 320px);
+}
+
+.section {
+  scroll-margin-top: 12px;
+}
+
+/* The character list, by set. */
+.group {
+  display: grid;
+  gap: 10px;
+}
+
+.groupTitle {
+  font-size: 20px;
+  color: var(--blush);
+}
+
+.rows {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 80px;
+  padding: 8px 14px 8px 8px;
+  border-radius: var(--radius-l);
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--line));
+  background:
+    radial-gradient(120% 120% at 0% 50%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 60%),
+    var(--oxblood);
+  color: var(--blush);
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.row:active {
+  transform: scale(0.99);
+}
+
+.rowArt {
+  display: block;
+  width: 64px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 65%, transparent);
+}
+
+.rowText {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.rowName {
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.rowMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  font-size: 14px;
+  color: var(--smoke-on-panel);
+}
+
+.rowCount {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--brass);
+}
+
+.rowFavs {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  color: var(--lipstick-text);
+}
+
+.rowKiss {
+  width: 20px;
+  height: 14px;
+  color: var(--lipstick);
+}
+
+.dots {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.dot {
+  width: 9px;
+  height: 11px;
+  border-radius: 2px;
+  border: 1px solid rgb(201 164 92 / 0.55);
+}
+
+.dotOn {
+  background: var(--brass);
+  border-color: var(--brass);
+}
+
+/* One character's gallery. */
+.hero {
+  --smoke-text: var(--smoke-on-panel);
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: var(--radius-l);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  background:
+    radial-gradient(120% 100% at 0% 0%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 62%),
+    var(--oxblood);
+}
+
+.heroCount {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  color: var(--brass);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(46%, 150px), 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tile {
+  position: relative;
+  min-width: 0;
+}
+
+.tileButton {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-m);
+  background: none;
+  color: inherit;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tileButton:focus-visible {
+  outline-offset: 3px;
+  border-radius: var(--radius-m);
+}
+
+.favMark {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgb(20 6 14 / 0.7);
+  color: var(--lipstick);
+}
+
+.favWho {
+  display: block;
+  margin-top: 6px;
+  font-size: 16px;
+  color: var(--blush);
+}
+
+.favMark svg {
+  width: 22px;
+  height: 15px;
+}
+
+.locked {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 6px;
+  aspect-ratio: 4 / 5;
+  padding: 12px;
+  border-radius: var(--radius-m);
+  border: 1px dashed var(--line-strong);
+  background:
+    repeating-linear-gradient(135deg, rgb(242 198 207 / 0.035) 0 6px, transparent 6px 12px),
+    var(--field-bg);
+  color: var(--smoke-text);
+  text-align: center;
+}
+
+.lockedKicker {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.lockIcon {
+  width: 20px;
+  height: 20px;
+  color: var(--brass);
+}
+
+.lockedTitle {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1.15;
+  color: var(--blush);
+}
+
+.lockText {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brass);
+}
+
+/* A slot being painted right now. */
+.painting {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid rgb(201 164 92 / 0.6);
+  background: rgb(20 6 14 / 0.78);
+  color: var(--brass);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.favMark + .painting,
+.painting + .favMark {
+  top: 40px;
+}
+

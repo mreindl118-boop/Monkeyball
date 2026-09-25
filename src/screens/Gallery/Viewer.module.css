@@ -1,0 +1,277 @@
+/* The full-screen viewer: the picture as large as the screen allows, its caption and actions. */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-sheet);
+  background:
+    radial-gradient(90% 55% at 50% 30%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 75%),
+    var(--velvet-deep);
+}
+
+.viewer {
+  --smoke-text: var(--smoke-on-panel);
+  display: grid;
+  grid-template-rows: auto minmax(260px, 1fr) auto auto auto;
+  gap: 10px;
+  height: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding:
+    calc(var(--safe-top) + 6px) calc(var(--safe-right) + var(--gutter)) calc(var(--safe-bottom) + 14px)
+    calc(var(--safe-left) + var(--gutter));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  outline: none;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: var(--tap);
+}
+
+.close {
+  margin-left: -12px;
+}
+
+.count {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--smoke-text);
+}
+
+/* The picture. Sideways drags are the viewer's; up and down still scroll. */
+.stage {
+  position: relative;
+  display: grid;
+  /* One definite cell, so the frame and the picture size to the stage, not to the picture. */
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  place-items: center;
+  min-height: 0;
+  overflow: hidden;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.frame {
+  position: relative;
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  /* The picture fits this box whole (see .img below). */
+  container-type: size;
+  /* Room for the picture's shadow inside the stage, which clips. */
+  padding: 4px 0 18px;
+  transition: transform 160ms var(--ease-out);
+}
+
+.dragging .frame {
+  transition: none;
+}
+
+.img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: var(--radius-m);
+  box-shadow:
+    0 8px 18px rgb(0 0 0 / 0.45),
+    0 0 0 2px color-mix(in srgb, var(--accent) 60%, transparent);
+  -webkit-user-drag: none;
+}
+
+/* The picture as large as its box allows, whole, whatever its shape (a small one scales up too):
+   the width is the box's, or its height times the picture's shape (--ar, set once it loads), and
+   the height follows the picture. The ring hugs the picture, not the box. */
+.frame > .img,
+.sideArt .img {
+  --ar: 0.6667;
+  width: min(100cqw, calc(100cqh * var(--ar)));
+  height: auto;
+}
+
+.placeholder {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.working {
+  position: absolute;
+  inset: auto 12px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: var(--tap);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgb(20 6 14 / 0.86);
+  border: 1px solid rgb(201 164 92 / 0.5);
+  color: var(--blush);
+  font-weight: 600;
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgb(201 164 92 / 0.35);
+  border-top-color: var(--brass);
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frame {
+    transition: none;
+  }
+
+  .spinner {
+    animation-duration: 2400ms;
+  }
+}
+
+/* Regenerate: the current picture and the new one, side by side. */
+.compare {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: center;
+  gap: 12px;
+  min-height: 0;
+}
+
+.side {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  min-width: 0;
+}
+
+.sideArt {
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  place-items: center;
+  aspect-ratio: 4 / 5;
+  min-height: 0;
+  container-type: size;
+}
+
+.sideArt .img,
+.sideArt .placeholder {
+  max-height: 100%;
+}
+
+
+.sideArt .placeholder {
+  width: 100%;
+  height: auto;
+}
+
+.sideLabel {
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--smoke-text);
+}
+
+.newLabel {
+  color: var(--brass);
+}
+
+.caption {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.kicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--brass);
+}
+
+.source {
+  font-weight: 600;
+  color: var(--smoke-text);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: clamp(22px, 6vw, 28px);
+  line-height: 1.15;
+  color: var(--blush);
+}
+
+.scene {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 16px;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--blush) 85%, var(--smoke));
+}
+
+.nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.actions,
+.decide {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.actions > *,
+.decide > * {
+  flex: 1 1 150px;
+}
+
+.kiss {
+  width: 22px;
+  height: 15px;
+  color: var(--smoke-text);
+}
+
+.kissOn {
+  color: var(--lipstick);
+}
+
+.fav.favOn {
+  --btn-border: color-mix(in srgb, var(--lipstick) 70%, transparent);
+  --btn-bg: var(--lipstick-soft);
+}
+
+@media (max-height: 700px) {
+  .viewer {
+    grid-template-rows: auto minmax(240px, 52vh) auto auto auto;
+  }
+}
+
+.jobError {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--lipstick-text);
+}

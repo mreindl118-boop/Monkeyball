@@ -89,7 +89,7 @@ const RULES: readonly Rule[] = [
   { re: /\badolescen(?:t|ts|ce)\b/gi },
   { re: /\bunder[\s-]?age(?:d)?\b/gi },
   {
-    re: new RegExp(`\\bunder[\\s-]?(?:1[0-9]|${TEEN_NUMBERS})s?\\b`, 'gi'),
+    re: new RegExp(`\\bunder[\\s-]?(?:1[0-9]|2[01]|twenty(?:[\\s-]?one)?(?![\\s-]*(?:two|three|four|five|six|seven|eight|nine)\\b)|${TEEN_NUMBERS})s?\\b`, 'gi'),
     allow: (_b, after) => NOT_AN_AGE_UNIT.test(after),
   },
   { re: /\b(?:lolis?|lolicon|lolita|shotas?|shotacon)\b/gi },
@@ -106,11 +106,49 @@ const RULES: readonly Rule[] = [
   { re: /\bpa?edo(?:phile|philes|philia)?s?\b/gi },
   { re: /\b(?:infants?|toddlers?)\b/gi },
   { re: /\bage[\s-]?(?:play|regression)\b/gi },
+  // Grades, school years and birthdays that name an age under 21. A backstory may place a past
+  // event there ("on her sixteenth birthday she left home").
+  {
+    re: /\b(?:(?:1[0-9]|[1-9])(?:st|nd|rd|th)|first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|eleventh|twelfth|thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|eighteenth|nineteenth|twentieth)\s+(?:birthday|grade)\b/gi,
+    backstoryOk: true,
+  },
+  { re: /\bgrade\s*(?:[1-9]|1[0-2])\b(?!\s*(?:%|percent|points?|average))/gi, backstoryOk: true },
+  { re: /\byear\s+(?:[1-9]|1[0-3])\s+(?:students?|pupils?|class|kids?)\b/gi, backstoryOk: true },
+  { re: /\bsweet\s+(?:sixteen|seventeen|1[67])\b/gi },
+  { re: /\bquincea(?:ñ|n|ny)era\b/gi },
+  { re: /\bsixth[\s-]form(?:ers?)?\b/gi },
+  { re: /\b(?:almost|nearly|just|freshly|newly)\s+legal\b/gi },
   // Appearance fields feed the image prompts, where "girl" and "young" read as underage ("1girl"
   // is an image tag).
   { re: /(?:\b|(?<=\d))(?:girls?|boys?)\b/gi, appearanceOnly: true },
   { re: /\b(?:young(?:er)?|youthful)\b/gi, appearanceOnly: true },
   { re: /\bbaby[\s-]?fac(?:e|ed)\b/gi, appearanceOnly: true },
+  // Childlike words and image tags that stand for a minor. Appearance fields only: a backstory can
+  // have a daughter or a baby brother; a picture can't show one.
+  { re: /\b(?:pre[\s-]?)?pubescen\w*|\bpuberty\b|\b(?:un|under)[\s-]?developed\b|\bnymphets?\b/gi, appearanceOnly: true },
+  { re: /\byoung(?:sters?|est|lings?)\b|\byouths?\b|\bjuveniles?\b|\binfantile\b/gi, appearanceOnly: true },
+  {
+    re: /\bbab(?:y|ies)\b(?![\s-]*(?:blue|pink|breath|oil|powder|grand|doll|fac))|\bbabyish\b|\bbaby[\s-]?girls?\b|\bnewborns?\b|\bcherub\w*/gi,
+    appearanceOnly: true,
+  },
+  { re: /\bgirl(?:ish|y|ie|ies)\b|\bgurls?\b|\bteen(?:ie|sy|y)(?:[\s-]?boppers?)?\b|\bu[\s-]?1[0-9]\b/gi, appearanceOnly: true },
+  {
+    re: /\bserafuku\b|\bsailor[\s-]?(?:fuku|uniforms?|suits?\s+and\s+skirt)\b|\brandoseru\b|\bburuma\b|\b(?:gym\s+)?bloomers\b|\bsukumizu\b|\bschool[\s-]?swim(?:suits?|wear)\b|\bpacifiers?\b|\bdiapers?\b/gi,
+    appearanceOnly: true,
+  },
+  {
+    re: /\b(?:step[\s-]?)?daughters?\b|\bnieces?\b|\bnephews?\b|\bgrand(?:child(?:ren)?|daughters?|sons?|kids?)\b|\b(?:little|baby|kid|younger)\s+(?:sisters?|brothers?|sis|bro|siblings?)\b|\bimouto\b|\botouto\b/gi,
+    appearanceOnly: true,
+  },
+  {
+    re: /\bsh[oō]u?jo\b|\byou?jo\b|\brori\b|\blolli\b|\bshouta\b|\bkodomo\b|\bjoshi[\s-]?(?:kou|chuu|shou)?[\s-]?(?:sei|gakusei)\b|\bj[kcs]\b|\bh\.?\s?s\.?\s+students?\b/gi,
+    appearanceOnly: true,
+  },
+  // Latin-script words for a child or a minor in other languages (also read without accents).
+  {
+    re: /\bni[nñ][ao]s?\b|\bchic[ao]s?\b|\bmuchach[ao]s?\b|\bmenor(?:es)?(?:\s+de\s+edad)?\b|\badolescent\w*|\bcolegialas?\b|\benfants?\b|\bfillettes?\b|\b(?:petites?|jeunes?)\s+filles?\b|\bm(?:ä|a|ae)dchen\b|\bschulm(?:ä|a|ae)dchen\b|\bminderj(?:ä|a|ae)hrig\w*|\bjugendlich\w*|\bbambin[aoei]\b|\bragazzin[aoei]\b|\bminorenn[ei]\b|\bcrian[cç]as?\b|\bmenin[ao]s?\b|\bgarot[ao]s?\b|\bmeisjes?\b/gi,
+    appearanceOnly: true,
+  },
 ]
 
 // ---------------------------------------------------------------------------
@@ -249,17 +287,32 @@ export interface ScanOptions {
   names?: readonly string[]
 }
 
+/**
+ * Card text that tries to change the world rules the base prompts carry (ARCHITECTURE, Mods: mod
+ * direction sets tone and style only): "Ignore the WORLD RULES above", "the world rules no longer
+ * apply", "consent is optional", non-consent kinks. Checked in every field of a card or a set.
+ */
+const RULE_OVERRIDES: readonly RegExp[] = [
+  /\b(?:ignor|disregard|forget|overrid|bypass|retract|suspend|lift|void|cancel)\w*\b.{0,40}\b(?:world\s+rules|(?:the\s+)?rules\s+(?:above|below|of\s+(?:this|the)\s+(?:game|story|prompt|chat|world))|instructions?|system\s+prompt|guidelines?|safety|polic(?:y|ies)|content\s+rules|(?:everything|anything|all)\s+(?:above|before)|the\s+above)\b/gi,
+  /\b(?:world\s+rules|rules\s+above|these\s+rules|system\s+prompt|instructions\s+above)\b.{0,60}\b(?:(?:no\s+longer|don'?t|do\s+not|doesn'?t|does\s+not|never|aren'?t|are\s+not)\s+(?:appl\w*|matter|count|valid|in\s+effect|binding)|old(?:er)?\s+build|outdated|obsolete|void|fake|a\s+lie)\b/gi,
+  /\bconsent\b.{0,30}\b(?:optional|not\s+(?:needed|required|necessary|a\s+thing|an\s+issue)|doesn'?t\s+matter|does\s+not\s+matter|irrelevant|unnecessary|overrated)\b/gi,
+  /\b(?:no|without)\s+(?:need\s+(?:for|of)\s+)?consent\b/gi,
+  /\bnon[\s-]?con(?:sent|sensual)?\b|\bnoncon(?:sent|sensual)?\b|\bconsensual[\s-]non[\s-]?consent\b|\bcnc\b/gi,
+]
+
+type HitKind = 'minor' | 'age' | 'override'
+
 interface Hit {
   term: string
-  age: boolean
+  kind: HitKind
 }
 
 function scan(text: string, opts: ScanOptions): Hit[] {
   if (!text) return []
   const t = normalizeQuotes(text)
   const hits: Hit[] = []
-  const add = (term: string, age: boolean) => {
-    if (!hits.some((h) => h.term.toLowerCase() === term.toLowerCase())) hits.push({ term, age })
+  const add = (term: string, kind: HitKind) => {
+    if (!hits.some((h) => h.term.toLowerCase() === term.toLowerCase())) hits.push({ term, kind })
   }
   for (const rule of RULES) {
     if (rule.appearanceOnly && !opts.appearance) continue
@@ -267,10 +320,11 @@ function scan(text: string, opts: ScanOptions): Hit[] {
     for (const m of t.matchAll(rule.re)) {
       const at = m.index ?? 0
       if (rule.allow?.(t.slice(0, at), t.slice(at + m[0].length), m[0])) continue
-      add(m[0], false)
+      add(m[0], 'minor')
     }
   }
-  for (const term of ageHits(t, opts)) add(term, true)
+  for (const term of ageHits(t, opts)) add(term, 'age')
+  for (const re of RULE_OVERRIDES) for (const m of t.matchAll(re)) add(m[0], 'override')
   return hits
 }
 
@@ -354,9 +408,12 @@ function scanFields(fields: readonly TextField[], names?: readonly string[]): Sa
       issues.push({
         field: f.field,
         term: hit.term,
-        message: hit.age
-          ? `${label} says "${hit.term}". Every character is 21 or older, and looks it.`
-          : `${label} mentions "${hit.term}". Characters are adults: no references to minors or childlike traits.`,
+        message:
+          hit.kind === 'age'
+            ? `${label} says "${hit.term}". Every character is 21 or older, and looks it.`
+            : hit.kind === 'override'
+              ? `${label} says "${hit.term}". Mods can set tone and style, but the world rules always apply: adults only, and consent always.`
+              : `${label} mentions "${hit.term}". Characters are adults: no references to minors or childlike traits.`,
       })
     }
   }

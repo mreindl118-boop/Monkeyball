@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNav } from '../../store/nav'
 import { Button } from '../../ui/Button'
 import { Note, Panel } from '../../ui/Panel'
 import { TopBar } from '../../ui/TopBar'
 import { Wordmark } from '../../ui/Wordmark'
 import { ConnectionForm } from './ConnectionForm'
-import { takeOnboardingProblem } from './lastCheck'
+import { clearOnboardingProblem, peekOnboardingProblem } from './lastCheck'
 import styles from './ConnectionSetup.module.css'
 
 /** Connect a model. Shown after onboarding when no model answered, and from the hub. */
@@ -14,8 +14,10 @@ export default function ConnectionSetup() {
   const back = useNav((s) => s.back)
   const reset = useNav((s) => s.reset)
   const firstRun = stack.length === 0
-  // The onboarding check's problem, until a Test connection here succeeds.
-  const [problem, setProblem] = useState(takeOnboardingProblem)
+  // The onboarding check's problem, until a Test connection here succeeds. Read during render and
+  // forgotten once mounted: a render React throws away must not use it up (see lastCheck.ts).
+  const [problem, setProblem] = useState(peekOnboardingProblem)
+  useEffect(() => clearOnboardingProblem(), [])
 
   const toHub = () => reset({ name: 'hub' })
 

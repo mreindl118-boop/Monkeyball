@@ -669,7 +669,11 @@ async function androidFlow(browser, app, mock, dir) {
 
     await step('(d) the recap shows the ending', async () => {
       await toRecap(page)
-      checkIncludes(await mainText(page), ['The epilogue: the good ending.', 'Your ending', "It's kept on Nova's profile, and it can play again."], 'the epilogue recap')
+      checkIncludes(await mainText(page), ['The epilogue: the good ending.', 'Your ending', "It's kept on Nova's profile and in the gallery, and it can play again."], 'the epilogue recap')
+      // Phase 5: the ending's art develops as an instant-film print in the "Your ending" panel.
+      const print = page.getByRole('region', { name: 'Your ending', exact: true }).locator('figure[data-state]')
+      check((await print.count()) === 1, `${await print.count()} ending prints on the epilogue recap`)
+      check(/good ending/i.test(await print.innerText()), `the ending print reads "${await print.innerText()}"`)
       await checkTouchScreen(page, 'recap-epilogue', { full: true, shot: shot('recap-epilogue') })
     }, page)
 

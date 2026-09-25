@@ -5,7 +5,7 @@
 //
 // Android is the primary target (docs/ARCHITECTURE.md, "Android first"). This walks gate ->
 // onboarding -> connection setup (pointed at the mock model server) -> hub -> Settings -> debug
-// panel (opened by a real touch long-press) -> a "not built yet" screen, with touch input at
+// panel (opened by a real touch long-press) -> the gallery, with touch input at
 // 412x915 and a 2.625 device pixel ratio, then revisits every screen at 360x800. On each screen:
 //   - nothing scrolls sideways (scrollWidth fits the device width; see checkScreen),
 //   - every button, radio, tab, switch, link and field can be hit over at least 48px of height
@@ -198,13 +198,14 @@ async function androidFlow(browser, app, mock) {
     await checkScreen(page, '06-debug', { full: true })
   }, page)
 
-  await step('a later-phase screen ("not built yet")', async () => {
+  await step('the gallery (Phase 5)', async () => {
     await page.evaluate(() => {
       window.location.hash = '#/gallery'
     })
     await waitForHash(page, '#/gallery')
-    await page.getByText('Not built yet').waitFor()
-    await checkScreen(page, '07-not-built')
+    await page.getByRole('heading', { name: 'Gallery', level: 1 }).waitFor()
+    await page.getByRole('button', { name: /^Nova Castellanos/ }).waitFor()
+    await checkScreen(page, '07-gallery', { full: true })
   }, page)
 
   await step('360x800: every screen still fits', async () => {
@@ -214,6 +215,8 @@ async function androidFlow(browser, app, mock) {
       ['#/settings', '360-settings', true],
       ['#/connection-setup', '360-connection-setup', true],
       ['#/debug', '360-debug', false],
+      ['#/gallery', '360-gallery', true],
+      ['#/gallery/nova', '360-gallery-nova', true],
     ]) {
       await page.evaluate((h) => {
         window.location.hash = h

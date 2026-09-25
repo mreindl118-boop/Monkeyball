@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getAllRelationships } from '../../db/repo'
 import { useDebug } from '../../store/debug'
+import { useGame } from '../../store/game'
 import { useNav } from '../../store/nav'
 import { parseDebugRolls, readDebugRolls, writeDebugRolls, type DebugRolls } from '../../store/rolls'
+import { useRoster } from '../../store/roster'
 import { maskApiKeys, useSettings } from '../../store/settings'
 import type { DebugEntry, Relationship, Settings } from '../../types'
 import { APP_VERSION } from '../../ui/appVersion'
@@ -10,13 +12,15 @@ import { Button } from '../../ui/Button'
 import { Chip } from '../../ui/Chip'
 import { CodeBlock } from '../../ui/CodeBlock'
 import { Field } from '../../ui/Field'
-import { TextInput } from '../../ui/Inputs'
+import { Select, TextInput } from '../../ui/Inputs'
 import { Note } from '../../ui/Panel'
+import { Segmented } from '../../ui/Segmented'
 import { Tabs } from '../../ui/Tabs'
 import { TopBar } from '../../ui/TopBar'
+import { useRosterAndGame } from '../Hub/useRosterGame'
 import styles from './Debug.module.css'
 import { maskKey } from './mask'
-import { buildPreviews, PROMPT_KINDS, type PromptKind } from './previews'
+import { buildPreviews, previewCharacter, PROMPT_KINDS, type PromptKind } from './previews'
 import { TranscriptTab } from './TranscriptTab'
 
 type TabId = 'prompts' | 'raw' | 'transcript' | 'state'
@@ -41,27 +45,71 @@ function json(v: unknown): string {
   return JSON.stringify(v, null, 2)
 }
 
+type PromptSource = 'sent' | 'preview'
+
+/** Characters the previews can be built with, by name (the bundled sets and anyone added). */
+function usePreviewCast(): { value: string; label: string }[] {
+  const entries = useRoster((s) => s.entries)
+  return useMemo(
+    () =>
+      Object.values(entries)
+        .map((e) => ({ value: e.character.id, label: e.character.name.trim() || e.character.id }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    [entries],
+  )
+}
+
 function PromptsTab() {
+  useRosterAndGame()
   const lastByKind = useDebug((s) => s.lastByKind)
   const profile = useSettings((s) => s.profile)
   const settings = useSettings((s) => s.settings)
+  const [source, setSource] = useState<PromptSource>('sent')
+  const [who, setWho] = useState('nova')
+  const cast = usePreviewCast()
+  const entry = useRoster((s) => s.entries[who])
+  const rel = useGame((s) => s.relationships[who])
+  const entries = useRoster((s) => s.entries)
+  const names = useMemo(() => {
+    const out: Record<string, string> = {}
+    for (const e of Object.values(entries)) out[e.character.id] = e.character.name.trim().split(/\s+/)[0] || e.character.id
+    return out
+  }, [entries])
+  const character = entry?.character ?? previewCharacter()
+  const first = character.name.trim().split(/\s+/)[0] || character.id
   const previews = useMemo(
-    () => buildPreviews({ profile, settings }),
-    [profile, settings],
+    () => buildPreviews({ profile, settings, character, ...(rel ? { rel } : {}), ...(Object.keys(names).length ? { names } : {}) }),
+    [profile, settings, character, rel, names],
   )
-  const anyPreview = PROMPT_KINDS.some((k) => !lastByKind[k]?.prompt)
+  const anyPreview = source === 'preview' || PROMPT_KINDS.some((k) => !lastByKind[k]?.prompt)
 
   return (
     <div className={styles.stack}>
+      <div className={styles.previewControls}>
+        <Field label="Show" kind="group">
+          <Segmented<PromptSource>
+            value={source}
+            options={[
+              { value: 'sent', label: 'Last sent' },
+              { value: 'preview', label: 'Live preview' },
+            ]}
+            onChange={setSource}
+          />
+        </Field>
+        <Field label="Preview with" htmlFor="debug-preview-with" hint="Their card, and where you stand with them now.">
+          <Select value={entry ? who : 'nova'} options={cast.length ? cast : [{ value: 'nova', label: 'Nova Castellanos' }]} onChange={setWho} />
+        </Field>
+      </div>
       {anyPreview && (
-        <Note tone="brass" title="Some of these are previews">
-          Until a date sends a prompt, it's assembled here with the real builders from Nova's card, a
-          fresh relationship, your profile and heat {settings.heat}. Previews are never sent.
+        <Note tone="brass" title={source === 'preview' ? 'Live previews' : 'Some of these are previews'}>
+          {source === 'preview' ? 'Every prompt here is' : "Until a date sends a prompt, it's"} assembled with the real builders
+          from {first}'s card, where you stand with {first} now, your profile, heat {settings.heat} and the image settings.
+          Previews are never sent.
         </Note>
       )}
       {PROMPT_KINDS.map((kind: PromptKind) => {
         const last = lastByKind[kind]
-        const sent = !!last?.prompt
+        const sent = source === 'sent' && !!last?.prompt
         return (
           <section key={kind} className={styles.kind} aria-label={`${KIND_LABELS[kind]} prompt`}>
             <div className={styles.kindHead}>
@@ -73,7 +121,7 @@ function PromptsTab() {
               )}
             </div>
             <CodeBlock
-              title={sent ? `${KIND_LABELS[kind]} prompt as sent` : `${KIND_LABELS[kind]} prompt preview with Nova`}
+              title={sent ? `${KIND_LABELS[kind]} prompt as sent` : `${KIND_LABELS[kind]} prompt preview with ${first}`}
               text={sent ? last!.prompt : previews[kind]}
             />
           </section>

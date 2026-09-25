@@ -2,6 +2,8 @@ import { CLAUDE_JUDGE_MODEL, CLAUDE_STORY_MODEL, PRESETS, PRESET_IDS } from '../
 import type {
   ConnectionPreset,
   ConnectionSettings,
+  ImageAspectRatio,
+  ImageProvider,
   ImageSettings,
   PlayerProfile,
   ProviderSlot,
@@ -39,6 +41,15 @@ export const DEFAULT_CONNECTION: Readonly<ConnectionSettings> = {
   effort: 'low',
 }
 
+/** The art providers, in the order the settings screen offers them. */
+export const IMAGE_PROVIDERS: readonly ImageProvider[] = ['a1111', 'grok']
+
+/** Grok Imagine's default model (editable; Test lists the key's own). */
+export const DEFAULT_GROK_IMAGE_MODEL = 'grok-imagine-image'
+
+/** Aspect ratios offered for Grok Imagine, portrait first (character art is portrait). */
+export const IMAGE_ASPECT_RATIOS: readonly ImageAspectRatio[] = ['2:3', '3:4', '9:16', '1:1', '4:3', '3:2', '16:9']
+
 export const DEFAULT_IMAGE: Readonly<ImageSettings> = {
   enabled: false,
   baseUrl: 'http://127.0.0.1:7860',
@@ -50,6 +61,9 @@ export const DEFAULT_IMAGE: Readonly<ImageSettings> = {
   cfg: 6,
   sampler: 'DPM++ 2M',
   seedMode: 'fixed',
+  provider: 'a1111',
+  grokModel: DEFAULT_GROK_IMAGE_MODEL,
+  aspectRatio: '2:3',
 }
 
 export const DEFAULT_SETTINGS: Readonly<Settings> = {

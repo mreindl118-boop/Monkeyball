@@ -23,11 +23,7 @@ const DateScreen = lazy(() => import('./screens/DateScreen/DateScreen'))
 const Recap = lazy(() => import('./screens/Recap/Recap'))
 const PolyculeMap = lazy(() => import('./screens/PolyculeMap/PolyculeMap'))
 const Ending = lazy(() => import('./screens/Ending/Ending'))
-
-/** Titles for screens that arrive in later phases. */
-const LATER: Partial<Record<ScreenName, string>> = {
-  gallery: 'Gallery',
-}
+const Gallery = lazy(() => import('./screens/Gallery/Gallery'))
 
 let warnedNoStorage = false
 
@@ -98,8 +94,12 @@ function renderScreen(view: Screen, back: () => void, toHub: () => void): ReactN
       return <PolyculeMap />
     case 'ending':
       return <Ending key={view.id} />
+    case 'gallery':
+      // Keyed by character so moving between galleries starts each one fresh.
+      return <Gallery key={view.id ?? ''} />
     default:
-      return <NotBuilt what={LATER[view.name]} onBack={back} onHub={toHub} />
+      // Every screen is built; a screen added to nav.ts without a case lands here.
+      return <NotBuilt onBack={back} onHub={toHub} />
   }
 }
 

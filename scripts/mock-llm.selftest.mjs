@@ -303,5 +303,77 @@ main.server.close()
   server.close()
 }
 
+{
+  const { server, base: b } = await start()
+  const origin = b.replace(/\/v1$/, '')
+  const SAFE_NEG = 'child, underage, minor, childlike, non-consensual, forced'
+  const txt2img = (body) =>
+    fetch(`${origin}/sdapi/v1/txt2img`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  const grok = (prompt) =>
+    fetch(`${b}/images/generations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer k' },
+      body: JSON.stringify({ model: 'grok-imagine-image', prompt, n: 1, response_format: 'b64_json', aspect_ratio: '2:3' }),
+    })
+  await check('images: A1111 paints with the safety text (the seed picks the color), 422 without it', async () => {
+    const ok = await txt2img({ prompt: 'adult woman, 28 years old, record store', negative_prompt: SAFE_NEG, seed: 7, sampler_name: 'Euler a' })
+    assert.equal(ok.status, 200)
+    const json = await ok.json()
+    assert.equal(Buffer.from(json.images[0], 'base64').subarray(1, 4).toString('ascii'), 'PNG')
+    assert.equal(JSON.parse(json.info).seed, 7)
+    const again = await (await txt2img({ prompt: 'adult woman, 28 years old, record store', negative_prompt: SAFE_NEG, seed: 7 })).json()
+    assert.equal(again.images[0], json.images[0])
+    assert.equal((await txt2img({ prompt: 'a woman', negative_prompt: SAFE_NEG, seed: 7 })).status, 422)
+    assert.equal((await txt2img({ prompt: 'adult woman, 28 years old', negative_prompt: 'blurry', seed: 7 })).status, 422)
+    const samplers = await (await fetch(`${origin}/sdapi/v1/samplers`)).json()
+    assert.ok(samplers.some((x) => x.name === 'Euler a'))
+  })
+  await check('images: Grok Imagine needs the consenting-adult clause; every picture differs', async () => {
+    const prompt = 'adult woman, 28 years old, record store. Everyone depicted is a consenting adult; nothing non-consensual is shown.'
+    const first = await grok(prompt)
+    assert.equal(first.status, 200)
+    const a = (await first.json()).data[0].b64_json
+    const b2 = (await (await grok(prompt)).json()).data[0].b64_json
+    assert.notEqual(a, b2)
+    assert.equal((await grok('adult woman, 28 years old, record store')).status, 422)
+    const models = await (await fetch(`${b}/image-generation-models`)).json()
+    assert.deepEqual(models.models.map((m) => m.id), ['grok-imagine-image'])
+  })
+  await check('/__mock/requests counts requests by method and path; DELETE starts over', async () => {
+    const counted = (await (await fetch(`${origin}/__mock/requests`)).json()).requests
+    assert.equal(counted['POST /sdapi/v1/txt2img'], 4)
+    assert.equal(counted['POST /images/generations'], 3)
+    assert.equal(counted['GET /image-generation-models'], 1)
+    assert.equal(counted['GET /__mock/requests'], undefined)
+    const cleared = (await (await fetch(`${origin}/__mock/requests`, { method: 'DELETE' })).json()).requests
+    assert.deepEqual(cleared, {})
+    await fetch(`${b}/models`)
+    assert.deepEqual((await (await fetch(`${origin}/__mock/requests`)).json()).requests, { 'GET /models': 1 })
+  })
+  server.close()
+}
+{
+  const { server, base: b } = await start({ imageFail: '1', noSdapi: false })
+  const origin = b.replace(/\/v1$/, '')
+  await check('MOCK_IMAGE_FAIL: A1111 out of GPU memory (500), Grok declined by moderation (400)', async () => {
+    const r = await fetch(`${origin}/sdapi/v1/txt2img`, { method: 'POST', body: JSON.stringify({ prompt: 'x' }) })
+    assert.equal(r.status, 500)
+    assert.match(JSON.stringify(await r.json()), /out of memory/)
+    const g = await fetch(`${b}/images/generations`, { method: 'POST', body: JSON.stringify({ prompt: 'x', response_format: 'b64_json' }) })
+    assert.equal(g.status, 400)
+    assert.match(JSON.stringify(await g.json()), /moderation/)
+  })
+  server.close()
+}
+{
+  const { server, base: b } = await start({ noSdapi: true })
+  await check('MOCK_NO_SDAPI: every /sdapi route is a plain 404', async () => {
+    const r = await fetch(`${b.replace(/\/v1$/, '')}/sdapi/v1/samplers`)
+    assert.equal(r.status, 404)
+    assert.deepEqual(await r.json(), { detail: 'Not Found' })
+  })
+  server.close()
+}
+
 console.log(`\n${passes} passed, ${failures} failed`)
 process.exit(failures ? 1 : 0)

@@ -120,7 +120,7 @@ export default function Settings() {
         id="settings-images"
         className={styles.section}
         title="Image generation"
-        description="Optional. Without it, locked and unlocked tiers use imported art, bundled art or placeholders."
+        description="Optional. Unlocked tiers show your own image first, then art that comes with the set, then painted art, then a placeholder."
       >
         <ImageSection />
       </Panel>

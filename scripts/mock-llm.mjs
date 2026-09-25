@@ -6,6 +6,21 @@
 // Routes (with or without the /v1 prefix): GET /v1/models, POST /v1/chat/completions (SSE when
 // stream is true, JSON otherwise), OPTIONS for CORS preflight.
 //
+// Image routes (Phase 5 art providers):
+//   POST /sdapi/v1/txt2img           Automatic1111/Forge: { images: [base64 PNG], parameters, info }
+//                                    with info.seed (a random seed for -1); 422 when the request
+//                                    lacks crushLAB's safety text (an age in the prompt, the
+//                                    underage terms in negative_prompt)
+//   GET  /sdapi/v1/samplers          [{ name, aliases, options }]
+//   GET  /sdapi/v1/sd-models         [{ title, model_name }]
+//   POST /v1/images/generations      Grok Imagine: { data: [{ b64_json }] } (b64_json requested),
+//                                    422 without the consenting-adult clause in the prompt
+//   GET  /v1/image-generation-models { models: [{ id }] }
+// The pictures are 160x240 solid PNGs whose color follows the seed (A1111), or the prompt and a
+// running count (Grok: every picture differs, like a real regenerate).
+//   GET    /__mock/requests          { requests: { "POST /sdapi/v1/txt2img": 2, ... } } counted by
+//                                    method and path (no /v1 prefix, no preflights); DELETE resets
+//
 // It recognises the prompt kind by the system prompt's first line and answers deterministically:
 //   story        "You are the story engine ..."
 //   judge        "You score one message ..."      keywords in "Player's new message:" force results
@@ -28,9 +43,14 @@
 //   MOCK_MODELS=a,b            model ids to list (default mock-story,mock-judge)
 //   MOCK_STRICT_MODELS=1       404 for models not in the list
 //   MOCK_QUIET=1               no request logging
+//   MOCK_IMAGE_FAIL=1          image calls fail: txt2img 500 (out of GPU memory), Grok 400
+//                              (content moderation); =429 answers 429 on both instead
+//   MOCK_IMAGE_DELAY=0         ms before an image answer (to catch the "painting" state)
+//   MOCK_NO_SDAPI=1            404 {"detail":"Not Found"} on /sdapi (a server launched without --api)
 
 import http from 'node:http'
 import { pathToFileURL } from 'node:url'
+import { deflateSync } from 'node:zlib'
 
 const NUDGE_RE = /valid JSON only/i
 
@@ -49,8 +69,78 @@ export function optionsFromEnv(env = process.env) {
       .filter(Boolean),
     strictModels: env.MOCK_STRICT_MODELS === '1',
     quiet: env.MOCK_QUIET === '1',
+    imageFail: env.MOCK_IMAGE_FAIL === '1' || env.MOCK_IMAGE_FAIL === '429' ? env.MOCK_IMAGE_FAIL : '',
+    imageDelay: env.MOCK_IMAGE_DELAY !== undefined && env.MOCK_IMAGE_DELAY !== '' ? Number(env.MOCK_IMAGE_DELAY) : 0,
+    noSdapi: env.MOCK_NO_SDAPI === '1',
   }
 }
+
+// ---------------------------------------------------------------------------
+// Images
+
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256)
+  for (let n = 0; n < 256; n++) {
+    let c = n
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
+    t[n] = c >>> 0
+  }
+  return t
+})()
+
+function crc32(buf) {
+  let c = 0xffffffff
+  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8)
+  return (c ^ 0xffffffff) >>> 0
+}
+
+function pngChunk(type, data) {
+  const len = Buffer.alloc(4)
+  len.writeUInt32BE(data.length)
+  const body = Buffer.concat([Buffer.from(type, 'ascii'), data])
+  const crc = Buffer.alloc(4)
+  crc.writeUInt32BE(crc32(body))
+  return Buffer.concat([len, body, crc])
+}
+
+/** A small solid-color RGB PNG (a real, decodable file). */
+export function makePng(width, height, [r, g, b]) {
+  const ihdr = Buffer.alloc(13)
+  ihdr.writeUInt32BE(width, 0)
+  ihdr.writeUInt32BE(height, 4)
+  ihdr[8] = 8 // bit depth
+  ihdr[9] = 2 // color type: RGB
+  const row = Buffer.alloc(1 + width * 3)
+  for (let x = 0; x < width; x++) row.set([r, g, b], 1 + x * 3)
+  const raw = Buffer.concat(Array.from({ length: height }, () => row))
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    pngChunk('IHDR', ihdr),
+    pngChunk('IDAT', deflateSync(raw)),
+    pngChunk('IEND', Buffer.alloc(0)),
+  ])
+}
+
+/** A color from a number: the same seed always paints the same picture. */
+function colorFor(n) {
+  const x = (Number(n) >>> 0) || 1
+  return [60 + (x % 160), 40 + ((x >>> 8) % 140), 80 + ((x >>> 16) % 150)]
+}
+
+function hashText(text) {
+  let h = 0x811c9dc5
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i)
+    h = Math.imul(h, 0x01000193)
+  }
+  return h >>> 0
+}
+
+/** Painted pictures are portrait, 2:3, like character art (solid color, so still a few hundred bytes). */
+export const MOCK_IMAGE_SIZE = [160, 240]
+
+const SAMPLERS = ['DPM++ 2M', 'DPM++ 2M SDE', 'DPM++ SDE', 'Euler a', 'Euler', 'DDIM', 'UniPC', 'LCM']
+const IMAGE_MODELS = ['grok-imagine-image']
 
 // ---------------------------------------------------------------------------
 // Prompt kind and parsing helpers
@@ -278,9 +368,80 @@ function tokens(text) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
+/** The Automatic1111/Forge API (no key; MOCK_REQUIRE_KEY doesn't apply). */
+async function sdapi(req, res, path, url, opts, log) {
+  if (opts.noSdapi) {
+    log(`${req.method} ${url.pathname} 404 (no --api)`)
+    sendJson(res, 404, { detail: 'Not Found' }, opts)
+    return
+  }
+  if (req.method === 'GET' && path === '/sdapi/v1/samplers') {
+    log(`GET ${url.pathname} 200`)
+    sendJson(res, 200, SAMPLERS.map((name) => ({ name, aliases: [name.toLowerCase().replace(/\W+/g, '_')], options: {} })), opts)
+    return
+  }
+  if (req.method === 'GET' && path === '/sdapi/v1/sd-models') {
+    log(`GET ${url.pathname} 200`)
+    sendJson(res, 200, [{ title: 'mock-anime.safetensors [0123abcd]', model_name: 'mock-anime', hash: '0123abcd' }], opts)
+    return
+  }
+  if (req.method === 'POST' && path === '/sdapi/v1/txt2img') {
+    let body
+    try {
+      body = JSON.parse(await readBody(req))
+    } catch {
+      sendJson(res, 422, { detail: 'Request body is not valid JSON' }, opts)
+      return
+    }
+    if (opts.imageDelay > 0) await sleep(opts.imageDelay)
+    if (opts.imageFail === '429') {
+      log(`POST ${url.pathname} 429`)
+      sendJson(res, 429, { detail: 'Too many requests (mock)' }, opts)
+      return
+    }
+    if (opts.imageFail) {
+      log(`POST ${url.pathname} 500 (out of memory)`)
+      sendJson(res, 500, { error: 'OutOfMemoryError', detail: '', body: '', errors: 'CUDA out of memory. Tried to allocate 2.00 GiB (mock)' }, opts)
+      return
+    }
+    const prompt = String(body.prompt ?? '')
+    const negative = String(body.negative_prompt ?? '')
+    if (!/\b\d{2,3} years old\b/.test(prompt) || !/underage/i.test(negative) || !/non-consensual/i.test(negative)) {
+      log(`POST ${url.pathname} 422 (no safety text)`)
+      sendJson(res, 422, { detail: "mock: the request is missing crushLAB's safety text" }, opts)
+      return
+    }
+    if (body.sampler_name && !SAMPLERS.includes(String(body.sampler_name))) {
+      sendJson(res, 404, { detail: `Sampler not found: ${body.sampler_name}` }, opts)
+      return
+    }
+    const asked = Number(body.seed)
+    const seed = Number.isFinite(asked) && asked >= 0 ? asked >>> 0 : Math.floor(Math.random() * 0xffffffff)
+    const png = makePng(MOCK_IMAGE_SIZE[0], MOCK_IMAGE_SIZE[1], colorFor(seed))
+    log(`POST ${url.pathname} seed ${seed} 200`)
+    sendJson(
+      res,
+      200,
+      {
+        images: [png.toString('base64')],
+        parameters: body,
+        info: JSON.stringify({ prompt, negative_prompt: negative, seed, all_seeds: [seed], width: body.width, height: body.height }),
+      },
+      opts,
+    )
+    return
+  }
+  log(`${req.method} ${url.pathname} 404`)
+  sendJson(res, 404, { detail: 'Not Found' }, opts)
+}
+
 export function createMockServer(options = {}) {
   const opts = { ...optionsFromEnv({}), ...options }
   let counter = 0
+  /** Grok Imagine pictures painted so far: each one gets its own color, like a new picture would. */
+  let grokImages = 0
+  /** Requests by "METHOD /path" (the /v1 prefix dropped; preflights and /__mock left out). */
+  const counts = new Map()
   const log = (...args) => {
     if (!opts.quiet) console.log(...args)
   }
@@ -289,14 +450,67 @@ export function createMockServer(options = {}) {
     const url = new URL(req.url || '/', 'http://mock')
     const path = url.pathname.replace(/^\/v1(?=\/)/, '')
     try {
+      // For e2e scripts: how many requests each route got (GET), or start counting again (DELETE).
+      if (path === '/__mock/requests') {
+        if (req.method === 'DELETE') counts.clear()
+        sendJson(res, 200, { requests: Object.fromEntries(counts) }, opts)
+        return
+      }
+      if (req.method !== 'OPTIONS') {
+        const k = `${req.method} ${path}`
+        counts.set(k, (counts.get(k) ?? 0) + 1)
+      }
       if (req.method === 'OPTIONS') {
         res.writeHead(204, corsHeaders(opts))
         res.end()
         return
       }
+      if (path.startsWith('/sdapi/')) {
+        await sdapi(req, res, path, url, opts, log)
+        return
+      }
       if (opts.requireKey && req.headers.authorization !== `Bearer ${opts.requireKey}`) {
         log(`${req.method} ${url.pathname} 401`)
         sendJson(res, 401, { error: { message: 'Invalid API key', type: 'invalid_request_error', code: 401 } }, opts)
+        return
+      }
+      if (req.method === 'GET' && path === '/image-generation-models') {
+        log(`GET ${url.pathname} 200`)
+        sendJson(res, 200, { models: IMAGE_MODELS.map((id) => ({ id, object: 'image_generation_model', owned_by: 'mock' })) }, opts)
+        return
+      }
+      if (req.method === 'POST' && path === '/images/generations') {
+        let body
+        try {
+          body = JSON.parse(await readBody(req))
+        } catch {
+          sendJson(res, 400, { error: { message: 'Request body is not valid JSON' } }, opts)
+          return
+        }
+        if (opts.imageDelay > 0) await sleep(opts.imageDelay)
+        const prompt = String(body.prompt ?? '')
+        if (opts.imageFail === '429') {
+          log(`POST ${url.pathname} 429`)
+          sendJson(res, 429, { error: { message: 'Too many requests (mock)' } }, opts)
+          return
+        }
+        if (opts.imageFail) {
+          log(`POST ${url.pathname} 400 (moderation)`)
+          sendJson(res, 400, { code: 'invalid_request', error: 'Generated image rejected by content moderation. (mock)' }, opts)
+          return
+        }
+        if (!/nothing non-consensual is shown/i.test(prompt) || !/\b\d{2,3} years old\b/.test(prompt)) {
+          log(`POST ${url.pathname} 422 (no safety text)`)
+          sendJson(res, 422, { error: { message: "mock: the prompt is missing crushLAB's safety text" } }, opts)
+          return
+        }
+        if (body.response_format !== 'b64_json') {
+          sendJson(res, 400, { error: { message: 'mock: ask for response_format b64_json' } }, opts)
+          return
+        }
+        const png = makePng(MOCK_IMAGE_SIZE[0], MOCK_IMAGE_SIZE[1], colorFor(hashText(prompt) + ++grokImages * 0x9e3779b1))
+        log(`POST ${url.pathname} ${body.model} ${body.aspect_ratio ?? ''} 200`)
+        sendJson(res, 200, { data: [{ b64_json: png.toString('base64'), revised_prompt: prompt }] }, opts)
         return
       }
       if (req.method === 'GET' && path === '/models') {
@@ -400,6 +614,8 @@ if (isMain) {
       badJson: opts.badJson,
       noCors: opts.noCors,
       strictModels: opts.strictModels,
+      imageFail: !!opts.imageFail,
+      noSdapi: opts.noSdapi,
     })
       .filter(([, v]) => v)
       .map(([k]) => k)

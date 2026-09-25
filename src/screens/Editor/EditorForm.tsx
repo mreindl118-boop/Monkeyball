@@ -298,7 +298,7 @@ export function EditorForm({ initial, setId: initialSetId, previousId, readOnly 
         <TraitsSection f={f} />
         <PlacesSection f={f} />
         <SecretsSection f={f} />
-        <GallerySection f={f} />
+        <GallerySection f={f} images={{ owner: readOnly ? undefined : previousId }} />
         <PartnersSection f={f} members={members} />
       </fieldset>
 

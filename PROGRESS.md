@@ -265,15 +265,56 @@ Spec: docs/SPEC.md. Build contract: docs/ARCHITECTURE.md. Casting: docs/ROSTER.m
     helpers; the roster tests and the Phase 2 e2e no longer assume Afterhours is the only bundled
     set.
 
+- Phase 5 (gallery and art), integrated, reviewed, fixed and checked end to end (not committed yet;
+  ARCHITECTURE, "Art" and "Art providers"):
+  - Engine (src/art): slots and keys (`types.ts`), the prompt builder with the frozen
+    `IMAGE_SAFETY` text (`imagePrompt.ts`: every participant's adult age from the card, the
+    safety clause, the negative prompt, the Grok clause; player and mod text scrubbed; a card under
+    21 gets no prompt), Automatic1111/Forge and Grok Imagine providers with diagnosed errors
+    (`providers.ts`), the resolver (imported, bundled via `virtual:bundled-art`, generated,
+    placeholder) with a shared blob-URL cache and `useArt` (`resolve.ts`), painting, caching,
+    Regenerate, the player's own image, favorites, background painting at unlock and at an ending
+    (`generate.ts`, called from the date store's saves), the gallery's slots and locks (`slots.ts`),
+    and stored-picture sizes with 640px thumbnails for tiles and coasters (`compress.ts`).
+  - Screens: the recap's instant-film reveal (`src/ui/InstantFilm.tsx`, once per unlock via
+    `DateRecord.artShown`; a 0.4 s fade with reduced motion), the gallery (`#/gallery`,
+    `#/gallery/:id`: tiers, reachable endings, group pictures, favorites) and its full-screen viewer
+    (swipe, Favorite, Save image, Use my own image, Remove my image, Regenerate with a side-by-side
+    compare, Generate art on a placeholder), Portrait on every screen, the profile strip opening the
+    viewer, Settings, Image generation (provider, options, read-only safety text, Test image
+    generation), the editor's tier images.
+  - Integration fixes: the reduced-motion fade survived the app-wide reduced-motion rule (it was cut
+    to 0.01 ms); the viewer and the Regenerate compare fit a picture of any shape and size whole
+    (small ones were drawn at their natural size, big ones clipped); locked endings say "Unlocks when
+    it plays" under their title instead of repeating "Ending"; favorites say whose picture it is;
+    the gallery's accent glow no longer shows a seam on wide screens; "New in Nova's gallery"
+    instead of "their"; A1111 help says "this device", not "this phone"; thumbnails (the builders
+    decoded full pictures for every tile); the debug panel's Prompts tab has the Image prompt, a
+    Live preview mode and "Preview with" any character (their real relationship, so heat and ace
+    gates show); the dev-only `crushlab.debug.xaiBase` override for e2e; the mock counts requests
+    (`GET /__mock/requests`) and paints 160x240 portraits, a new color for each Grok picture.
+  - Phase 1 e2e flake (step 25, desktop, "the quiet check fails and connection setup opens"): the
+    setup screen took the onboarding check's problem out of its module variable inside a
+    `useState` initializer. When React throws that first render away (a render interrupted or
+    restarted while the lazy screen is revealed) the second render found nothing, so the "Set up a
+    provider below" note never showed (the failure screenshot has the heading and no note). It now
+    reads the problem during render and clears it in an effect after mount; a unit test reproduces
+    the discarded render (`src/screens/ConnectionSetup/ConnectionSetup.test.tsx`).
+  - E2E: `npm run e2e:phase5` (26 steps; see ARCHITECTURE, Testing). `scripts/e2e/android.mjs`
+    checks the gallery where it checked "Not built yet". `dismissToasts` no longer waits 15 s on a
+    toast that left by itself. Shared save and mock helpers in lib.mjs.
+
 ## In progress
 
-- The Polycule and Backstage set content (src/data/sets/polycule, src/data/sets/backstage) is in
-  the tree but not reviewed or committed; both are off by default. It passes the bundled-card
-  validator. Slow Burn isn't there yet.
+- The Polycule, Backstage and Slow Burn sets (src/data/sets/polycule, backstage, slow-burn; 18
+  characters) are committed and pass the bundled-card validator; all three are off by default until
+  Phase 6 (group play, the "Who's in town" step). Every bundled character is covered by the image
+  prompt safety tests.
 
 ## Next
 
-- Phase 5 (gallery and art), then Phases 6 and 7 as listed in docs/SPEC.md.
+- Phases 6 and 7 as listed in docs/SPEC.md. Phase 6 group dates reuse the group slot
+  (`group:{ids}:{slot}`) for their shared picture.
 - Phase 6, when a second bundled set ships: a skippable "Who's in town" step in onboarding that uses
   the Character sets toggles (SPEC: "New game, and Settings, Character sets, let the player turn
   sets on and off"). Until then a new game starts with Afterhours on, and Character sets is the
@@ -331,8 +372,7 @@ Spec: docs/SPEC.md. Build contract: docs/ARCHITECTURE.md. Casting: docs/ROSTER.m
 - `defaultRelationship` (src/store/defaults.ts) duplicates `newRelationship`
   (src/engine/relationship.ts); a test keeps them equal.
 - Haptics: a stamp press (LipstickStamps, and the date's mood kiss when affection moves), a saved
-  card, an import and something unlocked on the recap use them; the Phase 5 unlock reveal will
-  too.
+  card, an import, a secret unlocked on the recap and each developed instant-film print use them.
 - Phase 3, not checked on a device yet: the Android back button on a date (asks before ending it),
   haptics on the date and the recap, the real soft keyboard (only emulated at 412x560 in e2e), and a
   date over native HTTP (no streaming there: the reply arrives whole).
@@ -352,7 +392,6 @@ Spec: docs/SPEC.md. Build contract: docs/ARCHITECTURE.md. Casting: docs/ROSTER.m
   keyboard up for a read-only field between turns is still to be checked on a device.
 - The date's settings refresh before each call except the orientation mode and the profile, which
   stay as the date began (changing either mid-date could switch the route).
-- Portraits on the date and recap screens are the Phase 2 placeholder until Phase 5 art.
 - Phase 4: rumors heard and passed on, name-mention disclosures (and who the player talked about,
   which settles gossip a character was waiting to hear), the rumors and gossip lines voiced, and
   friend-route gossip reveals live on the date session until the date finishes; a date recovered
@@ -380,3 +419,17 @@ Spec: docs/SPEC.md. Build contract: docs/ARCHITECTURE.md. Casting: docs/ROSTER.m
 - `npm run e2e:phase4` runs on the vite dev server, not the production build, because the pinned
   rolls are dev-only; the production build is covered by the Phase 1 to 3 and Android scripts.
 - The ending descriptions keep the spec's generic "them" ("You and them, the future is open.").
+- Phase 5, not checked on a device or against the real services: native HTTP to an A1111 server on
+  the LAN, xAI's actual image API (its `aspect_ratio` field and moderation answers follow
+  ARCHITECTURE; docs.x.ai was unreachable from here), the share-sheet Save image, the file picker
+  for Use my own image, haptics on the reveal, memory use with many painted characters.
+- Tiers unlocked before Generate art was turned on (or in an imported save) aren't painted by
+  themselves; the viewer's Generate art paints one on request.
+- Renaming a saved custom character's id leaves their images (and favorites) under the old id.
+- A1111 prompt syntax in style prefixes and cards is flattened (weights, LoRAs, BREAK), so a style
+  prefix can't use LoRAs; that is what keeps the safety clause from being muted.
+- Save files exported with images don't carry thumbnails; each tile makes its own the first time
+  it's shown after the import.
+- The debug panel's log is in memory: an image prompt logged before a reload is gone after it (the
+  Live preview assembles the current one any time).
+- Toasts sit over the bottom of the viewer for their few seconds (Use my own image, Keep new).

@@ -24,6 +24,7 @@
 // Tests build their own store with createDateStore({ llm, db, game, settings, roster }).
 
 import { create } from 'zustand'
+import { onEnding as artOnEnding, onUnlock as artOnUnlock } from '../art/generate'
 import { db as appDb, type CrushDB } from '../db/db'
 import { getDate, kvDelete, kvGet, kvSet, putDate, snapshot } from '../db/repo'
 import {
@@ -56,12 +57,14 @@ import type {
   Character,
   ConnectionSettings,
   DateRecord,
+  EndingType,
   GameState,
   PlayerProfile,
   Relationship,
   SetRelationship,
   Settings,
   Suggestions,
+  TierNumber,
 } from '../types'
 import { useGame, type GameStoreState } from './game'
 import { selectActiveEntries, selectRelationsFor, useRoster, type RosterData, type RosterState } from './roster'
@@ -209,6 +212,14 @@ export interface DateStoreDeps {
   rng?: () => number
   /** False skips the memory call when finishing an interrupted date or ending one. */
   online?: () => boolean
+  /**
+   * Phase 5: art for tiers and endings a save unlocks (default src/art/generate.ts: painted in the
+   * background when image generation is on). Fire-and-forget; never in the date's way.
+   */
+  art?: {
+    onUnlock: (characterId: string, tiers: TierNumber[]) => void
+    onEnding?: (characterId: string, ending: EndingType, group?: readonly string[]) => void
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -423,6 +434,7 @@ export function createDateStore(deps: DateStoreDeps = {}) {
   const rng = deps.rng ?? appRandom
   const online = deps.online ?? (() => typeof navigator === 'undefined' || navigator.onLine !== false)
   const makeLlm = deps.llm ?? ((id: string) => appDateLlm(id, () => settingsOf().settings.connection))
+  const art = deps.art ?? { onUnlock: artOnUnlock, onEnding: artOnEnding }
 
   /** Bumped by every run and by clear(); a run that isn't the latest stops touching state. */
   let token = 0
@@ -451,6 +463,23 @@ export function createDateStore(deps: DateStoreDeps = {}) {
      * date, the memory and the consistency trust, so a recovery never finishes it twice). When a
      * transaction can't open (no IndexedDB), the writes go on their own and fail as they would.
      */
+    /**
+     * Phase 5: the tiers (each unlocks exactly once, in rel.tiersUnlocked) and the ending this save
+     * adds over the stored relationship start their art in the background.
+     */
+    const startArt = (rel: Relationship, before: Relationship | undefined) => {
+      try {
+        const had = new Set(before?.tiersUnlocked ?? [])
+        const tiers = (rel.tiersUnlocked ?? []).filter((t) => !had.has(t))
+        if (tiers.length) art.onUnlock(rel.characterId, tiers)
+        if (rel.ending && rel.ending.playedAt !== before?.ending?.playedAt) {
+          art.onEnding?.(rel.characterId, rel.ending.type, get().session?.ending?.group)
+        }
+      } catch {
+        // Art never gets in the date's way.
+      }
+    }
+
     const persist = async (rel: Relationship, record: DateRecord) => {
       const id = get().dateId
       const withId = record.id == null && id != null ? { ...record, id } : record
@@ -458,12 +487,14 @@ export function createDateStore(deps: DateStoreDeps = {}) {
       await game()
         .load()
         .catch(() => undefined)
+      const before = game().relationships?.[rel.characterId]
       const both = () => Promise.all([game().saveRel(rel), saveRecord(withId)])
       try {
         await d.transaction('rw', d.relationships, d.dates, both)
       } catch {
         await both()
       }
+      startArt(rel, before)
     }
 
     const readMark = async (): Promise<ActiveDateMark | null> => {
@@ -560,6 +591,7 @@ export function createDateStore(deps: DateStoreDeps = {}) {
       await game()
         .load()
         .catch(() => undefined)
+      const before = game().relationships?.[rel.characterId]
       const write = async () => {
         for (const r of rels) await game().saveRel(r)
         await game().patchGame?.(next)
@@ -570,6 +602,7 @@ export function createDateStore(deps: DateStoreDeps = {}) {
       } catch {
         await write().catch(() => undefined)
       }
+      startArt(rel, before)
     }
 
     /**

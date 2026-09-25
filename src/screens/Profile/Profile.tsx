@@ -20,6 +20,7 @@ import { Note, Panel } from '../../ui/Panel'
 import { TopBar } from '../../ui/TopBar'
 import { highestTier } from '../Hub/hubModel'
 import { useRosterAndGame } from '../Hub/useRosterGame'
+import { openGalleryAt } from '../Gallery/openAt'
 import { EndingCard } from './EndingCard'
 import styles from './Profile.module.css'
 import {
@@ -393,7 +394,17 @@ function ProfileView({ character, setId, ready }: { character: Character; setId:
           {slots.map((slot) =>
             slot.unlocked ? (
               <li key={slot.tier} className={styles.slot}>
-                <Portrait character={character} tier={slot.tier} size="medium" />
+                <button
+                  type="button"
+                  className={styles.slotLink}
+                  aria-label={`Tier ${slot.tier}: ${slot.title}. Open in the gallery`}
+                  onClick={() => {
+                    openGalleryAt(`${id}:tier-${slot.tier}`)
+                    go({ name: 'gallery', id })
+                  }}
+                >
+                  <Portrait character={character} tier={slot.tier} size="medium" thumb />
+                </button>
               </li>
             ) : (
               <li key={slot.tier} className={cx(styles.slot, styles.lockedSlot)}>
@@ -405,6 +416,11 @@ function ProfileView({ character, setId, ready }: { character: Character; setId:
             ),
           )}
         </ul>
+        <div>
+          <Button variant="secondary" size="small" onClick={() => go({ name: 'gallery', id })}>
+            See the gallery
+          </Button>
+        </div>
       </Panel>
 
       <div className={styles.later}>

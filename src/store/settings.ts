@@ -2,9 +2,9 @@ import { create } from 'zustand'
 import { db, type CrushDB } from '../db/db'
 import { kvGet, kvSet } from '../db/repo'
 import { resolveRoute } from '../llm/routes'
-import type { ConnectionPreset, ConnectionSettings, ImageSettings, PlayerProfile, ProviderSlot, Settings } from '../types'
+import type { ConnectionPreset, ConnectionSettings, ImageSettings, PlayerProfile, ProviderSlot, Settings, StylePreset } from '../types'
 import { isPlainObject, migrateConnection } from './connection'
-import { DEFAULT_SETTINGS, defaultSettings } from './defaults'
+import { DEFAULT_IMAGE, DEFAULT_SETTINGS, DEFAULT_STYLE_PREFIXES, defaultSettings, IMAGE_ASPECT_RATIOS, IMAGE_PROVIDERS } from './defaults'
 
 export { maskApiKeys, migrateConnection, withLocalKeys, withoutApiKeys } from './connection'
 
@@ -58,7 +58,52 @@ export function mergeDeep<T>(defaults: T, stored: unknown): T {
 export function mergeSettings(stored: unknown): Settings {
   const merged = mergeDeep<Settings>(DEFAULT_SETTINGS as Settings, stored)
   merged.connection = migrateConnection(isPlainObject(stored) ? stored.connection : undefined)
+  merged.image = migrateImage(isPlainObject(stored) ? stored.image : undefined)
   return merged
+}
+
+const STYLE_PRESETS: readonly StylePreset[] = ['anime', 'semiReal', 'painterly']
+
+function clampNumber(v: unknown, min: number, max: number, fallback: number, step = 0): number {
+  const n = typeof v === 'number' ? v : Number.NaN
+  if (!Number.isFinite(n)) return fallback
+  const c = Math.min(max, Math.max(min, n))
+  return step > 0 ? Math.round(c / step) * step : c
+}
+
+/**
+ * Image settings from any earlier version, made whole: Phase 1 settings (no provider, model or
+ * aspect ratio) paint with Automatic1111 as before; unknown choices fall back to the defaults, sizes
+ * are whole multiples of 8 between 256 and 2048, steps 1 to 150, CFG 1 to 30. Style prefixes keep
+ * the player's text (the safety text never lived there; src/art/imagePrompt.ts adds it in code).
+ */
+export function migrateImage(stored: unknown): ImageSettings {
+  const d = DEFAULT_IMAGE
+  const s = isPlainObject(stored) ? stored : {}
+  const str = (v: unknown, fallback: string) => (typeof v === 'string' && v.trim() ? v.trim() : fallback)
+  const pick = <T extends string>(v: unknown, list: readonly T[], fallback: T): T =>
+    typeof v === 'string' && (list as readonly string[]).includes(v) ? (v as T) : fallback
+  const prefixes = isPlainObject(s.stylePrefixes) ? s.stylePrefixes : {}
+  const stylePrefixes = Object.fromEntries(
+    STYLE_PRESETS.map((p) => [p, typeof prefixes[p] === 'string' ? (prefixes[p] as string) : DEFAULT_STYLE_PREFIXES[p]]),
+  ) as Record<StylePreset, string>
+  const out: ImageSettings = {
+    enabled: typeof s.enabled === 'boolean' ? s.enabled : d.enabled,
+    baseUrl: typeof s.baseUrl === 'string' ? s.baseUrl.trim() : d.baseUrl,
+    stylePreset: pick(s.stylePreset, STYLE_PRESETS, d.stylePreset),
+    stylePrefixes,
+    width: clampNumber(s.width, 256, 2048, d.width, 8),
+    height: clampNumber(s.height, 256, 2048, d.height, 8),
+    steps: Math.round(clampNumber(s.steps, 1, 150, d.steps)),
+    // CFG 1 would switch the negative prompt (the safety floor) off: 2 is the lowest (A1111_MIN_CFG).
+    cfg: clampNumber(s.cfg, 2, 30, d.cfg),
+    sampler: str(s.sampler, d.sampler),
+    seedMode: pick(s.seedMode, ['fixed', 'random'] as const, d.seedMode),
+    provider: pick(s.provider, IMAGE_PROVIDERS, d.provider ?? 'a1111'),
+    grokModel: str(s.grokModel, d.grokModel ?? 'grok-imagine-image'),
+    aspectRatio: pick(s.aspectRatio, IMAGE_ASPECT_RATIOS, d.aspectRatio ?? '2:3'),
+  }
+  return out
 }
 
 function normalizeProfile(stored: unknown): PlayerProfile | null {

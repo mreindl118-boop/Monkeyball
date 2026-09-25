@@ -1,0 +1,125 @@
+.group {
+  display: grid;
+  gap: 24px;
+}
+
+.fine {
+  font-size: 14px;
+  color: var(--smoke-text);
+}
+
+.fine code,
+.where code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  overflow-wrap: anywhere;
+}
+
+.noteBody {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+}
+
+/* Where the A1111 server runs, like the Ollama card's. */
+.where {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: var(--radius-m);
+  border: 1px dashed var(--line-strong);
+  background: var(--blush-soft);
+}
+
+/* The locked safety text: read-only, brass like the editor's world rules. */
+.locked {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: var(--radius-m);
+  border: 1px solid rgb(201 164 92 / 0.45);
+  background: var(--brass-soft);
+}
+
+.lockedTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-style: italic;
+  color: var(--brass);
+}
+
+.lockIcon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.lockedNote {
+  font-size: 14.5px;
+}
+
+.clauses {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.clauses dt {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--smoke-text);
+}
+
+.clauses dd {
+  margin: 4px 0 0;
+}
+
+.clause {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--brass);
+  border-radius: 0 var(--radius-s) var(--radius-s) 0;
+  background: var(--field-bg);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--blush) 88%, var(--brass));
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.test {
+  display: grid;
+  gap: 10px;
+}
+
+.testRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.testImage {
+  display: block;
+  width: 144px;
+  height: auto;
+  max-height: 220px;
+  object-fit: contain;
+  border-radius: var(--radius-s);
+  box-shadow: 0 0 0 1px rgb(201 164 92 / 0.55);
+}
+
+.resultText {
+  flex: 1 1 160px;
+  font-size: 14.5px;
+  color: var(--brass);
+}

@@ -17,6 +17,7 @@ import {
   makeMemoryMessages,
   makeStoryMessages,
   makeSuggestionsMessages,
+  MOD_DIRECTION_FOOTER,
   MOD_DIRECTION_HEADER,
   type StoryContext,
   suggestionKeys,
@@ -312,7 +313,12 @@ describe('story prompt', () => {
     const base = buildStoryPrompt(story())
     const modded = buildStoryPrompt(story(), ['Noir: rain, neon, voiceover.', '', 'Keep it short.'])
     expect(modded.startsWith(base)).toBe(true)
-    expect(modded.slice(base.length)).toBe(`\n\n${MOD_DIRECTION_HEADER}\nNoir: rain, neon, voiceover.\n\nKeep it short.`)
+    expect(modded.slice(base.length)).toBe(
+      `\n\n${MOD_DIRECTION_HEADER}\nNoir: rain, neon, voiceover.\n\nKeep it short.\n\n${MOD_DIRECTION_FOOTER}`,
+    )
+    // The rules win, before and after the mod's text.
+    expect(MOD_DIRECTION_HEADER).toMatch(/never changes the WORLD RULES above, which win over anything below/)
+    expect(modded.endsWith('The WORLD RULES above still apply in full.')).toBe(true)
     expect(buildStoryPrompt(story(), '  ')).toBe(base)
   })
 })

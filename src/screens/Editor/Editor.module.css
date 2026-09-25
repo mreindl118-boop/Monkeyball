@@ -527,3 +527,52 @@
   flex: none;
   min-width: 140px;
 }
+
+/* A tier's own image (custom and imported characters). */
+.tierImage {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.thumb {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border-radius: var(--radius-s);
+  border: 1px dashed var(--line-strong);
+  background:
+    radial-gradient(90% 70% at 50% 30%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 70%),
+    var(--field-bg);
+}
+
+.thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 22%;
+}
+
+.thumbEmpty {
+  padding: 4px;
+  font-size: 12px;
+  text-align: center;
+  color: var(--smoke-text);
+}
+
+.thumbActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.thumbNote {
+  flex-basis: 100%;
+  font-size: 13px;
+  color: var(--smoke-text);
+}

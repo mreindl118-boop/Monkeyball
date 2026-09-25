@@ -72,10 +72,10 @@ describe('App first-launch flow', () => {
     await screen.findByText('Robin', undefined, { timeout: 3000 })
     expect(useNav.getState().screen.name).toBe('hub')
 
-    // Screens from later phases render a friendly placeholder.
+    // The gallery (Phase 5) opens from its hash, and Back returns to the hub.
     navigateByHash('#/gallery')
-    await screen.findByText('Not built yet')
-    fireEvent.click(screen.getByRole('button', { name: 'Hub' }))
+    await screen.findByRole('heading', { name: 'Gallery' }, { timeout: 3000 })
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
     await screen.findByText('Robin')
   })
 })

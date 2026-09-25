@@ -577,3 +577,20 @@
   line-height: 1.45;
   color: color-mix(in srgb, var(--brass) 40%, var(--blush));
 }
+
+/* An unlocked slot opens it in the gallery. */
+.slotLink {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-m);
+  background: none;
+  color: inherit;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.slotLink:focus-visible {
+  outline-offset: 3px;
+}

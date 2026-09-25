@@ -44,6 +44,11 @@ export interface ValidateContext {
 /** Lowercase letters and digits in hyphen-separated words: "nova", "slow-dance", "tier-2". */
 export const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 export const MIN_AGE = 21
+/**
+ * The oldest a card can say. A centuries-old age is the usual cover for a childlike look, and the
+ * image prompt states the card's age, so it has to read as an adult human's.
+ */
+export const MAX_AGE = 120
 const ID_MAX = 40
 
 const TRAIT_KEYS = ['likes', 'dislikes', 'turnOns', 'turnOffs'] as const
@@ -88,6 +93,11 @@ function checkAge(age: unknown, issues: ValidationIssue[]) {
     issues.push({
       field: 'age',
       message: `Age ${age} isn't allowed. Every character in crushLAB is ${MIN_AGE} or older, with an adult life and job.`,
+    })
+  } else if (age > MAX_AGE) {
+    issues.push({
+      field: 'age',
+      message: `Age ${age} isn't allowed. Give their age as an adult human's, ${MIN_AGE} to ${MAX_AGE}; an ageless being can say so in the backstory.`,
     })
   }
 }

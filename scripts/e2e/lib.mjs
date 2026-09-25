@@ -11,7 +11,7 @@
 
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { mkdir } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import net from 'node:net'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -551,7 +551,9 @@ export async function dismissToasts(page) {
   for (let i = 0; i < 10; i++) {
     const button = page.getByRole('button', { name: 'Dismiss', exact: true }).first()
     if (!(await button.count())) return
-    await button.click().catch(() => {})
+    // A short timeout: a toast leaving on its own between count() and click() would otherwise
+    // hold the click for the page's whole default timeout.
+    await button.click({ timeout: 1500 }).catch(() => {})
     await sleep(50)
   }
 }
@@ -614,6 +616,99 @@ export async function goHash(page, hash) {
     window.location.hash = h
   }, hash)
   await waitForHash(page, hash)
+}
+
+// ---------------------------------------------------------------------------
+// The mock and seeded saves (scripts/e2e/phase5.mjs; phase4.mjs keeps its own copies)
+
+/** Point the app at the mock: connection setup, Other providers, Custom, test, pick both models. */
+export async function connectToMock(page, mock) {
+  await goHash(page, '#/connection-setup')
+  await page.getByRole('heading', { name: 'Connect a model' }).waitFor()
+  await press(page.getByRole('button', { name: /^Other providers/ }))
+  await press(page.getByRole('button', { name: /^Custom/ }))
+  await page.locator('#setup-custom-baseurl').fill(mock.baseUrl)
+  await press(page.getByRole('button', { name: 'Test connection to Custom' }))
+  await page.getByText('The server answered and 2 models are available.').waitFor({ timeout: 20_000 })
+  await page.getByRole('group', { name: 'Story model' }).getByLabel('Model').selectOption('mock-story')
+  await page.getByRole('group', { name: 'Judge model' }).getByLabel('Model').selectOption('mock-judge')
+  await press(page.getByRole('button', { name: 'Continue', exact: true }))
+  await waitForHash(page, '#/hub')
+  await page.getByText(/^Connected to Custom at 127\.0\.0\.1/).waitFor({ timeout: 15_000 })
+}
+
+/** Settings, Saves, Export save file: the save as JSON (saved as `dir/name`). */
+export async function exportSaveFile(page, dir, name) {
+  await goHash(page, '#/settings/saves')
+  const button = page.getByRole('button', { name: 'Export save file' })
+  await button.waitFor()
+  const download = page.waitForEvent('download')
+  await press(button)
+  const file = await download
+  const saved = path.join(dir, name)
+  await file.saveAs(saved)
+  return JSON.parse(await readFile(saved, 'utf8'))
+}
+
+/** Settings, Saves, Import save file, Replace everything: the app reloads on the hub. */
+export async function importSaveFile(page, dir, name, save) {
+  const file = path.join(dir, name)
+  await writeFile(file, JSON.stringify(save))
+  await goHash(page, '#/settings/saves')
+  await page.getByRole('button', { name: 'Import save file' }).waitFor()
+  await page.locator('input[type="file"][accept=".json,application/json"]').setInputFiles(file)
+  const dialog = page.getByRole('alertdialog', { name: 'Replace everything with this save?' })
+  await dialog.waitFor()
+  await press(dialog.getByRole('button', { name: 'Replace everything' }))
+  await page.getByText('Save file loaded.').waitFor({ timeout: 20_000 })
+  await waitForHash(page, '#/hub')
+  await dismissToasts(page)
+}
+
+/** A relationship as the game stores it, with `patch` on top. */
+export function seedRel(characterId, patch = {}) {
+  return {
+    characterId,
+    affection: 0,
+    trust: 0,
+    discovered: [],
+    venues: {},
+    gifts: {},
+    revealed: { attractions: false, style: false },
+    knowsPlayerStyle: false,
+    secretsUnlocked: [],
+    agreement: { type: 'none', terms: '', madeAt: 0 },
+    knownOthers: [],
+    memory: [],
+    tiersUnlocked: [],
+    betrayals: [],
+    dates: 0,
+    lastDateAt: 0,
+    connection: 0,
+    heatPushes: 0,
+    jealous: false,
+    ...patch,
+  }
+}
+
+/**
+ * An exported save with these relationships, a fresh game state (no dates on record) and
+ * `settings` merged over its settings (one level deep for `image`).
+ */
+export function seededSave(base, { rels, settings = {} }) {
+  const now = Date.now()
+  const kv = base.kv
+    .filter((r) => r.key !== 'game' && r.key !== 'activeDate')
+    .map((r) =>
+      r.key === 'settings'
+        ? { key: 'settings', value: { ...r.value, ...settings, image: { ...r.value.image, ...(settings.image ?? {}) } } }
+        : r,
+    )
+  kv.push({
+    key: 'game',
+    value: { startedAt: now - 10 * 86_400_000, news: [], rumors: [], metamours: {}, rekindled: [], endingsSeen: {} },
+  })
+  return { ...base, exportedAt: now, kv, relationships: rels, dates: [], customCharacters: [], packs: [] }
 }
 
 /**

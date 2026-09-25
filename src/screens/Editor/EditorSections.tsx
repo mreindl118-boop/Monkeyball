@@ -11,6 +11,7 @@ import { Panel } from '../../ui/Panel'
 import { Segmented, type SegmentedOption } from '../../ui/Segmented'
 import { Toggle } from '../../ui/Toggle'
 import { CheckChips } from './CheckChips'
+import { TierImage } from './TierImage'
 import styles from './Editor.module.css'
 import {
   OPPOSITE,
@@ -569,7 +570,15 @@ export function SecretsSection({ f }: { f: FormApi }) {
 
 // ---------------------------------------------------------------------------
 
-export function GallerySection({ f }: { f: FormApi }) {
+export interface GalleryImages {
+  /**
+   * The saved character's id, when the player can add their own tier images (custom and imported
+   * characters that have been saved); null for a new card; undefined for a read-only one.
+   */
+  owner?: string | null
+}
+
+export function GallerySection({ f, images = {} }: { f: FormApi; images?: GalleryImages }) {
   const gallery = f.draft.gallery
   return (
     <Panel
@@ -577,6 +586,8 @@ export function GallerySection({ f }: { f: FormApi }) {
       description="Five tiers, unlocked at 20, 40, 60, 80 and 100 affection. The scene is what the art shows."
       className={styles.section}
     >
+      {images.owner === null && <p className={styles.fine}>Save the character first, then add an image for each tier here.</p>}
+      {images.owner === undefined && <p className={styles.fine}>You can add your own image for any tier from the gallery.</p>}
       {f.error('gallery') && (
         <p className={styles.listError} role="alert" id={f.anchor('gallery')} tabIndex={-1}>
           {f.error('gallery')}
@@ -598,6 +609,7 @@ export function GallerySection({ f }: { f: FormApi }) {
               <Field label={<RowLabel row={`Tier ${t.tier}`}>Scene</RowLabel>} htmlFor={f.anchor(`${base}.scene`)} error={f.error(`${base}.scene`)}>
                 <TextArea value={t.scene} rows={2} maxLength={600} onChange={(scene) => setTier({ scene })} onBlur={() => f.touch(`${base}.scene`)} />
               </Field>
+              {images.owner && <TierImage characterId={images.owner} tier={t.tier} title={t.title} name={f.draft.name} />}
             </li>
           )
         })}

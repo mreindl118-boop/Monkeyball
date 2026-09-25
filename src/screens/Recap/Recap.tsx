@@ -1,7 +1,8 @@
 // Recap (#/recap/:dateId): what the date changed. Affection and trust from before to after, the
 // stage (stamps pressed when it moved), traits discovered, venue and gift reactions, secrets
 // earned, tiers unlocked, the new memory line in the character's voice, and the damage when they
-// walked out. Accent-tinted by the character.
+// walked out. Accent-tinted by the character. Tiers unlocked on the date (and an epilogue's ending
+// art) develop like instant film, once each (RevealFilm).
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Portrait } from '../../art/Portrait'
@@ -29,6 +30,9 @@ import { endingTitle, useEnding } from '../Ending/useEnding'
 import { useRosterAndGame } from '../Hub/useRosterGame'
 import { RUMOR_WARNING } from '../Profile/profileModel'
 import styles from './Recap.module.css'
+import { RevealFilm } from './RevealFilm'
+import { revealItems } from './revealModel'
+import { useRevealQueue } from './useRevealQueue'
 import {
   agreementChange,
   betrayalHit,
@@ -145,11 +149,16 @@ function RecapView({ record, recap, character }: { record: DateRecord; recap: Ch
     return () => clearTimeout(t)
   }, [recap.stageAfter])
 
-  // Something unlocked: a short success buzz in the Android app.
-  const unlockedSomething = tiers.length > 0 || secrets.length > 0
+  // Unlocked art develops like instant film, one print after another (each buzzes as it comes
+  // up); a secret with no art to show gets the short success buzz on its own.
+  const reveals = useMemo(() => revealItems(character, record, recap.tiers), [character, record, recap.tiers])
+  const queue = useRevealQueue(record, reveals)
+  const endingReveal = reveals.find((r) => r.place === 'ending')
+  const tierReveals = reveals.filter((r) => r.place === 'tiers')
+  const secretOnly = secrets.length > 0 && tiers.length === 0
   useEffect(() => {
-    if (unlockedSomething) void success()
-  }, [unlockedSomething])
+    if (secretOnly) void success()
+  }, [secretOnly])
 
   const where = venue ? venuePhrase(venue.id, venue.name) : record.venueId
 
@@ -206,8 +215,20 @@ function RecapView({ record, recap, character }: { record: DateRecord; recap: Ch
 
       {epilogue && ending && (
         <Panel title="Your ending" tone="brass" className={styles.section}>
-          <p className={styles.endingTitle}>{ending}</p>
-          <p className={styles.plain}>It's kept on {possessive(first)} profile, and it can play again.</p>
+          {/* The print's caption names the ending when there is one. */}
+          {!endingReveal && <p className={styles.endingTitle}>{ending}</p>}
+          {endingReveal && (
+            <div className={styles.films}>
+              <RevealFilm
+                character={character}
+                item={endingReveal}
+                state={queue.stateOf(endingReveal.key)}
+                onDone={queue.done}
+                className={styles.film}
+              />
+            </div>
+          )}
+          <p className={styles.plain}>It's kept on {possessive(first)} profile and in the gallery, and it can play again.</p>
         </Panel>
       )}
 
@@ -244,6 +265,28 @@ function RecapView({ record, recap, character }: { record: DateRecord; recap: Ch
           </p>
         </div>
       </Panel>
+
+      {tierReveals.length > 0 && (
+        <Panel
+          title="Unlocked"
+          description={queue.pending ? `New in ${possessive(first)} gallery. Tap a print to see it at once.` : `New in ${possessive(first)} gallery.`}
+          tone="brass"
+          className={styles.section}
+        >
+          <ul className={styles.films}>
+            {tierReveals.map((r) => (
+              <li key={r.key} className={styles.film}>
+                <RevealFilm character={character} item={r} state={queue.stateOf(r.key)} onDone={queue.done} />
+              </li>
+            ))}
+          </ul>
+          <div>
+            <Button variant="brass" size="small" onClick={() => go({ name: 'gallery', id: character.id })}>
+              Open the gallery
+            </Button>
+          </div>
+        </Panel>
+      )}
 
       {memory && (
         <figure className={styles.memory}>
@@ -288,18 +331,6 @@ function RecapView({ record, recap, character }: { record: DateRecord; recap: Ch
             {secrets.map((s) => (
               <li key={s} className={styles.secret}>
                 {s}
-              </li>
-            ))}
-          </ul>
-        </Panel>
-      )}
-
-      {tiers.length > 0 && (
-        <Panel title="Unlocked" description="New in their gallery." tone="brass" className={styles.section}>
-          <ul className={styles.tiers}>
-            {tiers.map((t) => (
-              <li key={t.tier} className={styles.tier}>
-                <Portrait character={character} tier={t.tier} size="medium" />
               </li>
             ))}
           </ul>

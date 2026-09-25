@@ -256,6 +256,12 @@ export interface ConnectionSettings {
 
 export type StylePreset = 'anime' | 'semiReal' | 'painterly';
 
+/** Where tier art is painted (Phase 5): an Automatic1111/Forge server, or xAI's Grok Imagine. */
+export type ImageProvider = 'a1111' | 'grok';
+
+/** Grok Imagine aspect ratios offered for character art (portrait first). */
+export type ImageAspectRatio = '2:3' | '3:4' | '9:16' | '1:1' | '4:3' | '3:2' | '16:9';
+
 export interface ImageSettings {
   enabled: boolean;
   baseUrl: string; // e.g. http://127.0.0.1:7860
@@ -268,6 +274,14 @@ export interface ImageSettings {
   cfg: number;
   sampler: string;
   seedMode: 'fixed' | 'random';
+
+  // Optional (Phase 5). Defaults and the settings migration always fill them in.
+  /** Which art provider paints generated tiers. Default 'a1111' (stored Phase 1 settings too). */
+  provider?: ImageProvider;
+  /** Grok Imagine model id. Default 'grok-imagine-image'. Uses the Grok connection card's key. */
+  grokModel?: string;
+  /** Grok Imagine aspect ratio. Default '2:3' (portrait). A1111 uses width and height instead. */
+  aspectRatio?: ImageAspectRatio;
 }
 
 export type OrientationMode = 'realistic' | 'everyone';
@@ -528,6 +542,11 @@ export interface DateRecord {
   recap?: DateRecap;
   /** Optional (Phase 4): the Define-the-relationship talk on this date, if one was opened. */
   dtr?: DtrRecord;
+  /**
+   * Optional (Phase 5): art slot keys (src/art/types.ts, slotKey) whose instant-film reveal has
+   * played on this date's recap, so each unlock develops once.
+   */
+  artShown?: string[];
 }
 
 export interface DateRecap {
@@ -594,16 +613,35 @@ export interface WorldBetrayal {
 
 export type ArtSource = 'imported' | 'bundled' | 'generated' | 'placeholder';
 
-/** Key format: `${characterId}:tier-${n}`, `${characterId}:ending-${type}`, or `group:${ids.sort().join('+')}:${slot}`. */
+/**
+ * Key format: `${characterId}:tier-${n}`, `${characterId}:ending-${type}`, or
+ * `group:${ids.sort().join('+')}:${slot}` (src/art/types.ts, slotKey). The player's imported image
+ * is stored under the slot key itself; a generated image under the slot key plus `#generated`
+ * (src/art/types.ts, generatedKey), so importing over generated art and removing the import later
+ * brings the generated image back. Group images use characterId 'group'.
+ */
 export interface StoredImage {
   key: string;
   characterId: string;
   source: 'imported' | 'generated';
   blob: Blob;
+  /**
+   * Optional (Phase 5): a small copy (longest side 640px, src/art/compress.ts) that coasters, the
+   * profile strip and gallery tiles show, so a phone doesn't decode full pictures for them. Missing
+   * when the picture is already that small; rows from older saves and packs get one when first shown.
+   */
+  thumb?: Blob;
   prompt?: string;
+  /** Optional (Phase 5): Grok Imagine's rewrite of the prompt, what it actually painted from. */
+  revisedPrompt?: string;
   seed?: number;
   createdAt: number;
   favorite?: boolean;
+  /**
+   * Optional (Phase 5): art that came with an imported pack, the pack's set id. Kept under its own
+   * key (`${slotKey}#pack`) so the player's own image and the pack's never replace each other.
+   */
+  pack?: string;
 }
 
 // ---------------------------------------------------------------------------
