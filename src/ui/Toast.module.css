@@ -53,6 +53,7 @@
   min-width: 0;
 }
 
+.action,
 .dismiss {
   position: relative;
   flex: none;
@@ -67,6 +68,7 @@
 }
 
 /* The toast's own padding gives the button a full 48px hit area without making it look bigger. */
+.action::before,
 .dismiss::before {
   content: '';
   position: absolute;
@@ -76,4 +78,14 @@
 .dismiss:hover {
   color: var(--blush);
   background: var(--blush-soft);
+}
+
+.action {
+  color: var(--brass);
+  font-weight: 700;
+}
+
+.action:hover {
+  color: var(--blush);
+  background: var(--brass-soft);
 }

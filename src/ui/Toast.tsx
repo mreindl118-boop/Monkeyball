@@ -22,6 +22,18 @@ export function ToastHost() {
             transition={{ duration: reduce ? 0 : 0.2 }}
           >
             <span className={styles.text}>{t.text}</span>
+            {t.action && (
+              <button
+                type="button"
+                className={styles.action}
+                onClick={() => {
+                  dismiss(t.id)
+                  t.action?.run()
+                }}
+              >
+                {t.action.label}
+              </button>
+            )}
             <button type="button" className={styles.dismiss} onClick={() => dismiss(t.id)}>
               Dismiss
             </button>

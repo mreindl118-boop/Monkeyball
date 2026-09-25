@@ -101,13 +101,18 @@ export default defineConfig({
     react(),
     bundledArtPlugin(),
     VitePWA({
-      registerType: 'autoUpdate',
-      // src/platform/serviceWorker.ts registers sw.js on the web only (never in the Android app).
+      // A new version waits for the player: src/platform/serviceWorker.ts shows "A new version is
+      // ready" with Reload, which posts SKIP_WAITING to the waiting worker. It registers sw.js on
+      // the web only (never in the Android app, whose sw.js CI swaps for a kill switch).
+      registerType: 'prompt',
       injectRegister: false,
       includeAssets: ['favicon.svg', 'icons/favicon-32.png', 'icons/apple-touch-icon-180.png'],
       manifest: {
+        id: './',
         name: 'crushLAB',
         short_name: 'crushLAB',
+        lang: 'en',
+        categories: ['games', 'entertainment'],
         description: 'An adults-only dating sim where every character is played by an LLM.',
         theme_color: '#2A0F1F',
         background_color: '#2A0F1F',
@@ -135,8 +140,12 @@ export default defineConfig({
             options: { cacheName: 'crushlab-art', expiration: { maxEntries: 400 } },
           },
         ],
-        // Model and image calls always go to the network.
-        navigateFallbackDenylist: [/^\/llm/, /^\/img/],
+        // Offline shell: any in-app URL opens the precached index.html. Model and image calls
+        // always go to the network (they're never precached or runtime-cached; hosted APIs are
+        // other origins, and the Phase 7 LAN server's /llm and /img never fall back to the shell).
+        navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/^\/llm/, /^\/img/, /\/llm\//, /\/img\//],
+        cleanupOutdatedCaches: true,
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
       },
     }),

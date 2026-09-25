@@ -9,13 +9,22 @@
     <meta name="color-scheme" content="dark" />
     <meta name="description" content="An adults-only dating sim where every character is played by an LLM." />
     <meta name="robots" content="noindex" />
+    <!-- Installed from Safari or Chrome: open full screen with velvet bars, named crushLAB. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="crushLAB" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" href="/icons/favicon-32.png" type="image/png" sizes="32x32" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon-180.png" sizes="180x180" />
     <title>crushLAB</title>
   </head>
-  <body>
+  <body style="background: #2a0f1f; color: #f2c6cf">
+    <!-- Velvet before the stylesheet arrives, so a cold start (or the offline shell) never flashes white. -->
     <div id="root"></div>
+    <noscript>
+      <p style="font-family: system-ui, sans-serif; padding: 24px">crushLAB needs JavaScript to run.</p>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
