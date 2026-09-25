@@ -96,6 +96,7 @@ export const ENDING_ART_MOODS: Readonly<Record<EndingType, string>> = Object.fre
 /** Scenes for group slots that no card describes. */
 export const GROUP_SCENES: Readonly<Record<string, string>> = Object.freeze({
   polycule: 'all of them together late at night at home, tangled up on one big couch, easy affection, a chosen family',
+  'group-date': 'out together for the night at one shared table, laughing, easy warmth between them',
 })
 
 /** Longest the prompt may get before the safety text (Grok) or the positive clause (A1111). */
@@ -644,8 +645,17 @@ export function friendPicture(input: Pick<ImagePromptInput, 'characters' | 'rout
  * The heat the picture is painted at: the lowest effectiveHeat among the participants, so an ace
  * cap or a trust gate holds for the whole picture; 1 on the friend route.
  */
-export function imageHeat(input: Pick<ImagePromptInput, 'characters' | 'heat' | 'trust' | 'route'>): HeatLevel {
+/**
+ * Group slots whose scene is out in public (the group date's shared table) are painted at most at
+ * this heat, whatever the pair's heat, so a night out doesn't turn explicit. The safety text is
+ * untouched.
+ */
+export const PUBLIC_SCENE_HEAT_CAP: Readonly<Record<string, HeatLevel>> = Object.freeze({ 'group-date': 3 })
+
+export function imageHeat(input: Pick<ImagePromptInput, 'characters' | 'heat' | 'trust' | 'route'> & { slot?: ArtSlot }): HeatLevel {
   if (friendPicture(input)) return 1
+  const cap = input.slot?.kind === 'group' ? PUBLIC_SCENE_HEAT_CAP[input.slot.slot] : undefined
+  if (cap != null) return Math.min(cap, imageHeat({ characters: input.characters, heat: input.heat, trust: input.trust, route: input.route })) as HeatLevel
   const raw = Math.round(Number(input.heat))
   const heat = (Number.isFinite(raw) ? Math.min(5, Math.max(1, raw)) : 2) as HeatLevel
   let h = heat

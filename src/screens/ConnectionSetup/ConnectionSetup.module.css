@@ -47,3 +47,12 @@
     min-width: 180px;
   }
 }
+
+/* Above the buttons (the bar wraps in reverse): why Continue is off. */
+.actions > .actionsNote {
+  flex: 1 0 100%;
+  margin: 0;
+  font-size: 13.5px;
+  text-align: center;
+  color: var(--smoke-text);
+}

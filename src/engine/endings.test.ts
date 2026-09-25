@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { BetrayalEvent, EndingType, GameState, Relationship } from '../types'
-import { ENDING_PRIORITY, ENDINGS, endingDirection, polyculeGroup, selectEnding } from './endings'
+import { ENDING_PRIORITY, ENDINGS, endingDescription, endingDirection, headingLine, polyculeGroup, selectEnding } from './endings'
 import { newGameState } from './relationship'
 import { afterhoursCharacters, afterhoursNames, afterhoursRelations, rel } from './testKit'
 
@@ -141,5 +141,21 @@ describe('ENDINGS', () => {
     expect(sacrifice(base)).not.toMatch(/\btheir\b/)
     expect(endingDirection({ type: 'open' }, { characterId: 'marlowe', name: 'Marlowe Achebe', agreement: 'poly' })).toContain('on a poly agreement they both actually like')
     expect(endingDirection({ type: 'open' }, { characterId: 'nova', name: 'Nova Castellanos', agreement: 'open' })).toContain('on an open agreement')
+  })
+})
+
+describe('ending copy for the player', () => {
+  it('names the character instead of "they", and says what a hollow ending was won on', () => {
+    expect(endingDescription('hollow', 'Nova', 'trust')).toBe("You won Nova on affection more than trust. Nova is with you, and knows it isn't real. Nova might leave.")
+    expect(endingDescription('hollow', 'Nova', 'connection')).toMatch(/^You won Nova on affection and heat without building real connection/)
+    for (const t of ENDING_PRIORITY.filter((x) => x !== 'polycule')) expect(endingDescription(t, 'Nova')).not.toMatch(/\b(they|them)\b/i)
+    const pick = selectEnding({ characterId: 'nova', characters, rels: { nova: won('nova', { trust: 31 }) }, game: newGameState(1), relations, names })
+    expect(pick).toMatchObject({ type: 'hollow', cause: 'trust' })
+  })
+  it('says where it is heading from Lover while trust is under 40', () => {
+    expect(headingLine(rel('nova', { affection: 85, trust: 31 }), 'romantic')).toBe('Where this is heading: trust 31. Trust of 40 or more is what makes it real.')
+    expect(headingLine(rel('nova', { affection: 85, trust: 31 }), 'romantic', false)).toBe('Trust is 31. Trust of 40 or more is what makes it real.')
+    expect(headingLine(rel('nova', { affection: 70, trust: 31 }), 'romantic')).toBe('')
+    expect(headingLine(rel('nova', { affection: 90, trust: 45 }), 'romantic')).toBe('')
   })
 })

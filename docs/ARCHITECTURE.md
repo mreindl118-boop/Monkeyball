@@ -735,6 +735,14 @@ film becomes a fade; stamp press and sheet slides become instant.
   export (a real download), a .zip pack import, the replace-pack question, a lone card whose
   partner isn't there, a pack of long unbroken words at 360px, then 360x800 and 1280x800 screenshots
   (`p2-*.png`). The Android helpers (`PIXEL_7`, `checkTouchScreen`, `quickOnboard`) are in lib.mjs.
+- `scripts/e2e/offline.mjs` (`node scripts/e2e/offline.mjs`, Phase 6) — the production build
+  under vite preview as Chrome on a Pixel 7: manifest (standalone, velvet theme, 192/512/maskable
+  icons that exist), the first visit's precache (index.html, JS, CSS, Figtree and Bodoni italic
+  woff2, icons; no tier art), `context.setOffline(true)` then reload: the gate renders with both
+  fonts under the worker, onboarding, the hub, Settings and Character sets survive offline reloads
+  with no failed same-origin request, Test connection to Claude fails with "This device may be
+  offline.", then online again a changed `sw.js` raises "A new version is ready." and Reload hands
+  over to the new worker. Screenshots `offline-*.png`.
 - `scripts/e2e/android.mjs` (`npm run e2e:android`) — the first-launch flow as Chrome on a Pixel 7
   (touch, 412x915 at 2.625x, Android user agent), then every screen again at 360x800: no sideways
   scroll, every tappable thing hit-tested at 48px or more (`E2E_MIN_TAP=44` relaxes it), the design
@@ -804,7 +812,17 @@ Platform layer (`src/platform/`): the only place that knows whether we're native
 - `serviceWorker.ts` — the web app and PWA register `sw.js` (offline shell, background updates;
   vite-plugin-pwa's own registration script is off). The APK never does and removes any old
   registration: it serves its files from the APK, and a service worker would serve the previous
-  build's bundle on the first launch after an upgrade.
+  build's bundle on the first launch after an upgrade (CI also swaps the APK's `sw.js` for the
+  kill switch in `scripts/android/sw.js`, for installs that still carry builds 24-25's worker).
+  Phase 6: `registerType: 'prompt'`. `watchForUpdates(container, registration, { onUpdate, reload })`
+  offers a worker that finishes installing while an older one controls the page (never the first
+  install), once per page load, as a toast "A new version is ready." with Reload (toasts take an
+  optional `{ label, run }` action and `ms` 0 keeps them up). Reload posts `SKIP_WAITING` to the
+  waiting worker and reloads on `controllerchange` (only after the player's Reload; a 4 s fallback
+  reloads anyway). An open tab asks for a newer `sw.js` when it becomes visible and hourly. The
+  precache holds index.html, JS, CSS, woff2 fonts, icons and the manifest (not bundled tier art,
+  which is cached the first time it's shown); `navigateFallback` is index.html; model and image
+  calls are never cached.
 - `statusBar.ts`, `keyboard.ts`, `haptics.ts` — velvet bars with light icons; while the keyboard
   is up the focused field is scrolled into view and `<html data-keyboard="open">` is set;
   `tap()` / `success()` haptics (no-op on the web). A bottom-pinned action bar (sticky, bottom 0)
@@ -971,3 +989,21 @@ which suits Android:
 - Dev builds only: the localStorage key `crushlab.debug.xaiBase` (`DEV_XAI_BASE_KEY`) points Grok
   Imagine at another address, so `npm run e2e:phase5` can use the mock. Production builds drop the
   branch (`import.meta.env.DEV`) and no screen offers it.
+
+## Phase 6: saves, new game sets and the design pass
+
+- Save files (`src/db/repo.ts`, `exportSave`/`importSave`) carry every kv row (settings with every
+  API key blanked, profile, game, the open date's `activeDate` mark, `artFavorites`, `artGroups`,
+  ui), relationships, custom and pack characters, packs and dates (with their ids, so the open
+  date's mark still resolves), and images only with Include images (generated, imported and pack
+  art, favorites, revised prompts). Import replaces the device's game; keys stay per preset; images
+  are replaced only when the file carries them. Save slots stay on the device. Round trip:
+  `src/db/saveRoundTrip.test.ts`.
+- New game, "Who's in town" (`src/screens/CharacterSets/NewGameSets.tsx`, mounted in onboarding):
+  one switch per set with characters (`newGameSetRows` in `setsModel.ts`), each saving
+  `settings.activeSets` at once through `useRoster.setActive`; the last set in play can't be
+  switched off there. Skipping it keeps the defaults.
+- Design pass (every screen at 412x915 touch and 1280x800, with the lib.mjs design, sideways-scroll
+  and 48px checks): the polycule map's canvas snaps to its centre (You) when a big roster is wider
+  than the phone, instead of opening cut off on the right; gallery tiles sit five to a row on wide
+  screens (five tiers, no orphan).

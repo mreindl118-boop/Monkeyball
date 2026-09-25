@@ -131,12 +131,14 @@ export default defineConfig({
         // .woff fallbacks would only cost mobile data on each install and update.
         globPatterns: ['**/*.{js,css,html,woff2,svg,png,webp,jpg,ico,webmanifest}'],
         // Bundled tier art isn't precached (it would all download on install); each picture is
-        // cached the first time the gallery shows it.
+        // cached the first time the gallery shows it. Stale-while-revalidate: shown from the cache
+        // (offline too) and refreshed behind it, so art a release replaces under the same file name
+        // doesn't stay stale for good.
         globIgnores: ['**/art/**'],
         runtimeCaching: [
           {
             urlPattern: /\/art\/[a-z0-9-]+\/[a-z0-9-]+\/[a-z0-9-]+\.(?:webp|png|jpe?g)$/,
-            handler: 'CacheFirst',
+            handler: 'StaleWhileRevalidate',
             options: { cacheName: 'crushlab-art', expiration: { maxEntries: 400 } },
           },
         ],

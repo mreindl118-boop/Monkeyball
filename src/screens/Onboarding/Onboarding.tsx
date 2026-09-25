@@ -12,6 +12,8 @@ import { Field } from '../../ui/Field'
 import { Panel } from '../../ui/Panel'
 import { Segmented } from '../../ui/Segmented'
 import { Wordmark } from '../../ui/Wordmark'
+import { NewGameSets } from '../CharacterSets/NewGameSets'
+import { SaveImportButton } from '../Settings/SaveImport'
 import styles from './Onboarding.module.css'
 import { ORIENTATION_OPTIONS } from './profile'
 import { ProfileForm } from './ProfileForm'
@@ -97,6 +99,13 @@ export default function Onboarding() {
         </p>
       </div>
 
+      <div className={styles.restore}>
+        <p className={styles.restoreText}>Moving from another phone? Load the save file you exported there.</p>
+        <SaveImportButton variant="secondary" size="small">
+          I have a save file
+        </SaveImportButton>
+      </div>
+
       <Panel as="div">
         <ProfileForm
           initial={profile}
@@ -126,6 +135,7 @@ export default function Onboarding() {
               onChange={setOrientation}
             />
           </Field>
+          <NewGameSets idPrefix="onboarding" />
         </ProfileForm>
       </Panel>
     </main>

@@ -128,6 +128,8 @@ export interface EndingContext {
 
 export interface EndingChoice {
   type: EndingType
+  /** A hollow ending's cause: trust under HOLLOW_TRUST, or too little connection. */
+  cause?: 'trust' | 'connection'
   /** The polycule: this character first, then the others. */
   group?: string[]
   /** Why, in a sentence the profile can show. */
@@ -187,10 +189,10 @@ export function selectEnding(ctx: EndingContext): EndingChoice {
     return { type: 'sacrifice', reason: `${first} is monogamous, and you never agreed on what you are.` }
   }
   if (trust < HOLLOW_TRUST) {
-    return { type: 'hollow', reason: `Trust is only ${trust}: the affection is real, the connection isn't.` }
+    return { type: 'hollow', cause: 'trust', reason: `Trust is only ${trust}: the affection is real, the connection isn't.` }
   }
   if ((rel.connection ?? 0) < HOLLOW_CONNECTION) {
-    return { type: 'hollow', reason: `You won ${first} on chemistry more than connection.` }
+    return { type: 'hollow', cause: 'connection', reason: `You won ${first} on chemistry more than connection.` }
   }
   if (agreement === 'open' || agreement === 'poly') {
     const on = `${agreement === 'open' ? 'an open' : 'a poly'} agreement you both like`
@@ -206,6 +208,57 @@ export function selectEnding(ctx: EndingContext): EndingChoice {
         ? `High trust and affection with ${first}, and honest the whole way.`
         : `Affection with ${first} is all the way up, and trust is steady at ${trust}, with no betrayal on the way.`,
   }
+}
+
+/**
+ * An ending's description for the player, with the character's first name instead of the spec's
+ * "them" ("Nova is with you, and knows it isn't real."). A hollow ending says what it was won on.
+ */
+export function endingDescription(type: EndingType, first: string, cause?: EndingChoice['cause']): string {
+  const f = first.trim() || 'them'
+  switch (type) {
+    case 'good':
+      return `High trust and affection, honest about your feelings and choices. You and ${f}, the future is open.`
+    case 'open':
+      return `You and ${f} with an open or poly agreement you both actually like. ${possessiveOf(f)} other partners and yours are part of the picture, not a problem.`
+    case 'polycule':
+      return ENDINGS.polycule.description
+    case 'bitter':
+      return `High affection, but trust broke somewhere. ${f} wants you but doesn't trust you. You get to be with ${f}, but it's messy: jealousy, rules, or an expiration date.`
+    case 'hollow':
+      return cause === 'connection'
+        ? `You won ${f} on affection and heat without building real connection. ${f} is with you, and knows it isn't real. ${f} might leave.`
+        : `You won ${f} on affection more than trust. ${f} is with you, and knows it isn't real. ${f} might leave.`
+    case 'sacrifice':
+      return `${f} chooses someone else, or work, over you. You were great, but someone else, or something from ${possessiveOf(f)} own life, mattered more.`
+    case 'reconciliation':
+      return `You broke ${possessiveOf(f)} trust, disappeared, came back, and earned ${f} back.`
+  }
+  return (ENDINGS as Readonly<Record<string, EndingInfo>>)[type]?.description ?? ''
+}
+
+function possessiveOf(name: string): string {
+  return /s$/i.test(name) ? `${name}'` : `${name}'s`
+}
+
+/** Affection where the profile and recap start saying where trust has the ending heading (Lover). */
+export const HEADING_AFFECTION = 80
+
+/**
+ * From Lover on a romantic route, with no betrayal on record and trust under HOLLOW_TRUST: where
+ * this is heading and what would change it ("Where this is heading: trust 31. Trust of 40 or more
+ * is what makes it real."). Empty otherwise.
+ */
+export function headingLine(
+  rel: Pick<Relationship, 'affection' | 'trust' | 'betrayals'>,
+  route: 'romantic' | 'friend',
+  withLabel = true,
+): string {
+  if (route !== 'romantic' || (rel.affection ?? 0) < HEADING_AFFECTION || (rel.betrayals ?? []).length > 0) return ''
+  const trust = Math.round(rel.trust ?? 0)
+  if (trust >= HOLLOW_TRUST) return ''
+  const real = `Trust of ${HOLLOW_TRUST} or more is what makes it real.`
+  return withLabel ? `Where this is heading: trust ${trust}. ${real}` : `Trust is ${trust}. ${real}`
 }
 
 /** The epilogue's story direction for a chosen ending. */

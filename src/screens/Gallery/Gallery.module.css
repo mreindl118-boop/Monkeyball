@@ -167,6 +167,13 @@
   list-style: none;
 }
 
+/* Five tiers (and up to five endings) sit in one row on a wide screen instead of four and an orphan. */
+@media (min-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
 .tile {
   position: relative;
   min-width: 0;

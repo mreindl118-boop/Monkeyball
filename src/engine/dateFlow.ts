@@ -97,8 +97,8 @@ import {
   othersSeen,
   readsAsAdmission,
   readsAsDenial,
+  recentlyDated,
   recordBetrayal,
-  seeing,
   seenIn,
 } from './agreements'
 import { applyTopics, detectTopics, knownHits, recordGift, recordVenue, revealHits, UNIVERSAL_TRAITS } from './discovery'
@@ -161,12 +161,15 @@ export interface DateLlm {
     text: string
     refused: boolean
   }>
-  /** Judge call. `ok: false` with the neutral fallback when the reply wasn't usable. */
-  judge(a: { system: string; messages: DateMessage[]; signal?: AbortSignal }): Promise<{ value: JudgeResult; ok: boolean }>
+  /**
+   * Judge call. `ok: false` with the neutral fallback when the reply wasn't usable. `characterId`
+   * (optional, group dates): whose judge call this is, for the debug log.
+   */
+  judge(a: { system: string; messages: DateMessage[]; signal?: AbortSignal; characterId?: string }): Promise<{ value: JudgeResult; ok: boolean }>
   /** Suggestion chips for these keys, or null. */
   suggestions(a: { system: string; messages: DateMessage[]; keys: string[]; signal?: AbortSignal }): Promise<Suggestions | null>
-  /** Memory summary (and compression) call: plain text. */
-  memory(a: { system: string; messages: DateMessage[]; signal?: AbortSignal }): Promise<string>
+  /** Memory summary (and compression) call: plain text. `characterId` as for judge. */
+  memory(a: { system: string; messages: DateMessage[]; signal?: AbortSignal; characterId?: string }): Promise<string>
   /**
    * Optional (Phase 4): the Agreement prompt when a Define-the-relationship talk closes (judge
    * role). `ok: false` with the declined fallback when the reply wasn't usable. Without it a talk
@@ -204,6 +207,8 @@ export interface DateWorld {
   rumors?: Rumor[]
   /** Set id per active character (same-set gossip). */
   setOf?: Record<string, string>
+  /** Set ids each set's manifest says it knows (Phase 6: characters of linked sets know each other). */
+  setKnows?: Record<string, string[]>
 }
 
 export type DateStatus = 'opening' | 'awaiting-player' | 'judging' | 'replying' | 'suggesting' | 'closing' | 'ended'
@@ -245,6 +250,35 @@ export interface DateSession {
   gossipVoiced?: number
   /** After finishDate with the world given: every relationship, the game state, news, betrayals. */
   worldAfter?: WorldUpdate
+
+  // Phase 6, optional.
+  /**
+   * A group date (src/engine/groupDate.ts): each character's own session (their world, live
+   * relationship, judge, rumors...). The session's own world, rel, relBefore and lastJudge are the
+   * first character's; `leaving` is true once everyone still there is walking out.
+   */
+  group?: GroupState
+}
+
+/** A group date's per-character state (Phase 6). */
+export interface GroupState {
+  /** The characters on the date, in the order the player picked them. */
+  ids: string[]
+  /**
+   * Each character's session as a single date would keep it. Their `record` is the group's (kept in
+   * step); status and streaming are the group's.
+   */
+  members: Record<string, DateSession>
+  /** Characters who walked out (their exit reply was written); the date goes on with the rest. */
+  gone: string[]
+  /** Who the gift is for, when there is one. */
+  giftTo?: string
+  /** Characters who knew the player was seeing the other before the date started. */
+  knewBefore?: Record<string, boolean>
+  /** A betrayal the group date itself set off at the start (meeting the other under exclusive). */
+  reveals?: Record<string, BetrayalEvent>
+  /** How many record turns there were when each character who walked out was gone (their memory stops there). */
+  goneAt?: Record<string, number>
 }
 
 export interface DateHooks {
@@ -377,7 +411,14 @@ export function dtrOpen(s: Pick<DateSession, 'record'>): boolean {
  * to talk, Friend stage or above, not an epilogue, and not already opened on this date.
  */
 export function canOpenDtr(s: DateSession): boolean {
-  return canQueueSend(s) && !s.record.dtr && s.record.kind !== 'epilogue' && dtrAvailable(s.rel, routeOf(s.world))
+  return (
+    canQueueSend(s) &&
+    !s.record.dtr &&
+    s.record.kind !== 'epilogue' &&
+    s.record.kind !== 'group' &&
+    !s.group &&
+    dtrAvailable(s.rel, routeOf(s.world))
+  )
 }
 
 /** Every rumor the player has heard: before this date (world.game) and on it. */
@@ -453,8 +494,8 @@ export function talksAboutDating(message: string, name: string): boolean {
 }
 
 /**
- * People whose names count as the player telling this character about them: anyone the player is
- * seeing, and (with world.rels) anyone the player went out with since this character's agreement.
+ * People whose names count as the player telling this character about them: anyone the player has
+ * been out with lately (recentlyDated), and (with world.rels) anyone the player went out with since this character's agreement.
  */
 function disclosable(world: DateWorld, rel: Relationship): string[] {
   const id = world.character.id
@@ -467,7 +508,9 @@ function disclosable(world: DateWorld, rel: Relationship): string[] {
       if (x === id) return false
       const r = rels[x]
       if (routeOfId(world, x) !== 'romantic' || (r.dates ?? 0) < 1) return false
-      return seeing(r, 'romantic', count) || (r.lastDateAt ?? 0) > madeAt
+      // Anyone the player has been out with lately counts (not only seeing()'s affection 20), so
+      // telling the truth about a date that went nowhere still sticks.
+      return recentlyDated(r, 'romantic', count) || (r.lastDateAt ?? 0) > madeAt
     })
     .sort()
 }
@@ -490,7 +533,7 @@ function earnedSecretsAbout(world: DateWorld): string[] {
   return out
 }
 
-function totalsOf(record: DateRecord, id: string): DateTotals {
+export function totalsOf(record: DateRecord, id: string): DateTotals {
   const t = record.totals?.[id]
   return t ? { affection: t.affection ?? 0, trust: t.trust ?? 0, gained: t.gained ?? 0 } : emptyTotals()
 }
@@ -499,7 +542,7 @@ function totalsOf(record: DateRecord, id: string): DateTotals {
  * How far the meter can still rise on this date: what the route allows (friend route 59, else
  * 100), and the gain cap less the meter's net rise since the date began (world.rel).
  */
-function meterRoom(world: DateWorld, affection: number, route: Route): number {
+export function meterRoom(world: DateWorld, affection: number, route: Route): number {
   return Math.min(affectionRoom(affection, route), dateRiseRoom(world.rel.affection, affection, world.settings.gainCap))
 }
 
@@ -514,7 +557,7 @@ export function dateGainUsed(s: Pick<DateSession, 'record' | 'world' | 'rel'>): 
 }
 
 /** The judge result stored on the last player turn, if any. */
-function lastPlayerJudge(s: DateSession): JudgeResult | undefined {
+export function lastPlayerJudge(s: DateSession): JudgeResult | undefined {
   const id = s.world.character.id
   for (let i = s.record.turns.length - 1; i >= 0; i--) {
     const t = s.record.turns[i]
@@ -881,7 +924,7 @@ function rumorsForSecrets(s: DateSession, secrets: readonly number[]): HeardRumo
 }
 
 /** Add rumors passed on for these new secrets to the session (the next reply lets them slip). */
-function passRumors(s: DateSession, secrets: readonly number[]): DateSession {
+export function passRumors(s: DateSession, secrets: readonly number[]): DateSession {
   const heard = rumorsForSecrets(s, secrets)
   if (heard.length === 0) return s
   return { ...s, heard: [...(s.heard ?? []), ...heard], slips: [...(s.slips ?? []), ...heard.map((h) => h.rumorId)] }
@@ -1067,6 +1110,16 @@ export function storyRequest(
   s: DateSession,
   opts: { turn: number; judge?: JudgeResult; special?: StorySpecial },
 ): ModelRequest {
+  const ctx = storyContext(s, opts)
+  const system = buildStoryPrompt(ctx, s.world.character.prompts?.story)
+  return { system, messages: makeStoryMessages(system, conversation(s.record.turns), opts.turn === 0) }
+}
+
+/** Everything the story prompt is filled from for this turn (storyRequest; group dates, per character). */
+export function storyContext(
+  s: DateSession,
+  opts: { turn: number; judge?: JudgeResult; special?: StorySpecial },
+): StoryContext {
   const { character, settings, profile, names, relations } = s.world
   const { venueId, giftId } = s.record
   const venue = venueById(venueId)
@@ -1113,8 +1166,7 @@ export function storyRequest(
   const notes = replyNotes(s, opts.turn)
   if (notes.length) ctx.notes = notes
   ctx.extraTraits = UNIVERSAL_TRAITS
-  const system = buildStoryPrompt(ctx, character.prompts?.story)
-  return { system, messages: makeStoryMessages(system, conversation(s.record.turns), opts.turn === 0) }
+  return ctx
 }
 
 /**
@@ -1138,7 +1190,12 @@ export function storySpecial(s: DateSession, turn: number): StorySpecial | undef
  * (opinionText); {sharedSecrets} the rumors the player has heard about them, with the truth and how
  * to score relaying them, and secrets the player earned that concern them.
  */
-export function judgeRequest(s: DateSession, message: string, before: readonly DateTurn[]): ModelRequest {
+export function judgeRequest(
+  s: DateSession,
+  message: string,
+  before: readonly DateTurn[],
+  extra: { opinionNote?: string } = {},
+): ModelRequest {
   const { character, names } = s.world
   const seen = seenPredicate(s.world, s.rel)
   const knowsOpts = seen ? { seen } : {}
@@ -1153,7 +1210,7 @@ export function judgeRequest(s: DateSession, message: string, before: readonly D
       names,
       others,
       knownOthersIds: known,
-      opinion: opinionText(character, s.rel, names, knowsOpts),
+      opinion: [opinionText(character, s.rel, names, knowsOpts), extra.opinionNote?.trim()].filter(Boolean).join('; '),
       ...(shared !== 'none' ? { sharedSecretsText: shared } : {}),
       extraTraits: UNIVERSAL_TRAITS,
       recent: conversation(before),
@@ -1229,7 +1286,7 @@ export function storyErrorNote(name: string, detail: string): string {
   return `${name}'s reply didn't come through. ${detail}`.trim()
 }
 
-function withoutErrorNotices(turns: readonly DateTurn[]): DateTurn[] {
+export function withoutErrorNotices(turns: readonly DateTurn[]): DateTurn[] {
   let end = turns.length
   while (end > 0 && turns[end - 1].role === 'system' && turns[end - 1].notice === 'error') end--
   return turns.slice(0, end)

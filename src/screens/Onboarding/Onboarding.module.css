@@ -27,3 +27,16 @@
   color: var(--smoke-text);
   max-width: 52ch;
 }
+
+.restore {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+
+.restoreText {
+  flex: 1 1 220px;
+  font-size: 14.5px;
+  color: var(--smoke-text);
+}

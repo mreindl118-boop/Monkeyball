@@ -308,3 +308,111 @@
     min-width: 240px;
   }
 }
+
+/* Group dates (Phase 6) */
+
+.pair {
+  display: flex;
+  flex: none;
+}
+
+.pair > * + * {
+  margin-left: -14px;
+}
+
+.people {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+}
+
+.person {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 8px 40px 8px 10px;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--line);
+  background:
+    radial-gradient(120% 120% at 0% 50%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%),
+    var(--oxblood);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 140ms var(--ease-out);
+}
+
+.person:hover {
+  border-color: var(--line-strong);
+}
+
+.person:has(.radio:focus-visible) {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+
+.personArt {
+  flex: none;
+  width: 44px;
+}
+
+.personText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.personName {
+  font-family: var(--font-display);
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.personMeta {
+  font-size: 13px;
+  color: var(--smoke-on-panel);
+}
+
+.between {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.betweenLine {
+  font-weight: 700;
+}
+
+.betweenNote {
+  margin-top: 2px;
+  font-size: 14px;
+  font-style: italic;
+  color: var(--smoke-on-panel);
+}
+
+.feeling {
+  padding-left: 12px;
+  border-left: 2px solid var(--brass);
+  font-size: 14.5px;
+  line-height: 1.45;
+}
+
+.feeling.tense {
+  border-left-style: dashed;
+}
+
+.feeling.breaks {
+  border-left-color: var(--lipstick);
+}
+
+.feeling.easy {
+  border-left-color: var(--brass);
+}
+
+.change {
+  justify-self: start;
+  min-height: var(--tap, 48px);
+}

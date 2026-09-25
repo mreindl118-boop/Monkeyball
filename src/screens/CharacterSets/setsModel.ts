@@ -3,6 +3,7 @@
 import { BUNDLED_SET_IDS, RESERVED_SET_IDS } from '../../data/bundled'
 import { HEAT_LEVELS } from '../../data/heat'
 import type { ImportError, ImportResult } from '../../mods/pack'
+import { firstName } from '../../engine/agreements'
 import { joinAnd } from '../../engine/stages'
 import { CUSTOM_SET_ID, type ImportOutcome, type PackReplacement } from '../../store/roster'
 import type { Character, HeatLevel, RosterEntry, SetManifest, SetRelationKind } from '../../types'
@@ -245,4 +246,76 @@ export function packManifest(draft: PackDraft, characters: readonly Character[],
   if (draft.author.trim()) m.author = draft.author.trim()
   if (draft.heat != null) m.heat = draft.heat
   return m
+}
+
+// ---------------------------------------------------------------------------
+// New game: "Who's in town" (docs/SPEC.md, Character sets: "New game, and Settings, Character
+// sets, let the player turn sets on and off")
+
+export interface NewGameSetRow {
+  id: string
+  name: string
+  blurb: string
+  /** "12 characters". */
+  count: string
+  on: boolean
+  /** The last set in play can't be turned off here (the city would be empty). */
+  locked: boolean
+}
+
+/** One row per set with characters in it, in the roster's order. */
+export function newGameSetRows(
+  sets: readonly SetManifest[],
+  activeSets: readonly string[],
+  memberCount: (setId: string) => number,
+): NewGameSetRow[] {
+  const rows = sets
+    .map((s) => ({ set: s, n: memberCount(s.id) }))
+    .filter(({ n }) => n > 0)
+    .map(({ set, n }) => ({
+      id: set.id,
+      name: set.name,
+      blurb: set.blurb,
+      count: characterCount(n),
+      on: activeSets.includes(set.id),
+      locked: false,
+    }))
+  const onCount = rows.filter((r) => r.on).length
+  return rows.map((r) => ({ ...r, locked: r.on && onCount === 1 }))
+}
+
+/**
+ * The sets this one knows (its manifest's `knows`, and sets whose `knows` names it): "Knows the
+ * people of Afterhours." Empty when it knows nobody outside itself.
+ */
+export function knowsLine(set: Pick<SetManifest, 'id' | 'knows'>, sets: readonly Pick<SetManifest, 'id' | 'name' | 'knows'>[]): string {
+  const ids = new Set<string>(set.knows ?? [])
+  for (const o of sets) if (o.id !== set.id && o.knows?.includes(set.id)) ids.add(o.id)
+  ids.delete(set.id)
+  const names = [...ids].map((id) => sets.find((s) => s.id === id)?.name ?? '').filter(Boolean)
+  return names.length ? `Knows the people of ${joinAnd(names)}.` : ''
+}
+
+/**
+ * A relationship that reaches a character in another set that is off: "Nova is in Afterhours,
+ * which is off." Empty otherwise.
+ */
+export function offSetNote(
+  r: Pick<RelationLine, 'a' | 'b' | 'aName' | 'bName'>,
+  setId: string,
+  entries: Readonly<Record<string, RosterEntry>>,
+  sets: readonly Pick<SetManifest, 'id' | 'name'>[],
+  activeSets: readonly string[],
+): string {
+  const notes: string[] = []
+  for (const [id, name] of [
+    [r.a, r.aName],
+    [r.b, r.bName],
+  ] as const) {
+    const other = entries[id]?.setId
+    if (!other || other === setId || activeSets.includes(other)) continue
+    const setName = sets.find((s) => s.id === other)?.name ?? other
+    notes.push(`${firstName(name)} is in ${setName}, which is off.`)
+  }
+  return notes.join(' ')
 }

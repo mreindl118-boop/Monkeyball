@@ -4,7 +4,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../../db/db'
-import { ENDINGS, selectEnding } from '../../engine/endings'
+import { firstName } from '../../engine/agreements'
+import { endingDescription, ENDINGS, selectEnding } from '../../engine/endings'
 import { newRelationship } from '../../engine/relationship'
 import { routeFor } from '../../engine/stages'
 import { activeRelations } from '../../store/date'
@@ -69,7 +70,7 @@ export function useEnding(id: string): EndingState {
           type: pick.type,
           reason: pick.reason,
           title: info?.title ?? pick.type,
-          description: info?.description ?? '',
+          description: endingDescription(pick.type, firstName(character.name.trim() || id), pick.cause) || info?.description || '',
           ...(pick.group?.length ? { group: pick.group } : {}),
         }
       } catch {

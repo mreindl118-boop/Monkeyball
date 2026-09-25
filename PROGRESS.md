@@ -343,24 +343,73 @@ Spec: docs/SPEC.md. Build contract: docs/ARCHITECTURE.md. Casting: docs/ROSTER.m
       (the recap's hero) use thumbnails; the Settings test image's debug entry says the Grok clause
       is at the start and the end.
 
-## In progress
-
-- The Polycule, Backstage and Slow Burn sets (src/data/sets/polycule, backstage, slow-burn; 18
-  characters) are committed and pass the bundled-card validator; all three are off by default until
-  Phase 6 (group play, the "Who's in town" step). Every bundled character is covered by the image
-  prompt safety tests.
+- Phase 6 (sets and group play), integrated, reviewed, fixed and checked end to end (not committed yet):
+  - Group dates (`src/engine/groupDate.ts`, `src/prompts/groupStory.txt`, store `startGroup`):
+    Ask for a group date on a profile, or Group date on Date setup (`#/date-setup/:id/group`): pick
+    who comes along (connected people first), "Between them" (their history from the manifests and
+    how each feels about the player dating the other), a venue locked if it is for either, a gift
+    for one. The date plays with both in the story (speaker plates, a status row and meters each),
+    a judge call per character, affection and trust applied to each, the metamour approval that
+    group dates raise (`GROUP_APPROVAL`), and a recap with a tab per character plus the pair's
+    group picture (`group:{ids}:group-date`, scene in `GROUP_SCENES`). Define the relationship and
+    friend-route gossip lines are off on group dates; the scene plays at the lower heat of the two.
+  - Sets: The Polycule, Backstage and Slow Burn ship off by default; the skippable "Who's in town"
+    step in onboarding (`NewGameSets`) and Character sets turn them on and off.
+  - PWA: update prompt ("A new version is ready." with Reload) on the web; the offline shell.
+  - Saves: round trip covered by `src/db/saveRoundTrip.test.ts`; README rewritten; design pass.
+  - E2E: `npm run e2e:phase6` (Pixel 7, then 360x800): a set on adds its characters to the hub and
+    its people and partner threads to the map, off hides them and keeps progress; a full group date
+    with Dex and Imani at the hot spring (both speak and address each other, "Between them" shows
+    their history, affection and trust rise for both, a recap per character); a .zip pack imported
+    from Settings shows in Character sets, the editor and the hub; then `scripts/e2e/offline.mjs`
+    (`npm run e2e:offline`). Screenshots p6-android-*.png and p6-360-*.png.
+  - Review fixes:
+    - Group dates follow what actually happened: `GroupFeeling.standing` ('friend', 'new', 'dated',
+      'seeing'), so two strangers are a first date with both (nobody "finds out"), a date or two is
+      "been out with", and "seeing" only once seeing() counts it. The reveal (knownOthers,
+      checkBetrayal) only covers someone the player was already dating (recentlyDated). After the
+      date each knows about the other and `Relationship.metOnGroupDate` records it, so
+      `alreadyCounted` never counts that date again as dating them behind an exclusive partner's
+      back (a later date alone with them still counts). Naming anyone recently dated is a
+      disclosure, not only people at affection 20.
+    - Each judge gets the pair's history and that character's feelings (jealousy, agreement,
+      approval, trust) with a sting or support line, so jealousy and support move the meters.
+    - Set `knows` links count as knowing each other (`linkedByKnows`, `DateWorld.setKnows`); the
+      Character sets screen says which sets a set knows and flags relationships into a set that is off.
+    - Speaker tags: list and quote markers, parentheticals, heavier emphasis, given names, full names
+      without the nickname, nickname plus surname, names without accents; a shared name tags nobody;
+      a line for someone who already left is dropped (the turn note says they don't speak), and
+      their memory stops where they left (`GroupState.goneAt`).
+    - Chips on a group date know both routes and what's between them, with a line to each by name
+      and one to both. The group-date picture is painted at most at heat 3 (`PUBLIC_SCENE_HEAT_CAP`).
+    - Setup: the list folds to the pick (Change who comes along) and scrolls to it, so Between them is
+      on screen; how each takes it shows only once their style is known (same on the map and the
+      profile's What they know); a gift still open for the new recipient is kept, otherwise a toast
+      says why it went; the intro reads right before a pick.
+    - Polycule map: a big roster grows taller (ellipse rings, at most 410 wide, so it fits a 360px
+      phone at 48px targets); threads between others bend round You and any circle in the way; the
+      list puts people you've met first; the sheet says why a date below 20 has no thread.
+    - Endings: descriptions name the character, a hollow ending says whether it was trust or
+      connection; from Lover the profile and recap say where trust has it heading; the ending screen
+      says more dates can still change it. Profile and map buttons say whose profile.
+    - Recap says when the date hit its +25 limit; End date says seeing it through builds trust; the
+      status panel has an inline Hints switch; crowded small buttons get a full 48px box.
+    - Friend routes: the profile shows "Not into women" (the player's gender) and says friends don't
+      define the relationship. First-time hub tip. A blank new card says "Fill in the basics to save".
+      A1111 location starts on PC on my Wi-Fi on a phone. Connection setup's Continue waits for a
+      passed test of the story provider. The onboarding sets hint no longer mentions a skip.
+    - Saves: onboarding has "I have a save file"; the save picker also accepts octet-stream and plain
+      text; a file with no settings (or no connection) keeps this device's keys and age confirmation.
+    - Offline Ollama or LM Studio on the LAN says the device may be offline (not CORS). The update
+      notice is offered per new version and again from Settings, Check for updates
+      (`reofferUpdate`). Bundled art is stale-while-revalidate. offline.mjs removes its sw.js backup.
+      README: A1111 or Forge on the LAN needs the Android app from a phone.
 
 ## Next
 
-- Phase 6 (group play), as listed in docs/SPEC.md: group dates and the group venue flow, the
-  metamour approval that group dates raise, turning on the Polycule, Backstage and Slow Burn sets,
-  and group art. Group dates reuse the group slot (`group:{ids}:{slot}`) and `generateArt` for their
-  shared picture (every participant's age is stated and `assertCleanTogether` covers all of them).
-- Phase 7 as listed in docs/SPEC.md.
-- Phase 6, when a second bundled set ships: a skippable "Who's in town" step in onboarding that uses
-  the Character sets toggles (SPEC: "New game, and Settings, Character sets, let the player turn
-  sets on and off"). Until then a new game starts with Afterhours on, and Character sets is the
-  only place to switch sets.
+- Phase 7 optional items as listed in docs/SPEC.md (polycule dates with three or more: the engine
+  takes more than two characters, but the setup screen, the BETWEEN THEM text and the group chips
+  assume two).
 
 ## Known issues
 
@@ -393,12 +442,13 @@ Spec: docs/SPEC.md. Build contract: docs/ARCHITECTURE.md. Casting: docs/ROSTER.m
   host (each preset keeps one address and one key).
 - Claude streams have no idle timeout between chunks; the SDK's timeout covers only the start of
   the response.
-- Ready marks and model lists on the provider cards are in memory only; they reset on reload.
+- Ready marks and model lists on the provider cards are in memory only; they reset on reload, so
+  Settings can show "Not tested" for a provider the hub reports as connected.
 - Removing an imported pack keeps any tier art it brought in the images table (progress is kept
   too, so a re-import picks up where it left off).
 - Not checked on a device: whether the APK's file picker lets a .json through when the storage
-  provider reports it as octet-stream or plain text (the picker's accept list now includes both;
-  the importer checks the content either way).
+  provider reports it as octet-stream or plain text (the mod and save pickers' accept lists include
+  both; the importer checks the content either way).
 - Show me Women or Men leaves nonbinary characters out (they show under Everyone, and the control
   says so). Revisit if players expect them in both.
 - Bundled sets and cards export as templates that can't be imported as they are (every copy of
@@ -460,7 +510,7 @@ Spec: docs/SPEC.md. Build contract: docs/ARCHITECTURE.md. Casting: docs/ROSTER.m
   under the map (same person sheets).
 - `npm run e2e:phase4` runs on the vite dev server, not the production build, because the pinned
   rolls are dev-only; the production build is covered by the Phase 1 to 3 and Android scripts.
-- The ending descriptions keep the spec's generic "them" ("You and them, the future is open.").
+- The polycule ending's description keeps the spec's plural "them"; the others name the character.
 - Phase 5, not checked on a device or against the real services: native HTTP to an A1111 server on
   the LAN, xAI's actual image API (its `aspect_ratio` field and moderation answers follow
   ARCHITECTURE; docs.x.ai was unreachable from here), the share-sheet Save image, the file picker
@@ -489,3 +539,16 @@ Spec: docs/SPEC.md. Build contract: docs/ARCHITECTURE.md. Casting: docs/ROSTER.m
   providers"). Self-hosted servers are the player's responsibility.
 - Pack art stored before the `#pack` key (earlier Phase 5 builds only) sits under the plain slot
   key, where it counts as the player's own image.
+- Group dates: the gift recipient is kept per pick, but switching who comes along always sends the
+  gift back to the first character.
+- A hard character's +1 trust per turn truncates to 0 (difficulty scaling), so on a group date with
+  a hard and an easy character only the easy one's trust moves until the completed-date bonus.
+- The group picture shows in the gallery only once painted; the recap panel for it only appears
+  when image generation is on.
+- Balance: trust rises about 1 a turn while affection can rise 25 a date, so a player who never
+  talks about hard things can reach 100 with trust under 40 (the hollow ending). The profile and
+  recap now say so from Lover; the judge's trust range (spec) is unchanged.
+- The map's person sheet and "What they know" leave out how someone takes it until their style is
+  known, but the hub's jealousy mark still shows (Phase 4 design).
+- The Settings version button (long-press for debug) measures 48px in the e2e checks; a 42px reading
+  from a manual pass wasn't reproduced.

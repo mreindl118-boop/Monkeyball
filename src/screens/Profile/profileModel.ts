@@ -186,8 +186,11 @@ export interface AgreementView {
   made: boolean
 }
 
-export function agreementView(agreement: Agreement | undefined): AgreementView {
+export function agreementView(agreement: Agreement | undefined, route: Route = 'romantic'): AgreementView {
   const type = agreement?.type ?? 'none'
+  if (type === 'none' && route === 'friend') {
+    return { title: AGREEMENT_TITLES.none, detail: "Friends don't define the relationship. Dating around breaks no promises.", made: false }
+  }
   if (type === 'none') {
     return {
       title: AGREEMENT_TITLES.none,
@@ -230,6 +233,15 @@ export function attractionsText(c: Pick<Character, 'orientation' | 'attractedTo'
   const ace = c.aceSpectrum?.label.trim()
   if (ace) parts.push(`${capitalize(ace)}.`)
   return parts.join(' ')
+}
+
+/**
+ * On a friend route the player already knows one thing about their attractions: not the player's
+ * gender ("Not into women."). The rest stays hidden until it comes up.
+ */
+export function friendAttractionHint(gender: string | undefined): string {
+  const noun = gender === 'woman' ? 'women' : gender === 'man' ? 'men' : gender === 'nonbinary' ? 'nonbinary people' : 'people like you'
+  return `Not into ${noun}.`
 }
 
 /** "Open, low jealousy." */

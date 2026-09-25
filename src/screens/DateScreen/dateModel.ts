@@ -1,7 +1,7 @@
 // Pure helpers for the date screen: story text formatting, the turn counter, status copy,
 // suggestion chips and per-turn deltas. No React, no stores.
 
-import type { DateStatus } from '../../engine/dateFlow'
+import type { DateSession, DateStatus } from '../../engine/dateFlow'
 import { stageFor, stageIndex } from '../../engine/stages'
 import type { BetrayalEvent, DateRecord, DateTurn, Route, Suggestions } from '../../types'
 
@@ -272,4 +272,67 @@ export function lastCharacterLine(turns: readonly DateTurn[] | undefined): strin
     if (list[i].role === 'character' && list[i].text.trim()) return list[i].text.replace(/\*+/g, '').trim()
   }
   return ''
+}
+
+// ---------------------------------------------------------------------------
+// Group dates (Phase 6)
+
+/** "Nova and Kai" (or "Nova, Kai and Sol"); one name alone. */
+export function namesText(firsts: readonly string[]): string {
+  const list = firsts.filter(Boolean)
+  if (list.length <= 1) return list[0] ?? 'They'
+  return `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`
+}
+
+/** What the characters on a group date are doing, in sentence case. Empty on the player's turn. */
+export function groupStatusText(status: DateStatus, firsts: readonly string[]): string {
+  const who = namesText(firsts)
+  const are = firsts.length > 1 ? 'are' : 'is'
+  switch (status) {
+    case 'opening':
+      return `${who} ${are} on the way`
+    case 'judging':
+      return `${who} ${are} thinking`
+    case 'replying':
+      return `${who} ${are} replying`
+    case 'suggesting':
+      return 'Thinking of things you could say'
+    case 'closing':
+      return 'The date is winding down'
+    case 'ended':
+      return 'The date is over'
+    default:
+      return ''
+  }
+}
+
+/** The group composer's placeholder. */
+export function groupPlaceholder(status: DateStatus, firsts: readonly string[]): string {
+  if (status === 'awaiting-player' || status === 'suggesting') return `Say something to ${namesText(firsts)}`
+  return groupStatusText(status, firsts)
+}
+
+/** The line over "See how it went" on a group date. `left`: who walked out. */
+export function groupEndLine(
+  status: DateStatus,
+  outcome: DateRecord['outcome'],
+  left: readonly string[],
+  everyone: readonly string[],
+): string {
+  const gone = namesText(left)
+  if (status === 'closing') return left.length === everyone.length && left.length ? `${gone} ${left.length > 1 ? 'are' : 'is'} leaving.` : 'Wrapping up the date.'
+  if (outcome === 'left') return `${namesText(everyone)} left.`
+  const walked = left.length ? ` ${gone} left early.` : ''
+  if (outcome === 'ended') return `You ended the date.${walked}`
+  return `That was the last turn.${walked}`
+}
+
+/** The characters on a group date, in order, with whether they walked out (none on a single date). */
+export function groupPeople(session: Pick<DateSession, 'group'>): { character: DateSession['world']['character']; first: string; gone: boolean }[] {
+  const g = session.group
+  if (!g) return []
+  return g.ids.map((id) => {
+    const character = g.members[id].world.character
+    return { character, first: firstName(character.name), gone: g.gone.includes(id) }
+  })
 }

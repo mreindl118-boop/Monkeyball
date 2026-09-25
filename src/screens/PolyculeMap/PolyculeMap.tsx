@@ -32,6 +32,7 @@ import {
   initials,
   labelLayout,
   layoutMap,
+  listOrder,
   TAG_H,
   listLine,
   mapOrder,
@@ -42,6 +43,7 @@ import {
   tensionPath,
   termsLine,
   threadLine,
+  threadPath,
   type MapRelation,
   type PersonFacts,
   type Placed,
@@ -103,7 +105,7 @@ export default function PolyculeMap() {
       } catch {
         // A damaged relationship draws without the engine's reading of it.
       }
-      return personFacts(c, e.setId, rel, { seeing: isSeeing, jealous, ...(known ? { known } : {}) })
+      return personFacts(c, e.setId, rel, { seeing: isSeeing, jealous, ...(known ? { known } : {}), ...(routeOf(c.id) === 'friend' ? { friend: true } : {}) })
     })
     const youSee = othersSeen(inPlay, routeOf, '', count)
     return { people, relations, names, youSee }
@@ -117,6 +119,7 @@ export default function PolyculeMap() {
     m.set(YOU, layout.you)
     return m
   }, [layout])
+  const obstacles = useMemo(() => [layout.you, ...layout.people], [layout])
   const sky = useMemo(() => stars(layout.width, layout.height), [layout.width, layout.height])
   const byId = useMemo(() => new Map(world.people.map((p) => [p.id, p])), [world.people])
   const labels = useMemo(() => {
@@ -198,7 +201,7 @@ export default function PolyculeMap() {
               {threads
                 .filter((t) => t.kind !== 'tension')
                 .map((t) => (
-                  <ThreadLine key={t.key} thread={t} placed={placed} />
+                  <ThreadLine key={t.key} thread={t} placed={placed} obstacles={obstacles} />
                 ))}
               {threads
                 .filter((t) => t.kind === 'tension')
@@ -257,7 +260,7 @@ export default function PolyculeMap() {
               Everyone on the map
             </h2>
             <ul className={styles.list}>
-              {world.people.map((p) => (
+              {listOrder(world.people).map((p) => (
                 <li key={p.id}>
                   <button
                     type="button"
@@ -298,7 +301,7 @@ export default function PolyculeMap() {
                   go({ name: 'profile', id })
                 }}
               >
-                See their profile
+                See {shortName(person.name, person.id)}'s profile
               </Button>
             </>
           ) : undefined
@@ -324,12 +327,17 @@ export default function PolyculeMap() {
   )
 }
 
-function ThreadLine({ thread, placed }: { thread: Thread; placed: Map<string, Placed> }) {
+function ThreadLine({ thread, placed, obstacles }: { thread: Thread; placed: Map<string, Placed>; obstacles: readonly Placed[] }) {
   const a = placed.get(thread.from)
   const b = placed.get(thread.to)
   if (!a || !b) return null
-  const { x1, y1, x2, y2 } = threadLine(a, b)
-  return <line className={cx(styles.thread, styles[thread.kind])} x1={x1} y1={y1} x2={x2} y2={y2} />
+  // Your own threads run straight from the middle; threads between others bend round any circle
+  // in their way (yours above all), so they never read as yours.
+  if (thread.from === YOU || thread.to === YOU) {
+    const { x1, y1, x2, y2 } = threadLine(a, b)
+    return <line className={cx(styles.thread, styles[thread.kind])} x1={x1} y1={y1} x2={x2} y2={y2} />
+  }
+  return <path className={cx(styles.thread, styles[thread.kind])} d={threadPath(a, b, obstacles)} />
 }
 
 function Legend() {

@@ -35,6 +35,10 @@ export interface PersonFacts {
   dates: number
   /** Their current opinion as the judge hears it (engine `opinionText`), if any. */
   opinion?: string
+  /** The player hasn't learned their relationship style: how they take who else you see stays unsaid. */
+  styleHidden?: boolean
+  /** On a friend route (never "seeing"). */
+  friend?: boolean
 }
 
 /** A relationship between two characters, as a manifest (or a card's partners) declares it. */
@@ -161,7 +165,6 @@ export const HIT_R = 30
 /** Space along a ring per person (the circle plus room for the name under it). */
 export const SLOT = 66
 const MIN_RING = 118
-const MAX_SINGLE_RING = 170
 const FIRST_RING = 160
 const RING_STEP = 76
 const LABEL_ROOM = 34
@@ -241,21 +244,90 @@ export function mapOrder(people: readonly PersonFacts[], relations: readonly Map
   return out.flat()
 }
 
-/** Ring radii and how many sit on each, for n people. */
-export function rings(n: number): { radius: number; count: number }[] {
+/**
+ * The widest the canvas gets. Drawn at 0.8 of this (the smallest scale that keeps a 48px target)
+ * it is 328px, which fits a 360px phone with its 16px gutters; a bigger roster grows the map
+ * taller instead of wider, so it never scrolls sideways.
+ */
+export const MAX_MAP_W = 410
+/** Room beside the outermost circles for their names. */
+const SIDE_ROOM = NODE_R + LABEL_ROOM + MARGIN
+/** Widest a ring may be (half width) so the canvas stays within MAX_MAP_W. */
+const MAX_RX = Math.floor(MAX_MAP_W / 2 - SIDE_ROOM)
+/** Horizontal space between two rings where they pass beside the player. */
+const RING_STEP_X = 52
+/** A single tall ring stops growing here; past it the roster takes two rings. */
+const MAX_SINGLE_RY = 240
+
+export interface Ring {
+  /** Half height (for a circle, its radius). */
+  radius: number
+  /** Half width; equal to radius for a circle. */
+  rx: number
+  count: number
+}
+
+/** An ellipse's perimeter (Ramanujan's approximation). */
+function perimeter(rx: number, ry: number): number {
+  return Math.PI * (3 * (rx + ry) - Math.sqrt((3 * rx + ry) * (rx + 3 * ry)))
+}
+
+/** How many people fit on an ellipse ring. */
+function ellipseCapacity(rx: number, ry: number): number {
+  return Math.max(1, Math.floor(perimeter(rx, ry) / SLOT))
+}
+
+/**
+ * Rings for n people: one circle while it fits the phone's width, then one ring taller than it is
+ * wide, then two tall rings growing in height (never in width) until everyone has a seat.
+ */
+export function rings(n: number): Ring[] {
   if (n <= 0) return []
-  // One ring while it stays a reasonable size (up to 16 people); beyond that, rings of growing
-  // radius, each spreading its people evenly.
   const single = Math.max(MIN_RING, Math.ceil((n * SLOT) / (2 * Math.PI)))
-  if (single <= MAX_SINGLE_RING) return [{ radius: single, count: n }]
-  const out: { radius: number; count: number }[] = []
-  let left = n
-  let radius = FIRST_RING
-  while (left > 0) {
-    const count = Math.min(left, ringCapacity(radius))
-    out.push({ radius, count })
-    left -= count
-    radius += RING_STEP
+  if (single <= MAX_RX) return [{ radius: single, rx: single, count: n }]
+  for (let ry = MAX_RX; ry <= MAX_SINGLE_RY; ry += 4) {
+    if (ellipseCapacity(MAX_RX, ry) >= n) return [{ radius: ry, rx: MAX_RX, count: n }]
+  }
+  const inner = MAX_RX - RING_STEP_X
+  for (let ry = FIRST_RING + RING_STEP; ; ry += 4) {
+    const innerRy = ry - RING_STEP
+    const capIn = ellipseCapacity(inner, innerRy)
+    const capOut = ellipseCapacity(MAX_RX, ry)
+    if (capIn + capOut >= n) {
+      // Spread by capacity, so neither ring is crowded while the other has gaps.
+      const inCount = Math.min(capIn, Math.max(1, Math.round((n * capIn) / (capIn + capOut))))
+      return [
+        { radius: innerRy, rx: inner, count: inCount },
+        { radius: ry, rx: MAX_RX, count: n - inCount },
+      ]
+    }
+  }
+}
+
+/** `count` points spread evenly by arc length round an ellipse, the first at the top (shifted by `shift` of a step). */
+function ellipsePoints(rx: number, ry: number, count: number, shift: number): { x: number; y: number }[] {
+  const SAMPLES = 720
+  const pts: { x: number; y: number; s: number }[] = []
+  let s = 0
+  let prev: { x: number; y: number } | null = null
+  for (let i = 0; i <= SAMPLES; i++) {
+    const t = -Math.PI / 2 + (2 * Math.PI * i) / SAMPLES
+    const p = { x: rx * Math.cos(t), y: ry * Math.sin(t) }
+    if (prev) s += Math.hypot(p.x - prev.x, p.y - prev.y)
+    pts.push({ ...p, s })
+    prev = p
+  }
+  const total = s || 1
+  const out: { x: number; y: number }[] = []
+  let j = 0
+  for (let k = 0; k < count; k++) {
+    const want = (((k + shift) / count) % 1) * total
+    while (j > 0 && pts[j].s > want) j--
+    while (j < pts.length - 1 && pts[j + 1].s < want) j++
+    const a = pts[j]
+    const b = pts[Math.min(j + 1, pts.length - 1)]
+    const f = b.s > a.s ? (want - a.s) / (b.s - a.s) : 0
+    out.push({ x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f })
   }
   return out
 }
@@ -263,26 +335,58 @@ export function rings(n: number): { radius: number; count: number }[] {
 /** Place the player in the middle and everyone in `order` on the rings, starting at the top. */
 export function layoutMap(order: readonly string[]): MapLayout {
   const plan = rings(order.length)
-  const outer = plan.length ? plan[plan.length - 1].radius : 0
-  const half = Math.max(outer + NODE_R + LABEL_ROOM + MARGIN, YOU_R + LABEL_ROOM + MARGIN, 150)
-  const size = Math.round(half * 2)
-  const c = size / 2
+  const outer = plan.length ? plan[plan.length - 1] : null
+  const halfW = Math.max((outer?.rx ?? 0) + SIDE_ROOM, YOU_R + LABEL_ROOM + MARGIN, 150)
+  const halfH = Math.max((outer?.radius ?? 0) + SIDE_ROOM, YOU_R + LABEL_ROOM + MARGIN, 150)
+  const width = Math.round(halfW * 2)
+  const height = Math.round(halfH * 2)
+  const cx = width / 2
+  const cy = height / 2
   const people: Placed[] = []
   let i = 0
   plan.forEach((ring, ringIndex) => {
     // Alternate rings start half a step round, so threads to the inner ring pass between people.
-    const offset = ringIndex % 2 === 1 ? Math.PI / ring.count : 0
-    for (let k = 0; k < ring.count; k++) {
-      const angle = -Math.PI / 2 + offset + (2 * Math.PI * k) / ring.count
-      people.push({
-        id: order[i++],
-        x: round1(c + ring.radius * Math.cos(angle)),
-        y: round1(c + ring.radius * Math.sin(angle)),
-        r: NODE_R,
-      })
+    const shift = ringIndex % 2 === 1 ? 0.5 : 0
+    for (const p of ellipsePoints(ring.rx, ring.radius, ring.count, shift)) {
+      people.push({ id: order[i++], x: round1(cx + p.x), y: round1(cy + p.y), r: NODE_R })
     }
   })
-  return { width: size, height: size, you: { id: YOU, x: c, y: c, r: YOU_R }, people }
+  return { width, height, you: { id: YOU, x: cx, y: cy, r: YOU_R }, people }
+}
+
+/**
+ * A thread between two people as an SVG path: straight, or bent round any circle it would cross
+ * (the player's above all), so a thread between two others never reads as one of yours.
+ */
+export function threadPath(a: Placed, b: Placed, obstacles: readonly Placed[]): string {
+  const { x1, y1, x2, y2 } = threadLine(a, b)
+  const dx = x2 - x1
+  const dy = y2 - y1
+  const len = Math.hypot(dx, dy) || 1
+  const nx = -dy / len
+  const ny = dx / len
+  const mx = (x1 + x2) / 2
+  const my = (y1 + y2) / 2
+  let best: { push: number; sign: number } | null = null
+  for (const o of obstacles) {
+    if (o.id === a.id || o.id === b.id) continue
+    // Closest point of the segment to the obstacle.
+    const t = Math.max(0, Math.min(1, ((o.x - x1) * dx + (o.y - y1) * dy) / (len * len)))
+    const px = x1 + dx * t
+    const py = y1 + dy * t
+    const clearance = o.r + 10
+    if (Math.hypot(o.x - px, o.y - py) >= clearance) continue
+    // Signed distance of the obstacle from the line; bend to the side it isn't on.
+    const side = (o.x - mx) * nx + (o.y - my) * ny
+    const sign = side > 0 ? -1 : 1
+    // A quadratic with its control point k off the chord's middle sits 2t(1-t)k off the chord at t.
+    const tt = Math.max(0.2, Math.min(0.8, t))
+    const push = (clearance - Math.abs(side)) / (2 * tt * (1 - tt))
+    if (!best || push > best.push) best = { push, sign }
+  }
+  if (!best) return `M ${x1} ${y1} L ${x2} ${y2}`
+  const k = best.push * best.sign
+  return `M ${x1} ${y1} Q ${round1(mx + nx * k)} ${round1(my + ny * k)} ${x2} ${y2}`
 }
 
 function round1(n: number): number {
@@ -472,15 +576,17 @@ export function personSentences(p: PersonFacts, ctx: SentenceContext): string[] 
     out.push(`You two haven't agreed on anything, so seeing other people breaks no promises.`)
   } else if (p.dates === 0) {
     out.push(`You haven't been out with ${first} yet.`)
+  } else if (!p.friend) {
+    out.push(`You've been out with ${first}, but not enough yet to count as seeing each other, so there's no thread between you.`)
   }
 
   // Who they know about.
   const known = p.knownOthers.filter((id) => id !== p.id && here.has(id))
   if (known.length) {
     const who = joinAnd(known.map((id) => nameOf(id, ctx.names)))
-    const feeling = p.jealous ? 'and minds' : p.jealousy === 'compersion' ? 'and is happy for you' : "and doesn't care"
-    out.push(`${first} knows you're seeing ${who} ${feeling}.`)
-  } else if (p.jealous) {
+    const feeling = p.styleHidden ? '' : p.jealous ? ' and minds' : p.jealousy === 'compersion' ? ' and is happy for you' : " and doesn't care"
+    out.push(`${first} knows you're seeing ${who}${feeling}.`)
+  } else if (p.jealous && !p.styleHidden) {
     out.push(`${first} knows you're seeing someone else, and minds.`)
   } else if (p.seeing && ctx.othersYouSee.some((id) => id !== p.id)) {
     out.push(`${first} doesn't know about anyone else you're seeing.`)
@@ -550,7 +656,7 @@ export function listLine(p: PersonFacts): string {
   else if (p.seeing) parts.push('Seeing each other, no agreement')
   else if (p.dates > 0) parts.push(p.dates === 1 ? 'One date' : `${p.dates} dates`)
   else parts.push('Not met yet')
-  if (p.jealous) parts.push('minds who else you see')
+  if (p.jealous && !p.styleHidden) parts.push('minds who else you see')
   else if (betrayalTension(p)) parts.push("hasn't forgiven you")
   return capitalizeFirst(parts.join(', ')) + '.'
 }
@@ -575,7 +681,7 @@ export function personFacts(
   c: { id: string; name: string; accent: string; jealousy: Jealousy },
   setId: string,
   rel: Relationship,
-  derived: { seeing: boolean; jealous: boolean; opinion?: string; known?: string[] },
+  derived: { seeing: boolean; jealous: boolean; opinion?: string; known?: string[]; friend?: boolean },
 ): PersonFacts {
   const out: PersonFacts = {
     id: c.id,
@@ -596,5 +702,15 @@ export function personFacts(
   if (rekindled) out.rekindledWith = rekindled
   const opinion = derived.opinion?.trim()
   if (opinion) out.opinion = opinion
+  if (!rel.revealed?.style) out.styleHidden = true
+  if (derived.friend) out.friend = true
   return out
+}
+
+/** The list under the map: people you've been out with first (most dates first), then the rest as they were. */
+export function listOrder(people: readonly PersonFacts[]): PersonFacts[] {
+  return people
+    .map((p, i) => ({ p, i }))
+    .sort((a, b) => Number(b.p.dates > 0) - Number(a.p.dates > 0) || b.p.dates - a.p.dates || a.i - b.i)
+    .map((x) => x.p)
 }

@@ -4,9 +4,10 @@ import { portraitAccent } from '../../art/Portrait.model'
 import { GIFTS, giftById } from '../../data/gifts'
 import { VENUES, venueById } from '../../data/venues'
 import { seenIn, standingLine } from '../../engine/agreements'
+import { headingLine } from '../../engine/endings'
 import { newRelationship } from '../../engine/relationship'
 import { affectionCap, routeFor, stageFor } from '../../engine/stages'
-import { liveCharacterId, useDate } from '../../store/date'
+import { liveCharacterIds, useDate } from '../../store/date'
 import { useGame } from '../../store/game'
 import { useNav } from '../../store/nav'
 import { useRelationsFor, useRoster } from '../../store/roster'
@@ -29,6 +30,7 @@ import {
   ageLine,
   agreementView,
   attractionsText,
+  friendAttractionHint,
   fraction,
   gallerySlots,
   giftReactionText,
@@ -110,7 +112,7 @@ function ProfileView({ character, setId, ready }: { character: Character; setId:
   const set = useRoster((s) => s.sets.find((x) => x.id === setId))
   const relations = useRelationsFor(id, activeSets)
   // A date with them still open (the player stepped away from it): the button goes back to it.
-  const onDate = useDate(liveCharacterId) === id
+  const onDate = useDate(liveCharacterIds).includes(id)
 
   const name = character.name.trim() || id
   const first = name.split(/\s+/)[0]
@@ -118,7 +120,7 @@ function ProfileView({ character, setId, ready }: { character: Character; setId:
   const stage = stageFor(rel.affection)
   const tier = highestTier(rel)
   const active = activeSets.includes(setId)
-  const agreement = agreementView(rel.agreement)
+  const agreement = agreementView(rel.agreement, route)
   const traits = traitGroups(character, rel)
   const secrets = secretRows(character, rel, route)
   const slots = gallerySlots(character, rel, route)
@@ -209,6 +211,14 @@ function ProfileView({ character, setId, ready }: { character: Character; setId:
               )}
             </dd>
           </div>
+          {headingLine(rel, route) && (
+            <div className={styles.fact}>
+              <dt>Where this is heading</dt>
+              <dd>
+                <span className={styles.caption}>{headingLine(rel, route, false)}</span>
+              </dd>
+            </div>
+          )}
           {standing && (
             <div className={styles.fact}>
               <dt>What they know</dt>
@@ -231,7 +241,16 @@ function ProfileView({ character, setId, ready }: { character: Character; setId:
           <div className={styles.fact}>
             <dt>Attractions</dt>
             <dd>
-              {rel.revealed?.attractions ? <span className={styles.value}>{attractionsText(character)}</span> : <Hidden />}
+              {rel.revealed?.attractions ? (
+                <span className={styles.value}>{attractionsText(character)}</span>
+              ) : route === 'friend' ? (
+                <>
+                  <span className={styles.value}>{friendAttractionHint(profile?.gender)}</span>
+                  <span className={styles.caption}>The rest comes up in conversation.</span>
+                </>
+              ) : (
+                <Hidden />
+              )}
             </dd>
           </div>
           <div className={styles.fact}>
@@ -423,14 +442,22 @@ function ProfileView({ character, setId, ready }: { character: Character; setId:
         </div>
       </Panel>
 
-      <div className={styles.later}>
-        <Button variant="secondary" disabled block aria-describedby="group-date-later">
-          Ask for a group date
-        </Button>
-        <p className={styles.caption} id="group-date-later">
-          Arrives in a later update.
-        </p>
-      </div>
+      {!onDate && (
+        <div className={styles.later}>
+          <Button
+            variant="secondary"
+            block
+            disabled={!active}
+            aria-describedby="group-date-note"
+            onClick={() => go({ name: 'date-setup', id, group: true })}
+          >
+            Ask for a group date
+          </Button>
+          <p className={styles.caption} id="group-date-note">
+            Bring someone else along. You pick who next, and see how {first} feels about it.
+          </p>
+        </div>
+      )}
 
       <div className={styles.actionBar} data-keyboard-static>
         {onDate ? (
@@ -459,7 +486,7 @@ function standingText(
 ): string {
   if ((rel.dates ?? 0) === 0 && (rel.knownOthers ?? []).length === 0) return ''
   try {
-    return standingLine(character, rel, names, { route, seen: seenIn(relationships, routeOf, dateCount, rel) })
+    return standingLine(character, rel, names, { route, seen: seenIn(relationships, routeOf, dateCount, rel), styleKnown: !!rel.revealed?.style })
   } catch {
     return ''
   }

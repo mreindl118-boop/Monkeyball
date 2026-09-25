@@ -308,6 +308,8 @@ export interface Settings {
    * about the player. Default true; the web app and PWA update themselves and ignore it.
    */
   autoUpdateCheck: boolean;
+  /** Optional (Phase 6 fixes): the hub's first-time tip was dismissed. */
+  hubTipDismissed?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -407,6 +409,12 @@ export interface Relationship {
   gossipShared?: string[];
   /** Secrets unlocked after a date's last reply: their rumor rolls happen at the next date's start. */
   rumorRollsOwed?: number;
+  /**
+   * Phase 6 fixes: when this character was on a group date with someone (by their id). They saw the
+   * player out with that person, so it is never learned again as news (alreadyCounted) until the
+   * player goes out with that person again.
+   */
+  metOnGroupDate?: Record<string, number>;
 }
 
 /** What the player conveyed to a character about how they date. */

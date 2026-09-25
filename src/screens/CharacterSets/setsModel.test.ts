@@ -9,6 +9,9 @@ import {
   errorWhere,
   heatText,
   importReport,
+  knowsLine,
+  offSetNote,
+  newGameSetRows,
   removeMessage,
   replaceMessage,
   packManifest,
@@ -192,5 +195,49 @@ describe('packManifest', () => {
     const m = packManifest({ name: '', id: '', author: '', blurb: '', heat: null }, [entries.nova.character])
     const fields = validateManifest(m).map((i) => i.field)
     expect(fields).toEqual(expect.arrayContaining(['id', 'name', 'blurb']))
+  })
+})
+
+describe('newGameSetRows', () => {
+  const set = (id: string, name = id) => ({ id, name, blurb: `${name} blurb.`, characters: [], relationships: [] })
+  const counts: Record<string, number> = { afterhours: 12, polycule: 6, empty: 0 }
+  const count = (id: string) => counts[id] ?? 0
+
+  it('lists sets with characters, marks the ones in play, and counts them', () => {
+    const rows = newGameSetRows([set('afterhours', 'Afterhours'), set('polycule', 'The Polycule'), set('empty')], ['afterhours'], count)
+    expect(rows.map((r) => [r.id, r.on, r.count])).toEqual([
+      ['afterhours', true, '12 characters'],
+      ['polycule', false, '6 characters'],
+    ])
+  })
+
+  it('keeps the last set in play from being turned off', () => {
+    const one = newGameSetRows([set('afterhours'), set('polycule')], ['afterhours'], count)
+    expect(one.find((r) => r.id === 'afterhours')?.locked).toBe(true)
+    expect(one.find((r) => r.id === 'polycule')?.locked).toBe(false)
+    const two = newGameSetRows([set('afterhours'), set('polycule')], ['afterhours', 'polycule'], count)
+    expect(two.every((r) => !r.locked)).toBe(true)
+  })
+})
+
+describe('set links', () => {
+  const sets = [
+    { id: 'afterhours', name: 'Afterhours' },
+    { id: 'backstage', name: 'Backstage', knows: ['afterhours'] },
+    { id: 'slow-burn', name: 'Slow Burn' },
+  ]
+  it('says which sets a set knows, both ways', () => {
+    expect(knowsLine(sets[1], sets)).toBe('Knows the people of Afterhours.')
+    expect(knowsLine(sets[0], sets)).toBe('Knows the people of Backstage.')
+    expect(knowsLine(sets[2], sets)).toBe('')
+  })
+  it('flags a relationship to someone in a set that is off', () => {
+    const entries = {
+      minh: { setId: 'backstage' },
+      nova: { setId: 'afterhours' },
+    } as unknown as Record<string, RosterEntry>
+    const r = { a: 'minh', b: 'nova', aName: 'Minh Tran', bName: 'Nova Castellanos' }
+    expect(offSetNote(r, 'backstage', entries, sets, ['backstage'])).toBe('Nova is in Afterhours, which is off.')
+    expect(offSetNote(r, 'backstage', entries, sets, ['backstage', 'afterhours'])).toBe('')
   })
 })

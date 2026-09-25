@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { isNative } from '../../platform/platform'
+import { reofferUpdate } from '../../platform/serviceWorker'
 import {
   checkForUpdate,
   currentBuild,
@@ -74,9 +75,13 @@ function WebUpdates() {
     setBusy(true)
     const ok = await refreshWebApp()
     setBusy(false)
+    if (ok && reofferUpdate()) {
+      setNote('A new version is ready. Tap Reload on the notice to switch to it.')
+      return
+    }
     setNote(
       ok
-        ? "Checked. If there's a new version, crushLAB uses it the next time you open it."
+        ? "Checked. If there's a new version, a notice with Reload shows up once it has downloaded."
         : 'Reload the page to get the newest version.',
     )
   }
@@ -84,8 +89,8 @@ function WebUpdates() {
   return (
     <>
       <p className={styles.appNote}>
-        The web app updates itself: a new version downloads in the background and is used the next
-        time you open crushLAB.
+        The web app updates itself: a new version downloads in the background, and a notice with
+        Reload switches to it.
       </p>
       <div className={styles.actions}>
         <Button variant="secondary" loading={busy} onClick={run}>

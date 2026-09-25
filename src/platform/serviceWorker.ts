@@ -25,8 +25,9 @@ const RELOAD_FALLBACK_MS = 4000
 
 export interface ServiceWorkerOptions {
   /**
-   * Called once per page load when a new version is waiting. `apply` activates it and reloads the
-   * page. Default: a toast with a Reload button that stays until dismissed.
+   * Called once for each new version that is waiting (and again when reofferUpdate asks). `apply`
+   * activates it and reloads the page. Default: a toast with a Reload button that stays until
+   * dismissed.
    */
   onUpdate?: (apply: () => void) => void
   /** Test hook: how to reload the page. */
@@ -66,8 +67,24 @@ export function setupServiceWorker(opts: ServiceWorkerOptions = {}): void {
   }
 }
 
+/** The watched registration's offer, for reofferUpdate (Settings, Check for updates). */
+let reoffer: (() => boolean) | null = null
+
 /**
- * Offer a waiting worker (there already, or installed later) once. A worker that finishes
+ * Offer the waiting new version again (the player dismissed the notice, then asked Settings to
+ * check). True when one was waiting and the notice is up again.
+ */
+export function reofferUpdate(): boolean {
+  try {
+    return reoffer?.() ?? false
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Offer each waiting worker (there already, or installed later) once; a newer one is offered too,
+ * and reofferUpdate offers the waiting one again. A worker that finishes
  * installing while no worker controls the page is the first install, not an update: nothing to
  * offer, the page already runs the newest files.
  */
@@ -78,7 +95,7 @@ export function watchForUpdates(
 ): void {
   const onUpdate = opts.onUpdate ?? defaultOnUpdate
   const reload = opts.reload ?? (() => window.location.reload())
-  let offered = false
+  const offered = new WeakSet<ServiceWorker>()
   let accepted = false
   let reloaded = false
 
@@ -94,9 +111,9 @@ export function watchForUpdates(
     if (accepted) reloadOnce()
   })
 
-  const offer = (worker: ServiceWorker) => {
-    if (offered) return
-    offered = true
+  const offer = (worker: ServiceWorker, again = false) => {
+    if (offered.has(worker) && !again) return
+    offered.add(worker)
     onUpdate(() => {
       accepted = true
       try {
@@ -109,6 +126,11 @@ export function watchForUpdates(
   }
 
   if (reg.waiting && sw.controller) offer(reg.waiting)
+  reoffer = () => {
+    if (!reg.waiting || !sw.controller) return false
+    offer(reg.waiting, true)
+    return true
+  }
 
   reg.addEventListener('updatefound', () => {
     const worker = reg.installing

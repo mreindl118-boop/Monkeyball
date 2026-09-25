@@ -5,6 +5,7 @@
 // generation, which paints one small picture and shows it here.
 
 import { useEffect, useId, useRef, useState } from 'react'
+import { isNative } from '../../platform/platform'
 import { buildImagePrompt, IMAGE_SAFETY, sceneFor } from '../../art/imagePrompt'
 import { apiKeyFor, providerById } from '../../art/providers'
 import { BUNDLED_CHARACTERS, bundledEntry } from '../../data/bundled'
@@ -194,11 +195,20 @@ function GrokFields({ settings, models }: { settings: Settings; models: string[]
   )
 }
 
+/** The Android app, or a phone or tablet browser. */
+function onAPhone(): boolean {
+  if (isNative()) return true
+  return typeof navigator !== 'undefined' && /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent ?? '')
+}
+
 function A1111Fields({ settings, samplers }: { settings: Settings; samplers: string[] | null }) {
   const updateImage = useSettings((st) => st.updateImage)
   const img = settings.image
   const initial = a1111Host(img.baseUrl)
-  const [hostMode, setHostMode] = useState<HostMode>(initial.mode)
+  // On a phone the untouched default (a server on this device) is rarely right: start on the PC.
+  const [hostMode, setHostMode] = useState<HostMode>(() =>
+    initial.mode === 'device' && img.baseUrl.trim() === a1111Url('device', '') && onAPhone() ? 'lan' : initial.mode,
+  )
   const [lanHost, setLanHost] = useState(initial.host)
   const options = samplerChoices(img.sampler, samplers).map((v) => ({ value: v, label: v }))
 

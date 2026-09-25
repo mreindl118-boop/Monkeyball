@@ -21,6 +21,8 @@ import {
   heatText,
   removeMessage,
   relationKindText,
+  knowsLine,
+  offSetNote,
   setRelationLines,
   setSource,
   sourceLabel,
@@ -118,12 +120,14 @@ function SetCard({ set, onRemove, onExportCustom }: { set: SetManifest; onRemove
   const entries = useRoster((s) => s.entries)
   const sets = useRoster((s) => s.sets)
   const setActive = useRoster((s) => s.setActive)
-  const active = useSettings((s) => s.settings.activeSets.includes(set.id))
+  const activeSets = useSettings((s) => s.settings.activeSets)
+  const active = activeSets.includes(set.id)
   const [open, setOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
   const source = setSource(set.id, BUNDLED_SET_IDS)
   const members = selectSetEntries({ sets, entries }, set.id)
   const relations = setRelationLines(set, entries)
+  const knows = knowsLine(set, sets)
   const heat = heatText(set.heat)
   const detailsId = `set-${set.id}-details`
 
@@ -203,6 +207,7 @@ function SetCard({ set, onRemove, onExportCustom }: { set: SetManifest; onRemove
             ))}
           </ul>
           <h3 className={styles.detailsTitle}>Relationships</h3>
+          {knows && <p className={styles.fine}>{knows}</p>}
           {relations.length === 0 ? (
             <p className={styles.fine}>No relationships between these characters.</p>
           ) : (
@@ -214,6 +219,9 @@ function SetCard({ set, onRemove, onExportCustom }: { set: SetManifest; onRemove
                     <span className={styles.kind}>{relationKindText(r.kind)}</span>
                   </p>
                   {r.note && <p className={styles.relationNote}>{r.note}</p>}
+                  {offSetNote(r, set.id, entries, sets, activeSets) && (
+                    <p className={styles.relationNote}>{offSetNote(r, set.id, entries, sets, activeSets)}</p>
+                  )}
                 </li>
               ))}
             </ul>

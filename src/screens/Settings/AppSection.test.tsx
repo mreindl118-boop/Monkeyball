@@ -55,7 +55,7 @@ describe('Settings, App section', () => {
     expect(screen.queryByRole('switch', { name: 'Check for updates on launch' })).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Check for updates' }))
-    expect(await screen.findByText(/uses it the next time you open it/)).toBeTruthy()
+    expect(await screen.findByText(/a notice with Reload shows up/)).toBeTruthy()
     expect(env.check).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: 'Get the Android app' }))

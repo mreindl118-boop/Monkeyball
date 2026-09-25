@@ -309,7 +309,7 @@ async function androidFlow(browser, app, tmp) {
       check(text.includes(`Tier ${i + 1}`) && text.includes(`Unlocks at ${(i + 1) * 20}`), `slot ${i + 1} is not locked: "${text}"`)
     }
     check((await strip.locator('img').count()) === 0, 'a locked gallery slot shows art')
-    check(await page.getByRole('button', { name: 'Ask for a group date' }).isDisabled(), 'group dates arrive in Phase 6')
+    check(await page.getByRole('button', { name: 'Ask for a group date' }).isEnabled(), 'Ask for a group date should be enabled (Phase 6)')
     check(await page.getByRole('button', { name: 'Ask on a date' }).isEnabled(), 'Ask on a date should be enabled')
     await checkTouchScreen(page, 'profile-nova', { full: true, shot: shot('profile-nova') })
   }, page)

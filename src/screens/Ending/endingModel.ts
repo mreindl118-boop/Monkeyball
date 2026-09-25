@@ -54,9 +54,10 @@ export function readyLine(name: string, played: boolean): string {
 /** What to do if it's not the ending the player wanted (under "Not the one you wanted?"). */
 export function reloadHint(name: string, autosaved: boolean): string {
   const label = epilogueSlotLabel(name)
+  const more = `More dates with ${first(name)} can still change it before you play the epilogue: trust keeps moving.`
   return autosaved
-    ? `The ending follows trust, agreements and what happened on the way. "${label}" is in Settings, Saves, if you'd like to go back and try another approach.`
-    : 'The ending follows trust, agreements and what happened on the way, and it can still change before you play it.'
+    ? `The ending follows trust, agreements and what happened on the way. ${more} "${label}" is in Settings, Saves, if you'd like to go back and try another approach.`
+    : `The ending follows trust, agreements and what happened on the way. ${more}`
 }
 
 /** Why the epilogue can't play yet. Empty when it can. */

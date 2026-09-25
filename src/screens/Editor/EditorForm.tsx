@@ -126,6 +126,8 @@ export function EditorForm({ initial, setId: initialSetId, previousId, readOnly 
   const shownIssues = useMemo(() => inFormOrder(storeIssues.length ? storeIssues : issues), [storeIssues, issues])
   const byAnchor = useMemo(() => issuesByAnchor(shownIssues), [shownIssues])
   const valid = issues.length === 0
+  // A blank new card hasn't failed anything yet: no count until the player starts filling it in.
+  const fresh = isNew && touched.size === 0 && !showAll && storeIssues.length === 0
 
   // The Android back button asks before throwing away edits.
   useEffect(() => {
@@ -265,7 +267,14 @@ export function EditorForm({ initial, setId: initialSetId, previousId, readOnly 
 
       {!readOnly && (
         <section className={styles.summary} aria-label="Checks">
-          {shownIssues.length > 0 ? (
+          {shownIssues.length > 0 && fresh ? (
+            <Note tone="brass" title="Fill in the basics to save">
+              Each check shows at its field as you go.
+              <button type="button" className={styles.summaryToggle} aria-expanded={false} onClick={() => setShowAll(true)}>
+                Show what's needed
+              </button>
+            </Note>
+          ) : shownIssues.length > 0 ? (
             <Note tone="lipstick" title={`${plural(shownIssues.length, 'thing', 'things')} to fix before saving`}>
               <button type="button" className={styles.summaryToggle} aria-expanded={showAll} onClick={() => setShowAll((v) => !v)}>
                 {showAll ? 'Hide the list' : 'Show the list'}
@@ -307,7 +316,7 @@ export function EditorForm({ initial, setId: initialSetId, previousId, readOnly 
       {!readOnly && (
         <div className={styles.saveBar} data-keyboard-static>
           <p className={styles.saveStatus} aria-live="polite">
-            {!valid ? plural(issues.length, 'thing to fix', 'things to fix') : dirty ? 'Unsaved changes' : 'All saved'}
+            {!valid ? (fresh ? 'Fill in the basics to save' : plural(issues.length, 'thing to fix', 'things to fix')) : dirty ? 'Unsaved changes' : 'All saved'}
           </p>
           <Button variant="primary" loading={saving} disabled={!valid || !dirty} onClick={() => void save()}>
             {isNew ? 'Save character' : 'Save'}

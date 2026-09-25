@@ -11,7 +11,7 @@
 //
 // Run: node scripts/e2e/offline.mjs (E2E_SKIP_BUILD=1 reuses dist/). Screenshots offline-*.png.
 
-import { copyFile, readFile, writeFile } from 'node:fs/promises'
+import { copyFile, readFile, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import {
   check,
@@ -138,7 +138,8 @@ await main(async () => {
     await goHash(page, '#/settings')
     await page.getByRole('heading', { name: 'Settings', exact: true }).waitFor()
     await page.reload()
-    await waitForHash(page, '#/hub')
+    await page.getByRole('heading', { name: 'Settings', exact: true }).waitFor()
+    await checkTouchScreen(page, 'offline-settings')
     await goHash(page, '#/sets')
     await page.getByRole('heading', { name: 'Character sets' }).waitFor()
     await page.getByRole('heading', { name: 'Afterhours' }).waitFor()
@@ -148,7 +149,7 @@ await main(async () => {
   await step('offline: a model call fails with an offline message', async () => {
     await goHash(page, '#/connection-setup')
     await page.getByRole('heading', { name: 'Connect a model' }).waitFor()
-    const key = page.getByLabel('Claude API key')
+    const key = page.getByRole('textbox', { name: 'Claude API key' })
     if (!(await key.isVisible())) await press(page.getByRole('button', { name: /^Claude/ }).first())
     await key.fill('sk-ant-offline-test')
     await press(page.getByRole('button', { name: 'Test connection to Claude' }))
@@ -169,7 +170,10 @@ await main(async () => {
     const swPath = path.join(ROOT, 'dist', 'sw.js')
     const backup = `${swPath}.e2e-backup`
     await copyFile(swPath, backup)
-    onCleanup(() => copyFile(backup, swPath))
+    onCleanup(async () => {
+      await copyFile(backup, swPath).catch(() => {})
+      await unlink(backup).catch(() => {})
+    })
     await writeFile(swPath, `${await readFile(swPath, 'utf8')}\n// e2e ${Date.now()}\n`)
     await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.update())
     await page.getByText('A new version is ready.').waitFor({ timeout: 30_000 })
@@ -188,5 +192,6 @@ await main(async () => {
     check(!after.waiting, 'the new worker is still waiting after Reload')
     check(!!after.controller && !!before, 'no worker controls the page after Reload')
     await copyFile(backup, swPath)
+    await unlink(backup).catch(() => {})
   }, page)
 })

@@ -18,7 +18,9 @@
     "e2e:phase3": "node scripts/e2e/phase3.mjs",
     "e2e:phase4": "node scripts/e2e/phase4.mjs",
     "e2e:phase5": "node scripts/e2e/phase5.mjs",
+    "e2e:phase6": "node scripts/e2e/phase6.mjs",
     "e2e:android": "node scripts/e2e/android.mjs",
+    "e2e:offline": "node scripts/e2e/offline.mjs",
     "cap:sync": "cap sync android"
   },
   "dependencies": {

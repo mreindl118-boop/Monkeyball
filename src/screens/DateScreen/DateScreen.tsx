@@ -32,6 +32,7 @@ import { useSettings } from '../../store/settings'
 import type { AgreementType, DateTurn, Route } from '../../types'
 import { Backdrop } from '../../ui/Backdrop'
 import { Button } from '../../ui/Button'
+import { Toggle } from '../../ui/Toggle'
 import { ConfirmDialog } from '../../ui/ConfirmDialog'
 import { cx } from '../../ui/cx'
 import { HeatControl } from '../../ui/HeatControl'
@@ -45,6 +46,11 @@ import { TopBar } from '../../ui/TopBar'
 import {
   composerPlaceholder,
   deltaText,
+  groupEndLine,
+  groupPeople,
+  groupPlaceholder,
+  groupStatusText,
+  namesText,
   dtrVisible,
   fillFromChip,
   firstName,
@@ -65,6 +71,7 @@ import { DtrOffer, DtrOpen, DtrResult, DtrSheet } from './Dtr'
 import type { DtrChoiceType } from './dtrModel'
 import { endingTitle } from '../Ending/useEnding'
 import { StoryText } from './StoryText'
+import { GroupLine, GroupStage, GroupStatusStrip, GroupStreaming } from './GroupParts'
 
 export default function DateScreen() {
   const session = useDate((s) => s.session)
@@ -75,7 +82,7 @@ export default function DateScreen() {
 // No session: an interrupted date, or nothing (back to the hub)
 
 function interruptedText(it: InterruptedDate): string {
-  const first = firstName(it.name)
+  const first = it.names?.length ? namesText(it.names.map((n) => firstName(n))) : firstName(it.name)
   const n = it.turns
   const inside = n > 0 ? `, ${n} ${n === 1 ? 'message' : 'messages'} in` : ''
   return `crushLAB closed partway through your date with ${first}${inside}. What happened so far is saved.`
@@ -243,14 +250,21 @@ function StatusStrip({
               <Kiss className={styles.heatKiss} filled />
               Heat {heatInfo.level}, {heatInfo.name}
             </p>
-            <Button variant="secondary" size="small" aria-label={`Heat ${heatInfo.level}, ${heatInfo.name}. Change heat`} onClick={onHeat}>
+            <Button variant="secondary" size="small" className={styles.tap} aria-label={`Heat ${heatInfo.level}, ${heatInfo.name}. Change heat`} onClick={onHeat}>
               Change heat
             </Button>
           </div>
-          {!hints && <p className={styles.caption}>Turn on Hints in Settings to see how each message landed.</p>}
+          {!hints && (
+            <Toggle
+              checked={false}
+              onChange={(on) => void useSettings.getState().update({ hints: on })}
+              label="Hints"
+              description="See how each message landed: the hint, and what it did to affection and trust."
+            />
+          )}
           {dtrVisible(rel.affection) && route === 'romantic' && session.record.kind !== 'epilogue' && (
             <div className={styles.dtr}>
-              <Button variant="brass" disabled={!dtr.can} aria-describedby={dtrNote} onClick={dtr.onOpen}>
+              <Button variant="brass" className={styles.tap} disabled={!dtr.can} aria-describedby={dtrNote} onClick={dtr.onOpen}>
                 Define the relationship
               </Button>
               <p className={styles.caption} id={dtrNote}>
@@ -270,7 +284,18 @@ function StatusStrip({
   )
 }
 
-function Turn({ turn, retry, onHeat }: { turn: DateTurn; retry?: () => void; onHeat?: () => void }) {
+function Turn({
+  turn,
+  retry,
+  onHeat,
+  session,
+}: {
+  turn: DateTurn
+  retry?: () => void
+  onHeat?: () => void
+  /** A group date: character lines carry their speaker's name. */
+  session?: DateSession
+}) {
   if (turn.role === 'player') {
     return (
       <div className={styles.you}>
@@ -296,6 +321,8 @@ function Turn({ turn, retry, onHeat }: { turn: DateTurn; retry?: () => void; onH
       </div>
     )
   }
+  const g = session?.group
+  if (g) return <GroupLine character={turn.speaker ? g.members[turn.speaker]?.world.character : undefined} text={turn.text} />
   return (
     <div className={styles.line}>
       <StoryText text={turn.text} />
@@ -339,7 +366,11 @@ function DateView({ session }: { session: DateSession }) {
   const keepFocus = useRef(false)
 
   const { character } = session.world
-  const first = firstName(character.name)
+  // A group date (Phase 6): both of them, by first name; those who walked out are left out of the copy.
+  const people = groupPeople(session)
+  const group = people.length > 0
+  const present = people.filter((p) => !p.gone).map((p) => p.first)
+  const first = group ? namesText(present.length ? present : people.map((p) => p.first)) : firstName(character.name)
   const venue = venueById(session.record.venueId) ?? VENUES[0]
   const route = routeOf(session.world)
   const status = session.status
@@ -358,7 +389,12 @@ function DateView({ session }: { session: DateSession }) {
   const streaming = status === 'replying' ? session.streaming : ''
   const thinking = !streaming && (status === 'judging' || status === 'replying' || status === 'opening')
   const chips = status === 'awaiting-player' && !running ? suggestionChips(session.suggestions, route) : []
-  const status1 = running === 'dtr' ? `${first} is thinking about what you are` : statusText(status, character.name)
+  const status1 =
+    running === 'dtr'
+      ? `${first} is thinking about what you are`
+      : group
+        ? groupStatusText(status, present.length ? present : people.map((p) => p.first))
+        : statusText(status, character.name)
   const style = { '--accent': portraitAccent(character.accent) } as CSSProperties
 
   // Define the relationship: the character's offer, the open talk, the way in, and the outcome.
@@ -516,7 +552,7 @@ function DateView({ session }: { session: DateSession }) {
   }
 
   return (
-    <main className={styles.root} style={style} aria-label={`Date with ${character.name}`}>
+    <main className={styles.root} style={style} aria-label={group ? `Group date with ${namesText(people.map((p) => p.character.name))}` : `Date with ${character.name}`}>
       <Backdrop venue={venue} fill scrim className={styles.backdrop} />
 
       <div className={styles.column}>
@@ -533,17 +569,25 @@ function DateView({ session }: { session: DateSession }) {
           </Button>
         </header>
 
-        <StatusStrip
-          session={session}
-          hints={hints}
-          route={route}
-          onHeat={() => setHeatOpen(true)}
-          dtr={{ can: dtrCan, talking, onOpen: () => setDtrSheet(true) }}
-        />
+        {group ? (
+          <GroupStatusStrip session={session} hints={hints} onHeat={() => setHeatOpen(true)} />
+        ) : (
+          <StatusStrip
+            session={session}
+            hints={hints}
+            route={route}
+            onHeat={() => setHeatOpen(true)}
+            dtr={{ can: dtrCan, talking, onOpen: () => setDtrSheet(true) }}
+          />
+        )}
 
-        <div className={styles.stageArea} aria-hidden="true">
-          <Portrait character={character} size="small" thumb={false} className={styles.portrait} />
-        </div>
+        {group ? (
+          <GroupStage session={session} />
+        ) : (
+          <div className={styles.stageArea} aria-hidden="true">
+            <Portrait character={character} size="small" thumb={false} className={styles.portrait} />
+          </div>
+        )}
 
         <section className={styles.box} aria-label="The conversation">
           <p className={styles.plate}>
@@ -557,16 +601,20 @@ function DateView({ session }: { session: DateSession }) {
                   turn={t}
                   retry={i === lastError && retryable ? retry : undefined}
                   onHeat={i === lastRefused && !over ? () => setHeatOpen(true) : undefined}
+                  session={group ? session : undefined}
                 />
                 {i === resultAfter && dtrResult && <DtrResult name={character.name} dtr={dtrResult} current={session.rel.agreement?.type ?? 'none'} />}
               </Fragment>
             ))}
             {resultAfter === -1 && dtrResult && <DtrResult name={character.name} dtr={dtrResult} current={session.rel.agreement?.type ?? 'none'} />}
-            {streaming && (
-              <div className={styles.line}>
-                <StoryText text={streaming} streaming />
-              </div>
-            )}
+            {streaming &&
+              (group ? (
+                <GroupStreaming session={session} text={streaming} />
+              ) : (
+                <div className={styles.line}>
+                  <StoryText text={streaming} streaming />
+                </div>
+              ))}
             {thinking && (
               <p className={styles.thinking}>
                 <span className="visually-hidden">{status1}</span>
@@ -601,7 +649,16 @@ function DateView({ session }: { session: DateSession }) {
 
           {over ? (
             <div className={styles.endBar}>
-              <p className={styles.endText}>{endLine(session, first)}</p>
+              <p className={styles.endText}>
+                {group
+                  ? groupEndLine(
+                      status,
+                      session.record.outcome,
+                      people.filter((p) => p.gone || session.group?.members[p.character.id]?.leaving).map((p) => p.first),
+                      people.map((p) => p.first),
+                    )
+                  : endLine(session, first)}
+              </p>
               <Button variant="primary" block loading={finishedId == null} onClick={toRecap}>
                 See how it went
               </Button>
@@ -625,7 +682,7 @@ function DateView({ session }: { session: DateSession }) {
                 />
               ) : dtrCan ? (
                 <div className={styles.dtrEntry}>
-                  <Button variant="brass" size="small" onClick={() => setDtrSheet(true)}>
+                  <Button variant="brass" size="small" className={styles.tap} onClick={() => setDtrSheet(true)}>
                     Define the relationship
                   </Button>
                 </div>
@@ -657,7 +714,7 @@ function DateView({ session }: { session: DateSession }) {
                   value={draft}
                   maxLength={1000}
                   enterKeyHint="send"
-                  placeholder={composerPlaceholder(status, character.name)}
+                  placeholder={group ? groupPlaceholder(status, present) : composerPlaceholder(status, character.name)}
                   // Read-only rather than disabled while the character talks: disabling a focused
                   // field drops its focus, and on Android the soft keyboard with it.
                   readOnly={locked}
@@ -711,8 +768,8 @@ function DateView({ session }: { session: DateSession }) {
         title="End the date?"
         message={
           talking
-            ? `${first} will remember how it went and answer what you asked about what you are. The recap shows what changed.`
-            : `${first} will remember how it went, and the recap shows what changed.`
+            ? `${first} will remember how it went and answer what you asked about what you are. The recap shows what changed. Seeing a date through builds a little trust.`
+            : `${first} will remember how it went, and the recap shows what changed. Seeing a date through builds a little trust.`
         }
         confirmLabel="End date"
         cancelLabel="Keep going"

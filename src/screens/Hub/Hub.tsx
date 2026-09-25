@@ -13,7 +13,7 @@ import { Field } from '../../ui/Field'
 import { HeatControl } from '../../ui/HeatControl'
 import { Select, type SelectOption } from '../../ui/Inputs'
 import { Kiss } from '../../ui/Kiss'
-import { Panel } from '../../ui/Panel'
+import { Note, Panel } from '../../ui/Panel'
 import { Sheet } from '../../ui/Sheet'
 import { Wordmark } from '../../ui/Wordmark'
 import { ConnectionStatus } from './ConnectionStatus'
@@ -177,6 +177,17 @@ export default function Hub() {
       </header>
 
       <ConnectionStatus />
+
+      {ready && !noSets && !settings.hubTipDismissed && !Object.values(relationships).some((r) => (r?.dates ?? 0) > 0) && (
+        <Note tone="brass" title="Where to start">
+          <p>Tap anyone to see their profile and ask them out. What they like starts hidden; dates reveal it.</p>
+          <div className={styles.tipActions}>
+            <Button variant="secondary" size="small" onClick={() => void update({ hubTipDismissed: true })}>
+              Got it
+            </Button>
+          </div>
+        </Note>
+      )}
 
       {ready && !noSets && <NewsStrip />}
 

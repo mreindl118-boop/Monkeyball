@@ -100,3 +100,27 @@ export function metamourTrust(
   const avg = known.reduce((n, o) => n + approval(game, id, o, relations), 0) / known.length
   return avg >= POLYCULE_APPROVAL ? 1 : avg < 40 ? -1 : 0
 }
+
+/** Approval moves from a group date (Phase 6), by how it went for the two of them. */
+export const GROUP_APPROVAL = Object.freeze({
+  /** Both warmed up to the player (each date total +5 or more) and nobody walked out. */
+  good: 10,
+  /** Nobody lost ground (both totals 0 or more). */
+  fine: 5,
+  /** Someone lost ground. */
+  tense: -5,
+  /** Someone walked out. */
+  walkout: -10,
+})
+
+/**
+ * How a group date moves the pair's approval of each other: +10 when it went well for both, +5 when
+ * nobody lost ground, -5 when someone did, -10 when someone walked out.
+ */
+export function groupApprovalDelta(results: readonly { affection: number; left: boolean }[]): number {
+  if (results.length < 2) return 0
+  if (results.some((r) => r.left)) return GROUP_APPROVAL.walkout
+  if (results.every((r) => r.affection >= 5)) return GROUP_APPROVAL.good
+  if (results.every((r) => r.affection >= 0)) return GROUP_APPROVAL.fine
+  return GROUP_APPROVAL.tense
+}

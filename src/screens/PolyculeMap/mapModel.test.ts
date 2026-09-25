@@ -9,8 +9,11 @@ import {
   initials,
   labelLayout,
   layoutMap,
+  MAX_MAP_W,
+  threadPath,
   TAG_H,
   listLine,
+  listOrder,
   mapOrder,
   mapSummary,
   pairKey,
@@ -159,6 +162,37 @@ describe('layout', () => {
     expect(new Set(layout.people.map((p) => p.id)).size).toBe(40)
   })
 
+  it('keeps a big roster within a phone width, growing taller instead, with no circles on top of each other', () => {
+    for (let n = 10; n <= 60; n++) {
+      const layout = layoutMap(Array.from({ length: n }, (_, i) => `p${i}`))
+      expect(layout.width).toBeLessThanOrEqual(MAX_MAP_W)
+      // Drawn at 0.8 (48px targets) it fits a 360px phone with 16px gutters.
+      expect(layout.width * 0.8).toBeLessThanOrEqual(360 - 32)
+      const all = [layout.you, ...layout.people]
+      for (let i = 0; i < all.length; i++) {
+        for (let j = i + 1; j < all.length; j++) {
+          expect(Math.hypot(all[i].x - all[j].x, all[i].y - all[j].y), `${n}: ${all[i].id} and ${all[j].id}`).toBeGreaterThanOrEqual(all[i].r + all[j].r + 4)
+        }
+      }
+      for (const p of layout.people) {
+        expect(p.x - p.r).toBeGreaterThanOrEqual(0)
+        expect(p.x + p.r).toBeLessThanOrEqual(layout.width)
+      }
+    }
+  })
+
+  it('bends a thread between two others round the player', () => {
+    const you = { id: YOU, x: 100, y: 100, r: 34 }
+    const a = { id: 'a', x: 100, y: 0, r: 22 }
+    const b = { id: 'b', x: 100, y: 200, r: 22 }
+    const d = threadPath(a, b, [you, a, b])
+    expect(d).toMatch(/ Q /)
+    const [, qx] = /Q (-?[\d.]+) (-?[\d.]+)/.exec(d)!.map(Number)
+    // The curve's middle is (chord middle + control) / 2: clear of the player's circle.
+    expect(Math.abs((100 + qx) / 2 - 100)).toBeGreaterThanOrEqual(34)
+    expect(threadPath(a, { id: 'c', x: 150, y: 0, r: 22 }, [you])).toMatch(/ L /)
+  })
+
   it('handles nobody at all', () => {
     const layout = layoutMap([])
     expect(layout.people).toEqual([])
@@ -302,5 +336,21 @@ describe('sentences', () => {
       expect(s).not.toMatch(/[←→·]|->/)
       expect(s).not.toMatch(/\b[A-Z]{3,}\b/)
     }
+  })
+})
+
+describe('map review fixes', () => {
+  it('lists people you have been out with first', () => {
+    const people = [person('nova', { dates: 3 }), person('dex'), person('cass', { dates: 1 }), person('kai', { dates: 2 })]
+    expect(listOrder(people).map((p) => p.id)).toEqual(['nova', 'kai', 'cass', 'dex'])
+  })
+  it('keeps how they take it unsaid until their style is known, and says why a date has no thread', () => {
+    const ctx = { names: { kai: 'Kai Okoro' }, relations: [], othersYouSee: ['kai'], people: [person('kai')], approval: () => 50 }
+    const hidden = person('nova', { dates: 2, jealous: true, knownOthers: ['kai'], styleHidden: true })
+    const s = personSentences(hidden, ctx)
+    expect(s).toContain("Nova knows you're seeing Kai.")
+    expect(s.join(' ')).not.toMatch(/minds|doesn't care|happy for you/)
+    expect(listLine(hidden)).toBe('2 dates.')
+    expect(s[0]).toMatch(/not enough yet to count as seeing each other/)
   })
 })

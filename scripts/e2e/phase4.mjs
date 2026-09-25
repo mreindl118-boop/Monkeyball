@@ -216,7 +216,7 @@ async function importSave(page, dir, name, save) {
   await writeFile(file, JSON.stringify(save))
   await goHash(page, '#/settings/saves')
   await page.getByRole('button', { name: 'Import save file' }).waitFor()
-  await page.locator('input[type="file"][accept=".json,application/json"]').setInputFiles(file)
+  await page.locator('input[type="file"][accept=".json,application/json,application/octet-stream,text/plain"]').setInputFiles(file)
   const dialog = page.getByRole('alertdialog', { name: 'Replace everything with this save?' })
   await dialog.waitFor()
   await press(dialog.getByRole('button', { name: 'Replace everything' }))

@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
+import { rolePreset } from '../../llm/routes'
 import { useNav } from '../../store/nav'
+import { useSettings } from '../../store/settings'
 import { Button } from '../../ui/Button'
 import { Note, Panel } from '../../ui/Panel'
 import { TopBar } from '../../ui/TopBar'
 import { Wordmark } from '../../ui/Wordmark'
 import { ConnectionForm } from './ConnectionForm'
 import { clearOnboardingProblem, peekOnboardingProblem } from './lastCheck'
+import { usePresetReady } from './modelLists'
 import styles from './ConnectionSetup.module.css'
 
 /** Connect a model. Shown after onboarding when no model answered, and from the hub. */
@@ -20,6 +23,9 @@ export default function ConnectionSetup() {
   useEffect(() => clearOnboardingProblem(), [])
 
   const toHub = () => reset({ name: 'hub' })
+  // Continue once the story provider passed a test; until then Skip for now is the way out.
+  const storyPreset = useSettings((s) => rolePreset(s.settings.connection, 'story'))
+  const storyReady = usePresetReady(storyPreset)
 
   return (
     <main className={`screen ${styles.root}`} aria-labelledby="connection-title">
@@ -60,9 +66,14 @@ export default function ConnectionSetup() {
         <Button variant="ghost" onClick={toHub}>
           Skip for now
         </Button>
-        <Button variant="primary" onClick={toHub}>
+        <Button variant="primary" disabled={!storyReady} aria-describedby={storyReady ? undefined : 'connection-continue-note'} onClick={toHub}>
           Continue
         </Button>
+        {!storyReady && (
+          <p className={styles.actionsNote} id="connection-continue-note">
+            Test the story provider to continue.
+          </p>
+        )}
       </div>
     </main>
   )

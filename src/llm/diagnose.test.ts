@@ -3,7 +3,7 @@ import { useDebug } from '../store/debug'
 import { DEFAULT_CONNECTION } from '../store/defaults'
 import type { ConnectionSettings } from '../types'
 import { HOSTED_MIN_TOKENS, LlmError, resetJsonModeCache, type Endpoint } from './client'
-import { explainError, explainRoleError, looksLikeModelError, sameModel, testConnection, testEndpoint } from './diagnose'
+import { explainError, explainRoleError, looksLikeModelError, offlineFor, sameModel, testConnection, testEndpoint } from './diagnose'
 
 const conn = (patch: Partial<Endpoint> = {}): Endpoint => ({
   preset: 'ollama',
@@ -447,5 +447,21 @@ describe('testConnection per preset', () => {
     expect(r.ok).toBe(true)
     expect(seen[0].url).toBe('http://localhost:11434/v1/models')
     expect(seen.find((s) => s.url.endsWith('/chat/completions'))?.body?.model).toBe('qwen3')
+  })
+})
+
+describe('offline local servers', () => {
+  afterEach(() => vi.unstubAllGlobals())
+  it('says the device may be offline for a LAN server, but not for one on this device', () => {
+    vi.stubGlobal('navigator', { onLine: false })
+    const lan = conn({ baseUrl: 'http://192.168.1.20:11434/v1' })
+    const p = explainError(new LlmError('network', 'x'), lan)
+    expect(p.message).toMatch(/This device may be offline/)
+    expect(p.message).not.toMatch(/CORS/)
+    expect(offlineFor(lan)).toBe(true)
+    expect(offlineFor(conn({ baseUrl: 'http://127.0.0.1:11434/v1' }))).toBe(false)
+    expect(offlineFor(conn({ baseUrl: 'http://localhost:1234/v1' }))).toBe(false)
+    vi.stubGlobal('navigator', { onLine: true })
+    expect(explainError(new LlmError('network', 'x'), lan).message).toMatch(/CORS/)
   })
 })

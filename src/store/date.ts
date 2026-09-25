@@ -24,7 +24,7 @@
 // Tests build their own store with createDateStore({ llm, db, game, settings, roster }).
 
 import { create } from 'zustand'
-import { onEnding as artOnEnding, onUnlock as artOnUnlock } from '../art/generate'
+import { BACKGROUND_TIMEOUT_MS, generateArt, onEnding as artOnEnding, onUnlock as artOnUnlock } from '../art/generate'
 import { db as appDb, type CrushDB } from '../db/db'
 import { getDate, kvDelete, kvGet, kvSet, putDate, snapshot } from '../db/repo'
 import {
@@ -47,6 +47,15 @@ import {
   type DateWorld,
 } from '../engine/dateFlow'
 import { selectEnding } from '../engine/endings'
+import {
+  createGroupDate,
+  finishGroupDate,
+  groupArtSlot,
+  openGroupDate,
+  resumeGroupDate,
+  retryGroupReply,
+  sendGroupMessage,
+} from '../engine/groupDate'
 import { leftEarly } from '../engine/math'
 import { newGameState, withRelationshipDefaults } from '../engine/relationship'
 import { routeFor } from '../engine/stages'
@@ -81,6 +90,10 @@ export interface ActiveDateMark {
   characterId: string
   /** The relationship when the date started, for the recap of an interrupted date. */
   relBefore?: Relationship
+  /** Optional (Phase 6), group dates: everyone on it, their relationships at the start, the gift's taker. */
+  characterIds?: string[]
+  relsBefore?: Record<string, Relationship>
+  giftTo?: string
 }
 
 /** The engine functions the store calls (tests may swap them). */
@@ -94,6 +107,13 @@ export interface DateEngine {
   openDtr?: typeof openDtr
   closeDtr?: typeof closeDtr
   createEpilogue?: typeof createEpilogue
+  /** Phase 6: group dates (the engine's own when left out). */
+  createGroupDate?: typeof createGroupDate
+  openGroupDate?: typeof openGroupDate
+  sendGroupMessage?: typeof sendGroupMessage
+  retryGroupReply?: typeof retryGroupReply
+  finishGroupDate?: typeof finishGroupDate
+  resumeGroupDate?: typeof resumeGroupDate
 }
 
 const ENGINE: DateEngine = {
@@ -105,6 +125,12 @@ const ENGINE: DateEngine = {
   openDtr,
   closeDtr,
   createEpilogue,
+  createGroupDate,
+  openGroupDate,
+  sendGroupMessage,
+  retryGroupReply,
+  finishGroupDate,
+  resumeGroupDate,
 }
 
 /** 'dtr': closing a Define-the-relationship talk (the Agreement prompt). */
@@ -124,6 +150,8 @@ export interface InterruptedDate {
   characterId: string
   /** The character's name (their id when they are no longer on this device). */
   name: string
+  /** Optional (Phase 6), a group date: everyone's names, in order. */
+  names?: string[]
   /** Player messages that made it in. */
   turns: number
 }
@@ -163,6 +191,11 @@ export interface DateStoreState {
   setDraft: (text: string) => void
   /** Start a date and its opening in the background. Resolves once the session exists. */
   start: (characterId: string, venueId: string, giftId?: string) => Promise<StartResult>
+  /**
+   * Phase 6: start a group date with these characters (two) at one venue; the gift, if any, is for
+   * `giftTo` (the first character when left out). Resolves once the session exists.
+   */
+  startGroup: (characterIds: string[], venueId: string, giftId?: string, giftTo?: string) => Promise<StartResult>
   /** Send the player's message (skips chips still loading). False when it couldn't be sent. */
   send: (text: string) => Promise<boolean>
   /** Ask for a missing reply again, or rerun an action that failed unexpectedly. */
@@ -219,6 +252,8 @@ export interface DateStoreDeps {
   art?: {
     onUnlock: (characterId: string, tiers: TierNumber[]) => void
     onEnding?: (characterId: string, ending: EndingType, group?: readonly string[]) => void
+    /** Phase 6: a group date finished: paint the pair's shared picture (once per pair). */
+    onGroupDate?: (characterIds: readonly string[]) => void
   }
 }
 
@@ -267,7 +302,7 @@ export function appDateLlm(characterId: string, conn: () => ConnectionSettings):
         coerce: coerceJudge,
         fallback: neutralJudge(),
         signal: a.signal,
-        debug,
+        debug: a.characterId ? { characterId: a.characterId } : debug,
       })
       return { value: r.value, ok: r.ok }
     },
@@ -286,7 +321,14 @@ export function appDateLlm(characterId: string, conn: () => ConnectionSettings):
       return r.ok ? r.value : null
     },
     memory: async (a) => {
-      const r = await chat({ conn: conn(), role: 'story', kind: 'memory', messages: withSystem(a.system, a.messages), signal: a.signal, debug })
+      const r = await chat({
+        conn: conn(),
+        role: 'story',
+        kind: 'memory',
+        messages: withSystem(a.system, a.messages),
+        signal: a.signal,
+        debug: a.characterId ? { characterId: a.characterId } : debug,
+      })
       return r.refused ? '' : r.text
     },
     agreement: async (a) => {
@@ -348,9 +390,26 @@ export function isLive(s: Pick<DateStoreState, 'session'>): boolean {
   return !!s.session && s.session.status !== 'ended'
 }
 
-/** The character on the open date, or null. */
+/** The character on the open date, or null (a group date: the first of them). */
 export function liveCharacterId(s: Pick<DateStoreState, 'session'>): string | null {
   return isLive(s) ? (s.session!.record.characterIds[0] ?? null) : null
+}
+
+/** Everyone on the open date (two on a group date), or none. */
+export function liveCharacterIds(s: Pick<DateStoreState, 'session'>): readonly string[] {
+  return isLive(s) ? s.session!.record.characterIds : NO_IDS
+}
+
+const NO_IDS: readonly string[] = []
+
+/** Background painting of a group date's shared picture: once per pair, only with image generation on. */
+function paintGroupDate(ids: readonly string[]): void {
+  try {
+    const t = typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal ? AbortSignal.timeout(BACKGROUND_TIMEOUT_MS) : undefined
+    void generateArt(groupArtSlot(ids), t ? { signal: t } : {}).catch(() => undefined)
+  } catch {
+    // Art never gets in the date's way.
+  }
 }
 
 /** Every turn was played and the last word was the character's. */
@@ -434,7 +493,7 @@ export function createDateStore(deps: DateStoreDeps = {}) {
   const rng = deps.rng ?? appRandom
   const online = deps.online ?? (() => typeof navigator === 'undefined' || navigator.onLine !== false)
   const makeLlm = deps.llm ?? ((id: string) => appDateLlm(id, () => settingsOf().settings.connection))
-  const art = deps.art ?? { onUnlock: artOnUnlock, onEnding: artOnEnding }
+  const art = deps.art ?? { onUnlock: artOnUnlock, onEnding: artOnEnding, onGroupDate: paintGroupDate }
 
   /** Bumped by every run and by clear(); a run that isn't the latest stops touching state. */
   let token = 0
@@ -555,6 +614,7 @@ export function createDateStore(deps: DateStoreDeps = {}) {
         setRelations: activeRelations(data, settings.activeSets),
         rumors: r.sets.filter((x) => activeSetIds.has(x.id)).flatMap((x) => x.rumors ?? []),
         setOf,
+        setKnows: Object.fromEntries(r.sets.map((x) => [x.id, [...(x.knows ?? [])]])),
       }
       const g = game().game
       if (g) world.game = g
@@ -592,6 +652,8 @@ export function createDateStore(deps: DateStoreDeps = {}) {
         .load()
         .catch(() => undefined)
       const before = game().relationships?.[rel.characterId]
+      // A group date's other characters are saved with the world: their new tiers paint too.
+      const othersBefore = rels.map((r) => game().relationships?.[r.characterId])
       const write = async () => {
         for (const r of rels) await game().saveRel(r)
         await game().patchGame?.(next)
@@ -603,6 +665,7 @@ export function createDateStore(deps: DateStoreDeps = {}) {
         await write().catch(() => undefined)
       }
       startArt(rel, before)
+      rels.forEach((r, i) => startArt(r, othersBefore[i]))
     }
 
     /**
@@ -669,10 +732,31 @@ export function createDateStore(deps: DateStoreDeps = {}) {
     const landed = async (s: DateSession) => {
       await clearMark()
       set({ finishedId: s.record.id ?? get().dateId, lastRecord: s.record, draft: '' })
+      if (s.group) {
+        for (const id of s.group.ids) {
+          const m = s.group.members[id]
+          if (m && reachedWon(m.relBefore, m.rel)) await autosaveBeforeEpilogue(id)
+        }
+        try {
+          art.onGroupDate?.(s.group.ids)
+        } catch {
+          // Art never gets in the date's way.
+        }
+        return
+      }
       if (s.record.kind !== 'epilogue' && reachedWon(s.relBefore, s.rel)) {
         await autosaveBeforeEpilogue(s.world.character.id)
       }
     }
+
+    /** The engine step for this session: the group date's own when it is one. */
+    const openFor = (s: DateSession): Exec => (s.group ? (engine.openGroupDate ?? openGroupDate) : engine.openDate)
+    const retryFor = (s: DateSession): Exec => (s.group ? (engine.retryGroupReply ?? retryGroupReply) : engine.retryLastReply)
+    const sendFor = (s: DateSession, text: string): Exec =>
+      s.group
+        ? (b, llm, hooks) => (engine.sendGroupMessage ?? sendGroupMessage)(b, text, llm, hooks)
+        : (b, llm, hooks) => engine.sendPlayerMessage(b, text, llm, hooks)
+    const finishFor = (s: DateSession) => (s.group ? (engine.finishGroupDate ?? finishGroupDate) : engine.finishDate)
 
     type Exec = (s: DateSession, llm: DateLlm, hooks: DateHooks) => Promise<DateSession>
 
@@ -724,9 +808,48 @@ export function createDateStore(deps: DateStoreDeps = {}) {
     }
 
     const finishRun = (base: DateSession, reason: 'completed' | 'left' | 'ended') =>
-      run('finish', base, (s, llm, hooks) => engine.finishDate(s, reason, llm, hooks).then((r) => r.session), {
+      run('finish', base, (s, llm, hooks) => finishFor(s)(s, reason, llm, hooks).then((r) => r.session), {
         noMemory: !online(),
       })
+
+    /**
+     * Finish an interrupted group date into a recap: each character's world from how they stood
+     * when it started (the mark, else estimated from the record), their relationships as last saved.
+     */
+    const recoverGroup = async (it: InterruptedDate, mark: ActiveDateMark | null): Promise<number | null> => {
+      const { record } = it
+      const ids = record.characterIds
+      const sameDate = mark?.dateId === record.id
+      const worlds: DateWorld[] = []
+      for (const id of ids) {
+        const relNow = game().rel(id)
+        const stored = sameDate ? mark?.relsBefore?.[id] : undefined
+        const before = stored ? withRelationshipDefaults(stored, id) : estimateBefore(relNow, { totals: record.totals, characterIds: [id] })
+        const world = buildWorld(id, before)
+        if (!world) {
+          await get().dropInterrupted()
+          return null
+        }
+        worlds.push(world)
+      }
+      const relsNow = Object.fromEntries(ids.map((id) => [id, game().rel(id)]))
+      token++
+      const base = (engine.resumeGroupDate ?? resumeGroupDate)(worlds, record, relsNow, sameDate ? mark?.giftTo : undefined)
+      set({
+        session: base,
+        dateId: record.id ?? null,
+        running: null,
+        problem: null,
+        draft: '',
+        paused: false,
+        finishedId: null,
+        lastRecord: null,
+        interrupted: null,
+        dtrOfferDismissed: false,
+      })
+      const next = await finishRun(base, completedRecord(record) ? 'completed' : 'ended')
+      return next ? get().finishedId : null
+    }
 
     /** A date left open by a reload or a crash is filed as abandoned (no recap). */
     const abandonOpenDate = async () => {
@@ -746,18 +869,28 @@ export function createDateStore(deps: DateStoreDeps = {}) {
      * reload is filed away, the record is stored and marked as the open date, and the opening runs
      * in the background. Resolves once the session exists.
      */
-    const begin = async (
-      characterId: string,
-      make: (world: DateWorld) => DateSession | null,
+    const begin = (characterId: string, make: (world: DateWorld) => DateSession | null): Promise<StartResult> =>
+      beginWith([characterId], (worlds) => make(worlds[0]))
+
+    /** begin() for one or more characters (a group date builds a world for each). */
+    const beginWith = async (
+      characterIds: readonly string[],
+      make: (worlds: DateWorld[]) => DateSession | null,
+      markExtra: Partial<ActiveDateMark> = {},
     ): Promise<StartResult> => {
       await Promise.all([roster().load(), game().load()]).catch(() => undefined)
       const open = get().session
       if (open && open.status !== 'ended') {
         return { ok: false, reason: 'busy', characterId: open.record.characterIds[0] ?? '' }
       }
-      const world = buildWorld(characterId)
-      if (!world) return { ok: false, reason: 'missing' }
-      let session = make(world)
+      const worlds: DateWorld[] = []
+      for (const id of characterIds) {
+        const world = buildWorld(id)
+        if (!world) return { ok: false, reason: 'missing' }
+        worlds.push(world)
+      }
+      const characterId = characterIds[0] ?? ''
+      let session = make(worlds)
       if (!session) return { ok: false, reason: 'not-ready' }
       await abandonOpenDate()
 
@@ -770,7 +903,12 @@ export function createDateStore(deps: DateStoreDeps = {}) {
         id = -++memoryIds
       }
       session = { ...session, record: { ...session.record, id } }
-      const mark: ActiveDateMark = { dateId: id, characterId, relBefore: session.relBefore }
+      const mark: ActiveDateMark = { dateId: id, characterId, relBefore: session.relBefore, ...markExtra }
+      if (session.group) {
+        mark.characterIds = [...session.group.ids]
+        mark.relsBefore = Object.fromEntries(session.group.ids.map((x) => [x, session.group!.members[x].relBefore]))
+        if (session.group.giftTo) mark.giftTo = session.group.giftTo
+      }
       try {
         await kvSet(ACTIVE_DATE_KEY, mark, d)
       } catch (e) {
@@ -788,7 +926,7 @@ export function createDateStore(deps: DateStoreDeps = {}) {
         interrupted: null,
         dtrOfferDismissed: false,
       })
-      void run('open', session, engine.openDate)
+      void run('open', session, openFor(session))
       return { ok: true, dateId: id }
     }
 
@@ -817,6 +955,18 @@ export function createDateStore(deps: DateStoreDeps = {}) {
           }),
         ),
 
+      startGroup: (characterIds, venueId, giftId, giftTo) => {
+        const ids = [...new Set(characterIds.filter(Boolean))]
+        if (ids.length < 2) return Promise.resolve({ ok: false, reason: 'missing' } as StartResult)
+        return beginWith(ids, (worlds) =>
+          (engine.createGroupDate ?? createGroupDate)(worlds, {
+            venueId,
+            ...(giftId ? { giftId, giftTo: giftTo ?? ids[0] } : {}),
+            maxTurns: worlds[0].settings.dateLength,
+          }),
+        )
+      },
+
       send: async (raw) => {
         const text = raw.trim()
         if (!text) return false
@@ -826,7 +976,7 @@ export function createDateStore(deps: DateStoreDeps = {}) {
         const s = live(current)
         if (!canSend(s)) return false
         set({ draft: '' })
-        const next = await run('send', s, (b, llm, hooks) => engine.sendPlayerMessage(b, text, llm, hooks), { text })
+        const next = await run('send', s, sendFor(s, text), { text })
         // Stopped before the judge answered: the engine took the message back, so the draft gets it.
         if (next && playerTurnCount(next.record) === playerTurnCount(s.record) && !get().draft) set({ draft: text })
         return !!next && playerTurnCount(next.record) > playerTurnCount(s.record)
@@ -850,10 +1000,10 @@ export function createDateStore(deps: DateStoreDeps = {}) {
         }
         const session = live(st.session)
         if (p?.action === 'open' || session.status === 'opening') {
-          await run('open', session, engine.openDate)
+          await run('open', session, openFor(session))
           return
         }
-        if (canRetry(session)) await run('retry', session, engine.retryLastReply)
+        if (canRetry(session)) await run('retry', session, retryFor(session))
       },
 
       end: () => {
@@ -939,6 +1089,9 @@ export function createDateStore(deps: DateStoreDeps = {}) {
           name: entry?.character.name.trim() || characterId,
           turns: playerTurnCount(record),
         }
+        if (record.kind === 'group' && record.characterIds.length > 1) {
+          interrupted.names = record.characterIds.map((x) => roster().entries[x]?.character.name.trim() || x)
+        }
         set({ interrupted })
         return interrupted
       },
@@ -948,6 +1101,7 @@ export function createDateStore(deps: DateStoreDeps = {}) {
         if (!it) return null
         await Promise.all([roster().load(), game().load()]).catch(() => undefined)
         const mark = await readMark()
+        if (it.record.kind === 'group' && it.record.characterIds.length > 1) return recoverGroup(it, mark)
         const relNow = game().rel(it.characterId)
         const relBefore =
           mark?.relBefore && mark.dateId === it.record.id
@@ -998,6 +1152,7 @@ export function createDateStore(deps: DateStoreDeps = {}) {
       },
 
       dropInterrupted: async () => {
+        // (A group date that was interrupted is finished by recoverGroup, below.)
         const it = get().interrupted
         if (it) await saveRecord({ ...it.record, outcome: 'abandoned', endedAt: now() })
         await clearMark()

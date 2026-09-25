@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   createSlot,
   deleteSlot,
   exportSave,
-  importSave,
   listSlots,
   restoreSlot,
   saveFileName,
@@ -15,12 +14,14 @@ import { ConfirmDialog } from '../../ui/ConfirmDialog'
 import { Field } from '../../ui/Field'
 import { TextInput } from '../../ui/Inputs'
 import { Divider } from '../../ui/Panel'
-import { flashNextLoad, toast } from '../../ui/toastStore'
+import { toast } from '../../ui/toastStore'
 import { Toggle } from '../../ui/Toggle'
 import { canSaveFiles, FileSaveUnavailableError, saveFile } from '../../platform/files'
 import { isAutosave } from '../Ending/endingModel'
 import styles from './Settings.module.css'
 import own from './SavesSection.module.css'
+import { SaveImportButton } from './SaveImport'
+import { reloadToHub } from './saveImportModel'
 
 const dateFmt = new Intl.DateTimeFormat(undefined, {
   month: 'short',
@@ -39,18 +40,11 @@ function describeSlot(s: SlotInfo): string {
   return `${when}. ${plural(s.characters, 'character', 'characters')}, ${plural(s.dates, 'date', 'dates')}.`
 }
 
-/** Reload the app on the hub so every store re-reads the replaced data. */
-function reloadToHub(message: string) {
-  flashNextLoad(message)
-  window.location.hash = '#/hub'
-  window.location.reload()
-}
 
 const EXPORT_UNAVAILABLE =
   "This device can't save files from crushLAB. Your progress is safe here; save slots below work as usual."
 
 type Pending =
-  | { kind: 'import'; file: File }
   | { kind: 'restore'; slot: SlotInfo }
   | { kind: 'delete'; slot: SlotInfo }
   | null
@@ -62,7 +56,6 @@ export function SavesSection() {
   const [label, setLabel] = useState('')
   const [saving, setSaving] = useState(false)
   const [pending, setPending] = useState<Pending>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
 
   const refresh = useCallback(async () => {
     try {
@@ -105,12 +98,6 @@ export function SavesSection() {
     }
   }
 
-  const onFile = (files: FileList | null) => {
-    const file = files?.[0]
-    if (fileRef.current) fileRef.current.value = ''
-    if (file) setPending({ kind: 'import', file })
-  }
-
   const doSlot = async () => {
     setSaving(true)
     try {
@@ -128,11 +115,7 @@ export function SavesSection() {
   const confirm = async () => {
     if (!pending) return
     try {
-      if (pending.kind === 'import') {
-        await importSave(pending.file)
-        setPending(null)
-        reloadToHub('Save file loaded.')
-      } else if (pending.kind === 'restore') {
+      if (pending.kind === 'restore') {
         await restoreSlot(pending.slot.id)
         setPending(null)
         reloadToHub(`Restored "${pending.slot.label}".`)
@@ -151,29 +134,21 @@ export function SavesSection() {
   }
 
   const dialog =
-    pending?.kind === 'import'
+    pending?.kind === 'restore'
       ? {
-          title: 'Replace everything with this save?',
-          message: `Your profile, progress, characters and dates on this device are replaced by "${pending.file.name}". Export first if you want to keep them.`,
-          confirmLabel: 'Replace everything',
+          title: `Restore "${pending.slot.label}"?`,
+          message: 'Your current progress is replaced by this save. Your connection and settings stay as they are.',
+          confirmLabel: 'Restore',
           tone: 'danger' as const,
         }
-      : pending?.kind === 'restore'
+      : pending?.kind === 'delete'
         ? {
-            title: `Restore "${pending.slot.label}"?`,
-            message:
-              'Your current progress is replaced by this save. Your connection and settings stay as they are.',
-            confirmLabel: 'Restore',
+            title: `Delete "${pending.slot.label}"?`,
+            message: 'This save slot is gone for good. Your current game is untouched.',
+            confirmLabel: 'Delete save',
             tone: 'danger' as const,
           }
-        : pending?.kind === 'delete'
-          ? {
-              title: `Delete "${pending.slot.label}"?`,
-              message: 'This save slot is gone for good. Your current game is untouched.',
-              confirmLabel: 'Delete save',
-              tone: 'danger' as const,
-            }
-          : null
+        : null
 
   return (
     <div className={styles.stack}>
@@ -182,23 +157,14 @@ export function SavesSection() {
           checked={includeImages}
           onChange={setIncludeImages}
           label="Include images"
-          description="Imported and generated art. Makes the file much bigger."
+          description="Imported, generated and pack art. Makes the file much bigger. Everything else (profile, settings without API keys, progress, characters, packs and dates) is always in it."
         />
       </div>
       <div className={styles.actions}>
         <Button variant="secondary" loading={exporting} onClick={doExport}>
           Export save file
         </Button>
-        <Button variant="secondary" onClick={() => fileRef.current?.click()}>
-          Import save file
-        </Button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".json,application/json"
-          hidden
-          onChange={(e) => onFile(e.target.files)}
-        />
+        <SaveImportButton />
       </div>
 
       <Divider />

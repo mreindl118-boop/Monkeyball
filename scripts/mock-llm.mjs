@@ -190,6 +190,13 @@ export function judgeReply(system) {
   const nameLine = lineAfter(system, 'CHARACTER\n')
   const name = firstName(nameLine.split(',')[0])
   const base = { delta: 2, trustDelta: 1, hits: [], mood: 'relaxed', hint: 'An easy smile.', jealousy: false, breach: false }
+  // "[tank:kai]" tanks only the named character (group dates: one of them walks out).
+  const only = /\[tank:([a-z]+)\]/.exec(m)
+  if (only) {
+    return only[1] === name.toLowerCase()
+      ? { ...base, delta: -20, trustDelta: -5, mood: 'done', hint: 'The temperature drops ten degrees.' }
+      : base
+  }
   if (m.includes('[lie]')) {
     return { ...base, delta: -15, trustDelta: -9, mood: 'betrayed', hint: `${name} goes very still.`, breach: true }
   }
@@ -270,7 +277,47 @@ export function memoryReply() {
   return 'We got drinks and talked until the place emptied out, and you remembered the name of the record I mentioned. I liked that, and I think I want to see you again.'
 }
 
+/**
+ * A group date's story (the prompt has a BETWEEN THEM section): one paragraph per character still on
+ * the date, each starting with their first name and a colon. Someone the turn note says is leaving
+ * writes their exit; the opening greets; the last turn closes; otherwise each reacts to their own
+ * mood in the LANDED section.
+ */
+export function groupStoryReply(system) {
+  const names = [...system.matchAll(/^CHARACTER\n(.+?), \d+,/gm)].map((m) => m[1])
+  const firsts = names.map(firstName)
+  const turnNote = lineAfter(system, '\nTurn ')
+  const leaving = names.filter((n) => new RegExp(`write [^.]*${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^.]* leaving`).test(turnNote))
+  const out = []
+  names.forEach((full, i) => {
+    const name = firsts[i]
+    const other = firsts.find((_, j) => j !== i) || 'everyone'
+    if (leaving.includes(full)) {
+      out.push(`${name}: *${name} stands and picks up their jacket.* "I think I'm going to call it a night."`)
+      return
+    }
+    if (leaving.length) {
+      out.push(`${name}: *${name} watches the door swing shut.* "Well. That happened."`)
+      return
+    }
+    if (/Open the date/.test(turnNote)) {
+      out.push(i === 0 ? `${name}: *${name} spots you and waves you over.* "You made it."` : `${name}: *${name} glances at ${other}, then at you.* "So this is happening."`)
+      return
+    }
+    if (/Last turn/.test(turnNote)) {
+      out.push(i === 0 ? `${name}: *${name} checks the time.* "It's late."` : `${name}: "Same time next week? All three of us."`)
+      return
+    }
+    const mood = lineAfter(system, `\n${full}: Mood: `).replace(/\..*$/, '').toLowerCase()
+    if (/annoyed|unimpressed|hurt|betrayed|done|cold|angry/.test(mood)) out.push(`${name}: *${name}'s smile slips.* "Right. Sure."`)
+    else if (/delighted|interested|flirty|warm/.test(mood)) out.push(`${name}: *${name} laughs and bumps ${other}'s shoulder.* "Okay, that one landed."`)
+    else out.push(`${name}: *${name} leans back.* "${i === 0 ? `What do you think, ${other}?` : 'Go on, I\'m listening.'}"`)
+  })
+  return out.join('\n\n') || 'Someone: "Hey."'
+}
+
 export function storyReply(system) {
+  if (system.includes('\nBETWEEN THEM\n')) return groupStoryReply(system)
   const fullName = (system.match(/You play (.+?) and narrate/) || [])[1] || 'Someone'
   const name = firstName(fullName)
   if (/\bwrite\b[^\n]*\bleaving\b/i.test(system)) {

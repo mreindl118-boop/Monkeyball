@@ -430,3 +430,13 @@
   text-align: center;
   color: var(--smoke-text);
 }
+
+/* Group dates (Phase 6) */
+
+.groupTabs {
+  display: grid;
+}
+
+.groupArt {
+  max-width: 260px;
+}

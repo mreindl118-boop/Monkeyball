@@ -640,3 +640,17 @@ describe('seeds', () => {
     expect(build({ settings: image({ seedMode: 'fixed' }) }).seed).toBe(seedFor({ kind: 'tier', characterId: 'nova', tier: 1 }, 'fixed'))
   })
 })
+
+describe('the group date picture', () => {
+  it('is painted at most at heat 3 (a night out at a shared table), with the safety text intact', () => {
+    const kai = card('kai')
+    const slot: ArtSlot = { kind: 'group', characterIds: ['kai', 'nova'], slot: 'group-date' }
+    const p = build({ characters: [nova, kai], slot, heat: 5, trust: { nova: 80, kai: 80 } })
+    expect(p.prompt).toContain(HEAT_MODIFIERS[3])
+    expect(p.prompt).not.toContain(HEAT_MODIFIERS[5])
+    expect(p.prompt).toContain(IMAGE_SAFETY.positiveClause)
+    expect(imageHeat({ characters: [nova, kai], heat: 5, trust: { nova: 80, kai: 80 }, slot })).toBe(3)
+    // The polycule picture keeps the pair's heat.
+    expect(imageHeat({ characters: [nova, kai], heat: 5, trust: { nova: 80, kai: 80 }, slot: { ...slot, slot: 'polycule' } })).toBe(5)
+  })
+})

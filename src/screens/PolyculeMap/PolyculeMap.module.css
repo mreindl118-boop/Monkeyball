@@ -25,6 +25,9 @@
   margin: 0 calc(-1 * var(--gutter));
   padding: 0 var(--gutter);
   -webkit-overflow-scrolling: touch;
+  /* A roster wider than the phone opens centered on You (the canvas's middle) instead of cut off
+     on one side; a snap area wider than the box still scrolls freely edge to edge. */
+  scroll-snap-type: x mandatory;
 }
 
 .canvas {
@@ -35,6 +38,7 @@
   max-width: var(--map-w);
   height: auto;
   margin: 0 auto;
+  scroll-snap-align: center;
   border-radius: 22px;
   box-shadow: var(--shadow-panel);
   -webkit-tap-highlight-color: transparent;

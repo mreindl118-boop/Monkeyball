@@ -2,9 +2,10 @@
 // stage (stamps pressed when it moved), traits discovered, venue and gift reactions, secrets
 // earned, tiers unlocked, the new memory line in the character's voice, and the damage when they
 // walked out. Accent-tinted by the character. Tiers unlocked on the date (and an epilogue's ending
-// art) develop like instant film, once each (RevealFilm).
+// art) develop like instant film, once each (RevealFilm). A group date (Phase 6) has a recap per
+// character, one tab each, and the pair's shared picture when image generation is on.
 
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Portrait } from '../../art/Portrait'
 import { portraitAccent } from '../../art/Portrait.model'
 import { giftById } from '../../data/gifts'
@@ -15,6 +16,8 @@ import { useDate } from '../../store/date'
 import { useGame } from '../../store/game'
 import { useNav } from '../../store/nav'
 import { useRoster } from '../../store/roster'
+import { useSettings } from '../../store/settings'
+import { groupArtSlot } from '../../engine/groupDate'
 import type { Character, DateRecord, NewsItem, WorldBetrayal } from '../../types'
 import { Backdrop } from '../../ui/Backdrop'
 import { Button } from '../../ui/Button'
@@ -22,10 +25,12 @@ import { cx } from '../../ui/cx'
 import { LipstickStamps } from '../../ui/LipstickStamps'
 import { Meter } from '../../ui/Meter'
 import { Note, Panel } from '../../ui/Panel'
+import { Segmented } from '../../ui/Segmented'
 import { TopBar } from '../../ui/TopBar'
 import { firstName, signed } from '../DateScreen/dateModel'
 import { dtrOutcome } from '../DateScreen/dtrModel'
 import { epilogueSlotLabel, possessive, reasonSentence } from '../Ending/endingModel'
+import { headingLine } from '../../engine/endings'
 import { endingTitle, useEnding } from '../Ending/useEnding'
 import { useRosterAndGame } from '../Hub/useRosterGame'
 import { RUMOR_WARNING } from '../Profile/profileModel'
@@ -121,10 +126,60 @@ export default function Recap() {
     )
   }
 
+  if (record.kind === 'group' && record.characterIds.length > 1) return <GroupRecap record={record} />
   return <RecapView record={record} recap={recap} character={entry.character} />
 }
 
-function RecapView({ record, recap, character }: { record: DateRecord; recap: CharacterRecap; character: Character }) {
+/**
+ * A group date's recap: a tab per character (their own recap, as a single date's), the pair's
+ * shared picture when image generation is on.
+ */
+function GroupRecap({ record }: { record: DateRecord }) {
+  const entries = useRoster((s) => s.entries)
+  const imagesOn = useSettings((s) => s.settings.image.enabled)
+  const people = record.characterIds
+    .map((id) => ({ id, character: entries[id]?.character, recap: recapFor(record, id) }))
+    .filter((p): p is { id: string; character: Character; recap: CharacterRecap } => !!p.character && !!p.recap)
+  const [pick, setPick] = useState(people[0]?.id ?? '')
+  const current = people.find((p) => p.id === pick) ?? people[0]
+  if (!current) return <RecapView record={record} recap={recapFor(record)!} character={entries[record.characterIds[0]]!.character} />
+  const others = people.filter((p) => p.id !== current.id).map((p) => p.character)
+  const firsts = people.map((p) => firstName(p.character.name.trim() || p.id))
+  const slot = groupArtSlot(record.characterIds)
+  const shared = (
+    <>
+      <div className={styles.groupTabs}>
+        <Segmented
+          aria-label="Whose side of the date"
+          value={current.id}
+          onChange={setPick}
+          options={people.map((p) => ({ value: p.id, label: firstName(p.character.name.trim() || p.id) }))}
+        />
+      </div>
+      {imagesOn && (
+        <Panel title="Group date" tone="brass" className={styles.section} description={`${firsts.join(' and ')}, together. It paints in the background and stays in both galleries.`}>
+          <div className={styles.groupArt}>
+            <Portrait character={people[0].character} slot={slot} caption={{ title: 'Group date' }} size="medium" />
+          </div>
+        </Panel>
+      )}
+    </>
+  )
+  return <RecapView key={current.id} record={record} recap={current.recap} character={current.character} group={{ others, shared }} />
+}
+
+function RecapView({
+  record,
+  recap,
+  character,
+  group,
+}: {
+  record: DateRecord
+  recap: CharacterRecap
+  character: Character
+  /** A group date: who else was on it, and what shows above this character's part (the tabs). */
+  group?: { others: Character[]; shared: ReactNode }
+}) {
   const reset = useNav((s) => s.reset)
   const go = useNav((s) => s.go)
   const name = character.name.trim() || character.id
@@ -166,6 +221,10 @@ function RecapView({ record, recap, character }: { record: DateRecord; recap: Ch
   const entries = useRoster((s) => s.entries)
   const sets = useRoster((s) => s.sets)
   const news = useGame((s) => s.game.news)
+  const pastBetrayals = useGame((s) => s.relationships[character.id]?.betrayals)
+  const gainCap = useSettings((s) => s.settings.gainCap)
+  // The date's ledger reached the per-date limit: gains after that were held back.
+  const capped = !epilogueKind(record) && (record.totals?.[character.id]?.affection ?? 0) >= gainCap
   const names = useMemo(() => {
     const out: Record<string, string> = {}
     for (const e of Object.values(entries)) out[e.character.id] = e.character.name.trim() || e.character.id
@@ -178,7 +237,7 @@ function RecapView({ record, recap, character }: { record: DateRecord; recap: Ch
   const gossip = gossipLines(recap.gossip)
   const heard = rumorLines(recap.rumors, sets.flatMap((x) => x.rumors ?? []), names)
   const allNews: NewsItem[] = record.recap?.world?.news ?? dateNews(record, news)
-  const elsewhere = (record.recap?.world?.betrayals ?? []).filter((b) => b.characterId !== character.id)
+  const elsewhere = (record.recap?.world?.betrayals ?? []).filter((b) => !record.characterIds.includes(b.characterId))
   // Someone else's betrayal shows as a hit on their meters (with the news as its caption); the plain
   // list keeps the gossip and rekindles.
   const hits = elsewhere.map((b) => ({
@@ -205,13 +264,22 @@ function RecapView({ record, recap, character }: { record: DateRecord; recap: Ch
             <h2 className={styles.heroName}>
               <span className="name">{name}</span>
             </h2>
-            <p className={styles.heroWhere}>{venue?.id === 'home' ? 'A night in' : `At ${where}`}</p>
+            <p className={styles.heroWhere}>
+              {venue?.id === 'home' ? 'A night in' : `At ${where}`}
+              {group?.others.length ? `, with ${group.others.map((o) => firstName(o.name.trim() || o.id)).join(' and ')}` : ''}
+            </p>
             <p className={styles.heroOutcome}>
-              {epilogue && ending ? `The epilogue: ${ending.charAt(0).toLowerCase()}${ending.slice(1)}.` : outcomeText(record.outcome, first)}
+              {epilogue && ending
+                ? `The epilogue: ${ending.charAt(0).toLowerCase()}${ending.slice(1)}.`
+                : group && recap.left
+                  ? `${first} left early.`
+                  : outcomeText(record.outcome === 'left' && group ? 'ended' : record.outcome, first)}
             </p>
           </div>
         </div>
       </section>
+
+      {group?.shared}
 
       {epilogue && ending && (
         <Panel title="Your ending" tone="brass" className={styles.section}>
@@ -264,6 +332,15 @@ function RecapView({ record, recap, character }: { record: DateRecord; recap: Ch
             {stageChangeText(recap.stageBefore, recap.stageAfter)}
           </p>
         </div>
+        {capped && (
+          <p className={styles.caption}>This date reached its limit of +{gainCap} affection; anything more has to wait for the next date.</p>
+        )}
+        {!epilogue &&
+          headingLine({ affection: recap.affectionAfter, trust: recap.trustAfter, betrayals: [...(pastBetrayals ?? []), ...recap.betrayals] }, 'romantic') && (
+            <p className={styles.caption}>
+              {headingLine({ affection: recap.affectionAfter, trust: recap.trustAfter, betrayals: [...(pastBetrayals ?? []), ...recap.betrayals] }, 'romantic')}
+            </p>
+          )}
       </Panel>
 
       {tierReveals.length > 0 && (
@@ -298,7 +375,7 @@ function RecapView({ record, recap, character }: { record: DateRecord; recap: Ch
       )}
 
       {traits.length > 0 && (
-        <Panel title="Discovered" description="Now on their profile, with how they reacted." className={styles.section}>
+        <Panel title="Discovered" description={`Now on ${possessive(first)} profile, with how ${first} reacted.`} className={styles.section}>
           <ul className={styles.list}>
             {traits.map((t) => (
               <li key={t.key} className={cx(styles.trait, styles[t.type])}>
@@ -410,7 +487,7 @@ function RecapView({ record, recap, character }: { record: DateRecord; recap: Ch
             go({ name: 'profile', id: character.id })
           }}
         >
-          See their profile
+          See {possessive(first)} profile
         </Button>
       </div>
     </main>
@@ -449,6 +526,10 @@ function ElsewhereHit({ hit, caption, name }: { hit: WorldBetrayal; caption: str
  * They reached 100 on this date: the ending they're on (title and why), with the way to it, and the
  * automatic slot from before it.
  */
+function epilogueKind(record: { kind?: string }): boolean {
+  return record.kind === 'epilogue'
+}
+
 function WonEnding({ character }: { character: Character }) {
   const go = useNav((s) => s.go)
   const reset = useNav((s) => s.reset)

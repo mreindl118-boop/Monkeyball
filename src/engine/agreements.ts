@@ -113,6 +113,11 @@ export interface KnowsOptions {
   seen?: (id: string) => boolean
   /** Their route: a friend never minds who else you see. */
   route?: Route
+  /**
+   * The player has learned their relationship style (rel.revealed.style). False leaves out how
+   * they take it (minds, doesn't care, happy for you) in lines the player reads. Default true.
+   */
+  styleKnown?: boolean
 }
 
 /** The partner they got back together with in a rekindle, if any. */
@@ -414,9 +419,18 @@ export function datedSinceAgreement(rel: Pick<Relationship, 'agreement'>, otherR
   return !!otherRel && (otherRel.dates ?? 0) > 0 && (otherRel.lastDateAt ?? 0) > (rel.agreement?.madeAt ?? 0)
 }
 
-/** True when a betrayal about `about` was already counted since that person's last date. */
-export function alreadyCounted(rel: Pick<Relationship, 'betrayals'>, about: string, otherRel: Relationship | undefined): boolean {
+/**
+ * True when a betrayal about `about` was already counted since that person's last date, or when
+ * that last date was a group date this character was on too (they saw it: nothing to learn).
+ */
+export function alreadyCounted(
+  rel: Pick<Relationship, 'betrayals' | 'metOnGroupDate'>,
+  about: string,
+  otherRel: Relationship | undefined,
+): boolean {
   const since = otherRel?.lastDateAt ?? 0
+  const met = rel.metOnGroupDate?.[about] ?? 0
+  if (met > 0 && met >= since) return true
   return (rel.betrayals ?? []).some((b) => b.kind === 'agreement' && b.about === about && b.at >= since)
 }
 
@@ -649,6 +663,8 @@ export function standingLine(c: Character, rel: Relationship, names: Record<stri
       : `${first} doesn't know about anyone else.`
   }
   const who = joinAnd(known)
+  // How they take it is their relationship style's to tell: hidden until the player learned it.
+  if (opts.styleKnown === false) return `${first} knows you're seeing ${who}.`
   if (isJealous(c, rel, opts)) return `${first} knows you're seeing ${who} and minds.`
   if (c.jealousy === 'compersion') return `${first} knows you're seeing ${who} and is happy for you.`
   return `${first} knows you're seeing ${who} and doesn't care.`

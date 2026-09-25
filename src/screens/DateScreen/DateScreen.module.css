@@ -655,3 +655,109 @@
   font-weight: 700;
   font-size: 12px;
 }
+
+/* Group dates (Phase 6) */
+
+.stagePair {
+  gap: 10px;
+}
+
+.pairSlot {
+  display: flex;
+  align-items: flex-end;
+  height: 100%;
+  max-width: 46%;
+}
+
+.pairPortrait {
+  width: auto;
+  height: 100%;
+  max-height: 300px;
+  max-width: 100%;
+  box-shadow:
+    0 18px 40px rgb(0 0 0 / 0.45),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+@container (max-height: 150px) {
+  .stagePair .pairSlot {
+    display: none;
+  }
+}
+
+.groupToggle {
+  align-items: center;
+}
+
+.groupMoods {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 4px;
+}
+
+.groupMood {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.groupMood .moodKiss {
+  color: var(--accent);
+}
+
+.goneMood {
+  opacity: 0.55;
+}
+
+.hintLines {
+  display: grid;
+  gap: 2px;
+  padding-bottom: 6px;
+}
+
+.hintLines .hintLine {
+  padding-bottom: 0;
+}
+
+.hintWho {
+  font-weight: 700;
+}
+
+.groupMeters {
+  display: grid;
+  gap: 8px;
+  padding-left: 10px;
+  border-left: 2px solid var(--accent);
+}
+
+.groupMetersName {
+  font-size: 16px;
+}
+
+.groupLine {
+  padding-left: 10px;
+  border-left: 2px solid var(--speaker, var(--accent));
+}
+
+.speaker {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 14px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--speaker, var(--accent)) 55%, var(--blush));
+}
+
+/* Two sets of meters: the panel scrolls rather than squeezing the composer off the screen. */
+.groupPanel {
+  max-height: 38dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Buttons in crowded spots (the status panel, above the chips): a full 48px box instead of the
+   small pill's ::before extension, which neighbours can cover. */
+button.tap {
+  min-height: var(--tap, 48px);
+}

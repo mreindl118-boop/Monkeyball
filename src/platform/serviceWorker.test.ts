@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const env = vi.hoisted(() => ({ native: false }))
 vi.mock('./platform', () => ({ isNative: () => env.native }))
 
-import { setupServiceWorker, UPDATE_READY_TEXT, watchForUpdates } from './serviceWorker'
+import { reofferUpdate, setupServiceWorker, UPDATE_READY_TEXT, watchForUpdates } from './serviceWorker'
 import { useToasts } from '../ui/toastStore'
 
 function fakeServiceWorker() {
@@ -109,6 +109,27 @@ describe('watchForUpdates', () => {
     next.become('installed')
     next.become('installed')
     expect(onUpdate).toHaveBeenCalledTimes(1)
+  })
+
+  it('offers a newer version after an earlier one, and again when Settings asks', () => {
+    const sw = container(true)
+    const reg = fakeRegistration()
+    const onUpdate = vi.fn()
+    watchForUpdates(sw as never, reg as never, { onUpdate, reload: vi.fn() })
+    const v2 = new FakeWorker()
+    reg.installing = v2
+    reg.fire('updatefound')
+    v2.become('installed')
+    const v3 = new FakeWorker()
+    reg.installing = v3
+    reg.fire('updatefound')
+    v3.become('installed')
+    expect(onUpdate).toHaveBeenCalledTimes(2)
+    ;(reg as { waiting: FakeWorker | null }).waiting = v3
+    expect(reofferUpdate()).toBe(true)
+    expect(onUpdate).toHaveBeenCalledTimes(3)
+    ;(reg as { waiting: FakeWorker | null }).waiting = null
+    expect(reofferUpdate()).toBe(false)
   })
 
   it('stays quiet on the first install (nothing controls the page yet)', () => {

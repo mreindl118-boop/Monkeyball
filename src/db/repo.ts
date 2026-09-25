@@ -267,16 +267,21 @@ export async function importSave(input: Blob | string, d: CrushDB = db): Promise
 /**
  * Imported settings get this device's keys back: each preset keeps the key stored here for that
  * preset, so a key is never moved onto a different provider. (Older files that carried a key
- * keep it.)
+ * keep it.) A file with no settings row keeps this device's settings row as it is (keys, the age
+ * confirmation and all); settings with no connection get this device's connection whole.
  */
 function keepLocalApiKey(rows: KvRow[], current: KvRow | undefined): KvRow[] {
+  const hasSettings = rows.some((row) => row.key === 'settings' && isRecord(row.value))
+  if (!hasSettings) {
+    return current ? [...rows.filter((row) => row.key !== 'settings'), current] : rows
+  }
   const stored = (current?.value as Settings | undefined)?.connection
   if (!isRecord(stored)) return rows
   const local = migrateConnection(stored)
   return rows.map((row) => {
     if (row.key !== 'settings' || !isRecord(row.value)) return row
     const s = row.value as unknown as Settings
-    if (!isRecord(s.connection)) return row
+    if (!isRecord(s.connection)) return { key: row.key, value: { ...s, connection: stored } }
     return { key: row.key, value: { ...s, connection: withLocalKeys(s.connection, local) } }
   })
 }

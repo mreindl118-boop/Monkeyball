@@ -29,6 +29,7 @@ import type {
   TurnRole,
 } from '../types'
 import agreementTemplate from './agreement.txt?raw'
+import groupStoryTemplate from './groupStory.txt?raw'
 import judgeTemplate from './judge.txt?raw'
 import memoryTemplate from './memory.txt?raw'
 import storyTemplate from './story.txt?raw'
@@ -41,6 +42,8 @@ export const TEMPLATES = {
   agreement: agreementTemplate,
   suggestions: suggestionsTemplate,
   memory: memoryTemplate,
+  /** Phase 6: the group date's story prompt (its locked sections come from `story`, see buildGroupStoryPrompt). */
+  groupStory: groupStoryTemplate,
 } as const
 
 export type FillValues = Record<string, string | number>
@@ -840,4 +843,200 @@ export function makeMemoryCompressionMessages(systemPrompt: string, entries: rea
       content: `Earlier dates, oldest first:\n${entries.map(str).filter(Boolean).join('\n\n')}\n\nCompress all of these into one paragraph.`,
     },
   ]
+}
+
+// ---------------------------------------------------------------------------
+// Group dates (Phase 6)
+//
+// The group story prompt (groupStory.txt) takes its WORLD RULES, PLAYER and CONTENT sections from
+// the story template itself, so they can't drift from the locked wording: a line that names the
+// character ({name}, or what they know, or how the last message landed with them) is written once
+// per character, filled exactly as the single story prompt fills it; every other line once. The
+// CHARACTER, HIDDEN PREFERENCES and RELATIONSHIP sections are written once per character, and so is
+// the LANDED line. The group template adds BETWEEN THEM, the scene and the speaker-tag format.
+
+/** A blank-line-separated section of the story template, by its first word(s), or ''. */
+export function storySection(header: string): string {
+  return TEMPLATES.story.split('\n\n').find((block) => block.startsWith(header)) ?? ''
+}
+
+/** Story placeholders that are about one character (a line holding one is written per character). */
+const PER_CHARACTER_KEYS: readonly string[] = ['name', 'knownStyle', 'mood', 'hitsLine']
+
+/**
+ * Fill a story section for several characters: lines with a per-character placeholder once per
+ * character (prefixed "{name}: " when the line doesn't name them itself), the rest once, from
+ * `shared`.
+ */
+export function fillForEach(section: string, shared: FillValues, members: readonly FillValues[]): string {
+  return section
+    .split('\n')
+    .flatMap((line) => {
+      const keys = [...line.matchAll(/\{([^{}\n]+)\}/g)].map((m) => m[1])
+      if (!keys.some((k) => PER_CHARACTER_KEYS.includes(k))) return [fill(line, shared)]
+      return members.map((v) => {
+        const out = fill(line, { ...shared, ...v })
+        return line.includes('{name}') ? out : `${v.name}: ${out}`
+      })
+    })
+    .join('\n')
+}
+
+/**
+ * The name a character's lines start with in a group reply: a quoted nickname ('Roxanne "Rox"
+ * Delacroix' is Rox), else the first word of the name.
+ */
+export function speakerTag(name: string): string {
+  const s = str(name)
+  const nick = /["“]([^"”]+)["”]/.exec(s)
+  if (nick) return nick[1].trim()
+  return s.split(/\s+/)[0] ?? s
+}
+
+/** Speaker tags for these names: first names, or the full name for two that share a first name. */
+export function speakerTags(names: readonly string[]): string[] {
+  const tags = names.map(speakerTag)
+  return tags.map((t, i) => (tags.some((o, j) => j !== i && o.toLowerCase() === t.toLowerCase()) ? str(names[i]) : t))
+}
+
+/** The heat a group scene plays at: the lowest effective heat of everyone on it (ace caps, trust gates). */
+export function groupHeat(members: readonly { character: Character; trust: number }[], heat: HeatLevel): HeatLevel {
+  let out = heat
+  for (const m of members) {
+    const h = effectiveHeat(m.character, m.trust, heat)
+    if (h < out) out = h
+  }
+  return out
+}
+
+export interface GroupStoryContext {
+  /**
+   * Everyone still on the date, in order, as the single story prompt would see each of them: their
+   * relationship, route, venue feeling, judge result for the last message (the LANDED line), notes.
+   * Their own gift, turnNote and special are ignored (the group's are below).
+   */
+  members: StoryContext[]
+  /** The player's chosen heat; the scene plays at the lowest of everyone's effective heat. */
+  heat: HeatLevel
+  turn: number
+  maxTurns: number
+  /** The venue's name, with its note ("your place", drag night) when there is one. */
+  venue: { name: string; note?: string }
+  /** The gift and the one character it's for (by id), when the player brought one. */
+  gift?: { name: string; to: string; reaction: GiftReaction }
+  /** BETWEEN THEM: what they are to each other and how each feels about the player dating the other. */
+  between: string
+  /** The whole turn note (groupTurnNote). */
+  turnNote: string
+}
+
+/** Every placeholder value for the group story template. Exported for the debug panel and tests. */
+export function groupStoryValues(ctx: GroupStoryContext): FillValues {
+  const members = ctx.members
+  const heat = groupHeat(
+    members.map((m) => ({ character: m.character, trust: m.rel.trust })),
+    ctx.heat,
+  )
+  const values = members.map((m) => storyValues({ ...m, heat, turn: ctx.turn, maxTurns: ctx.maxTurns }))
+  const shared: FillValues = { ...(values[0] ?? {}) }
+  for (const k of PER_CHARACTER_KEYS) delete shared[k]
+  if (!values[0]) {
+    shared.heatDescription = heatDescription(heat)
+    shared.playerName = 'the player'
+  }
+  const names = members.map((m) => m.character.name)
+  const tags = speakerTags(names)
+  const landedFor = values.filter((v, i) => members[i].judge && v.mood != null)
+  const character = members
+    .map((_, i) =>
+      ['CHARACTER', 'HIDDEN PREFERENCES', 'RELATIONSHIP'].map((h) => fill(storySection(h), values[i])).join('\n\n'),
+    )
+    .join('\n\n')
+  const venueNote = ctx.venue.note ? noPeriod(ctx.venue.note) : ''
+  const giftTo = ctx.gift ? members.find((m) => m.character.id === ctx.gift?.to)?.character.name : undefined
+  return {
+    names: joinAnd(names) || 'the characters',
+    worldRules: fillForEach(storySection('WORLD RULES'), shared, values),
+    player: fillForEach(storySection('PLAYER'), shared, values),
+    characters: character,
+    between: str(ctx.between) || 'Nothing between them that anyone knows of.',
+    venue: venueNote ? `${noPeriod(ctx.venue.name)} (${venueNote})` : noPeriod(ctx.venue.name),
+    venueFeelings: values.map((v, i) => `${members[i].character.name} ${v.venueFeeling}.`).join(' '),
+    giftLine:
+      ctx.gift && giftTo
+        ? `You brought ${noPeriod(lowerFirst(ctx.gift.name))} for ${giftTo}. ${giftTo} ${GIFT_REACTION[ctx.gift.reaction] ?? GIFT_REACTION.neutral}.`
+        : 'No gift this time.',
+    turn: ctx.turn,
+    maxTurns: ctx.maxTurns,
+    turnNote: str(ctx.turnNote),
+    landed: landedFor.length ? fillForEach(storySection(LANDED_HEADER), shared, landedFor) : '',
+    content: fillForEach(storySection('CONTENT'), shared, values),
+    present: joinAnd(names) || 'nobody',
+    exampleTag: tags[0] ?? 'Name',
+  }
+}
+
+/** The group date's story system prompt. Without any judge result (turn 0) the LANDED section is left out. */
+export function buildGroupStoryPrompt(ctx: GroupStoryContext, overrides?: Overrides): string {
+  const filled = fill(TEMPLATES.groupStory, groupStoryValues(ctx)).replace(/\n{3,}/g, '\n\n')
+  return withOverrides(trimLineEnds(filled).trimEnd(), overrides)
+}
+
+export interface GroupTurnNoteContext {
+  /** Everyone still on the date. `leaving`: the date went badly for them and this reply is their exit. */
+  members: { name: string; opener?: string; firstDate?: boolean; leaving?: boolean }[]
+  /** Names of anyone who already walked out. */
+  departed?: string[]
+  turn: number
+  maxTurns: number
+  /** One-shot notes for this reply (rumors to let slip, what someone just found out). */
+  notes?: string[]
+}
+
+/**
+ * The group's {turnNote}: the opening (everyone arrives; a first date's opener line), someone
+ * walking out (the date goes on with the other), the last turn, who already left, then notes.
+ */
+export function groupTurnNote(ctx: GroupTurnNoteContext): string {
+  const parts: string[] = []
+  const names = ctx.members.map((m) => m.name)
+  const leaving = ctx.members.filter((m) => m.leaving).map((m) => m.name)
+  const staying = ctx.members.filter((m) => !m.leaving).map((m) => m.name)
+  if (ctx.turn === 0) {
+    parts.push(`Open the date: ${joinAnd(names)} arrive and greet the player, and each other.`)
+    for (const m of ctx.members) {
+      const opener = str(m.opener)
+      if (m.firstDate && opener && !m.leaving) parts.push(`${m.name} can use this line: ${opener}`)
+    }
+  }
+  if (leaving.length && staying.length === 0) {
+    parts.push(`The date has gone badly: write ${joinAnd(leaving)} leaving.`)
+  } else if (leaving.length) {
+    parts.push(`The date has gone badly for ${joinAnd(leaving)}: write ${joinAnd(leaving)} leaving, and the date goes on with ${joinAnd(staying)}.`)
+  } else if (ctx.turn > 0 && ctx.turn >= ctx.maxTurns) {
+    parts.push(`Last turn: bring the date to a natural close; each of them hints at whether they want another.`)
+  }
+  const gone = (ctx.departed ?? []).filter(Boolean)
+  if (gone.length) parts.push(`${joinAnd(gone)} already left; ${staying.length ? joinAnd(staying) : 'nobody'} stayed. ${joinAnd(gone)} is gone and does not speak again.`)
+  for (const n of ctx.notes ?? []) {
+    const t = sentence(str(n))
+    if (t) parts.push(t)
+  }
+  return parts.join(' ')
+}
+
+/**
+ * Story call messages for a group date: like makeStoryMessages, with each character turn written
+ * as the model wrote it, "{tag}: text", so the next reply keeps the format.
+ */
+export function makeGroupStoryMessages(
+  systemPrompt: string,
+  turns: readonly TurnLike[],
+  tags: Record<string, string>,
+  turn0: boolean = turns.length === 0,
+): ChatMessage[] {
+  const tagged = turns.map((t) =>
+    t.role === 'character' && t.speaker && tags[t.speaker] ? { ...t, text: `${tags[t.speaker]}: ${str(t.text)}` } : t,
+  )
+  return makeStoryMessages(systemPrompt, tagged, turn0)
 }

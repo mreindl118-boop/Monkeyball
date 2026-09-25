@@ -348,6 +348,7 @@ export function explainError(err: unknown, conn: ProblemTarget, model?: string):
           fix: unreachableFix(conn),
         }
       }
+      if (offlineFor(conn)) return offlineProblem(conn)
       if (err.via === 'native') {
         // The Android app's native retry has no CORS, so this is about the server or the network.
         return {
@@ -423,6 +424,29 @@ export function explainRoleError(err: unknown, conn: ConnectionSettings, role: '
   return explainError(err, route, route.model)
 }
 
+/**
+ * The device says it is offline and the server isn't on this device (127.0.0.1 or localhost work
+ * offline): a local or LAN server can't be reached either, and CORS has nothing to do with it.
+ */
+export function offlineFor(conn: Pick<ProblemTarget, 'baseUrl'>): boolean {
+  if (typeof navigator === 'undefined' || navigator.onLine !== false) return false
+  let host = ''
+  try {
+    host = new URL(normalizeBaseUrl(conn.baseUrl)).hostname.toLowerCase()
+  } catch {
+    return true
+  }
+  return !(host === 'localhost' || host.endsWith('.localhost') || host === '[::1]' || host === '::1' || /^127\./.test(host))
+}
+
+function offlineProblem(conn: ProblemTarget): ConnectionProblem {
+  return {
+    kind: 'unreachable',
+    message: `Couldn't reach ${normalizeBaseUrl(conn.baseUrl) || 'the model server'}. This device may be offline.`,
+    fix: 'Connect to Wi-Fi or mobile data, then try again. Only model calls need a connection.',
+  }
+}
+
 /** After a fetch TypeError: an opaque no-cors success means reachable but blocked by CORS. */
 async function probeReachable(url: string, signal?: AbortSignal): Promise<boolean> {
   try {
@@ -440,6 +464,7 @@ async function classifyNetwork(
 ): Promise<ConnectionProblem> {
   if (e.kind !== 'network') return explainError(e, conn)
   if (blockedAsMixedContent(conn)) return mixedContentProblem(conn)
+  if (offlineFor(conn)) return offlineProblem(conn)
   // The Android app already retried natively (no CORS there): nothing answered.
   const reachable = e.via === 'native' ? false : await probeReachable(modelsUrl(conn), signal)
   if (reachable) {

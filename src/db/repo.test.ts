@@ -185,6 +185,29 @@ describe('export and import', () => {
     expect(s.connection.providers.openrouter).toEqual({ baseUrl: 'https://openrouter.ai/api/v1', apiKey: 'sk-or-local' })
   })
 
+  it("import of a file with no settings (or settings with no connection) keeps this device's keys and age confirmation", async () => {
+    const source = freshDb()
+    await seed(source)
+    const file = JSON.parse(await (await exportSave({}, source)).text()) as { kv: { key: string; value: Settings }[] }
+    const noSettings = { ...file, kv: file.kv.filter((r) => r.key !== 'settings') }
+    const target = freshDb()
+    const local = defaultSettings()
+    local.ageConfirmed = true
+    local.connection.providers.claude.apiKey = 'sk-keep'
+    await kvSet('settings', local, target)
+    await importSave(JSON.stringify(noSettings), target)
+    let s = (await kvGet<Settings>('settings', target))!
+    expect(s.ageConfirmed).toBe(true)
+    expect(s.connection.providers.claude.apiKey).toBe('sk-keep')
+
+    const noConnection = structuredClone(file)
+    const row = noConnection.kv.find((r) => r.key === 'settings')!
+    delete (row.value as Partial<Settings>).connection
+    await importSave(JSON.stringify(noConnection), target)
+    s = (await kvGet<Settings>('settings', target))!
+    expect(s.connection.providers.claude.apiKey).toBe('sk-keep')
+  })
+
   it("import can't point this device's key at a server of the file's choosing", async () => {
     const source = freshDb()
     await seed(source)
