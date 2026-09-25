@@ -1,0 +1,25 @@
+.wrap {
+  display: grid;
+  place-items: center;
+  min-height: 60dvh;
+}
+
+.panel {
+  max-width: 440px;
+  text-align: center;
+  justify-items: center;
+}
+
+.kiss {
+  width: 56px;
+  height: 38px;
+  color: var(--brass);
+  opacity: 0.85;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}

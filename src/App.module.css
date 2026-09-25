@@ -1,0 +1,25 @@
+.stage {
+  min-height: 100dvh;
+}
+
+.loading {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 18px;
+  min-height: 100dvh;
+  padding: var(--safe-top) var(--gutter) var(--safe-bottom);
+  text-align: center;
+}
+
+.loadingText {
+  color: var(--smoke);
+  font-size: 14px;
+  animation: breathe 1.6s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  50% {
+    opacity: 0.4;
+  }
+}

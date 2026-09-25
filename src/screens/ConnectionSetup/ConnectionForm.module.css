@@ -1,0 +1,120 @@
+.form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+
+.result {
+  display: grid;
+  gap: 14px;
+}
+
+.where {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: var(--radius-m);
+  border: 1px dashed var(--line-strong);
+  background: var(--blush-soft);
+}
+
+.testRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.testRow > button {
+  flex: 1 1 200px;
+}
+
+@media (min-width: 720px) {
+  .testRow > button {
+    flex: 0 0 auto;
+  }
+}
+
+.steps {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stepItem {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 10px;
+  align-items: start;
+  font-size: 14.5px;
+}
+
+.stepIcon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+}
+
+.stepIcon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.okIcon {
+  background: var(--brass-soft);
+  color: var(--brass);
+}
+
+.failIcon {
+  background: var(--lipstick-soft);
+  color: var(--lipstick);
+}
+
+.stepLabel {
+  font-weight: 600;
+}
+
+.stepDetail {
+  display: block;
+  color: var(--smoke);
+  font-size: 13.5px;
+  overflow-wrap: anywhere;
+}
+
+.fix {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.grid2 {
+  display: grid;
+  gap: 24px;
+}
+
+@media (min-width: 720px) {
+  .grid2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: var(--tap);
+  padding: 0 16px;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--line);
+  font-size: 14px;
+  color: var(--smoke);
+}
+
+.info strong {
+  color: var(--blush);
+  font-variant-numeric: tabular-nums;
+}

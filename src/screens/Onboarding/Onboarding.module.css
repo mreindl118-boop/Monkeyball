@@ -1,0 +1,28 @@
+.root {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  max-width: 680px;
+  padding-top: calc(var(--safe-top) + 28px);
+}
+
+.head {
+  display: grid;
+  gap: 10px;
+}
+
+.step {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brass);
+}
+
+.title {
+  font-style: italic;
+  font-size: clamp(30px, 8vw, 44px);
+}
+
+.sub {
+  color: var(--smoke);
+  max-width: 52ch;
+}

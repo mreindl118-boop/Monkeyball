@@ -1,0 +1,60 @@
+.field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.labelRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--blush);
+}
+
+.optional {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--smoke);
+}
+
+.aside {
+  font-size: 13px;
+  color: var(--smoke);
+  font-variant-numeric: tabular-nums;
+}
+
+.hint {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--smoke);
+}
+
+.error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 13.5px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--lipstick) 55%, var(--blush));
+}
+
+.error::before {
+  content: '';
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--lipstick);
+}

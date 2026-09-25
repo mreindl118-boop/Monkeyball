@@ -1,0 +1,139 @@
+.pills {
+  container-type: inline-size;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border-radius: calc(var(--radius-m) + 4px);
+  background: var(--field-bg);
+  border: 1px solid var(--line);
+}
+
+.pill {
+  flex: 1 1 auto;
+  min-height: 44px;
+  min-width: 72px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: var(--blush);
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 140ms var(--ease-out),
+    color 140ms var(--ease-out);
+}
+
+.pill:hover:not([aria-checked='true']):not(:disabled) {
+  background: var(--blush-soft);
+}
+
+.pill[aria-checked='true'] {
+  background: var(--blush);
+  color: var(--velvet);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.3);
+}
+
+.pill:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 1px;
+  border-radius: var(--radius-m);
+}
+
+.pill:disabled,
+.card:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Four options on a narrow control: two by two rather than three and one. */
+.pills[data-count='4'] > .pill {
+  flex: 1 1 calc(50% - 4px);
+}
+
+@container (min-width: 440px) {
+  .pills[data-count='4'] > .pill {
+    flex: 1 1 0;
+  }
+}
+
+/* Cards */
+.cards {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--card-min, 220px)), 1fr));
+}
+
+.card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 4px 12px;
+  min-height: var(--tap);
+  padding: 14px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-m);
+  background: var(--field-bg);
+  color: var(--blush);
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color 140ms var(--ease-out),
+    background-color 140ms var(--ease-out);
+}
+
+.card:hover:not([aria-checked='true']):not(:disabled) {
+  border-color: color-mix(in srgb, var(--blush) 40%, transparent);
+}
+
+.card[aria-checked='true'] {
+  border-color: var(--lipstick);
+  background:
+    radial-gradient(120% 120% at 0% 0%, var(--lipstick-soft), transparent 70%),
+    var(--field-bg);
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+  border-radius: var(--radius-m);
+}
+
+.dot {
+  grid-row: span 2;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: 50%;
+  border: 2px solid var(--smoke);
+  display: grid;
+  place-items: center;
+}
+
+.card[aria-checked='true'] .dot {
+  border-color: var(--lipstick);
+}
+
+.card[aria-checked='true'] .dot::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--lipstick);
+}
+
+.cardLabel {
+  font-weight: 700;
+  font-size: 15.5px;
+}
+
+.cardDescription {
+  grid-column: 2;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--smoke);
+}

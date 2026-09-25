@@ -1,0 +1,167 @@
+.button {
+  --btn-bg: var(--oxblood-soft);
+  --btn-fg: var(--blush);
+  --btn-border: var(--line-strong);
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--tap);
+  min-width: var(--tap);
+  padding: 0 20px;
+  border: 1px solid var(--btn-border);
+  border-radius: 999px;
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition:
+    transform 120ms var(--ease-out),
+    background-color 160ms var(--ease-out),
+    border-color 160ms var(--ease-out),
+    opacity 160ms var(--ease-out);
+}
+
+.button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 3px;
+  border-radius: 999px;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.button[aria-busy='true'] {
+  cursor: progress;
+  opacity: 1;
+}
+
+.primary {
+  --btn-bg: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--lipstick) 88%, #fff) 0%,
+    var(--lipstick) 55%,
+    color-mix(in srgb, var(--lipstick) 85%, #000) 100%
+  );
+  --btn-fg: #fff;
+  --btn-border: transparent;
+  box-shadow:
+    0 6px 18px var(--lipstick-glow),
+    inset 0 1px 0 rgb(255 255 255 / 0.22);
+}
+
+.primary:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+
+.secondary:hover:not(:disabled) {
+  --btn-bg: color-mix(in srgb, var(--oxblood-soft) 82%, var(--blush));
+}
+
+.ghost {
+  --btn-bg: transparent;
+  --btn-border: transparent;
+}
+
+.ghost:hover:not(:disabled) {
+  --btn-bg: var(--blush-soft);
+}
+
+.danger {
+  --btn-bg: transparent;
+  --btn-fg: color-mix(in srgb, var(--lipstick) 55%, var(--blush));
+  --btn-border: rgb(224 36 94 / 0.6);
+}
+
+.danger:hover:not(:disabled) {
+  --btn-bg: var(--lipstick-soft);
+}
+
+.brass {
+  --btn-bg: var(--brass-soft);
+  --btn-fg: var(--brass);
+  --btn-border: rgb(201 164 92 / 0.45);
+}
+
+.small {
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+
+/* Keep a 48px hit area even when the visible pill is smaller. */
+.small::before {
+  content: '';
+  position: absolute;
+  inset: -4px 0;
+}
+
+.block {
+  display: flex;
+  width: 100%;
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.busyLabel {
+  visibility: hidden;
+}
+
+.spinner {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.spinner::after {
+  content: '';
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Icon button */
+.icon {
+  padding: 0;
+  width: var(--tap);
+  border-radius: 50%;
+}
+
+.icon:focus-visible {
+  border-radius: 50%;
+}
+
+.icon svg {
+  width: 22px;
+  height: 22px;
+}

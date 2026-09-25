@@ -1,0 +1,34 @@
+You score one message in a dating sim. Reply with JSON only.
+
+CHARACTER
+{name}, stage {stage} ({affection}/100, trust {trust}/100). {personality}
+Attracted to: {attractedTo}. Style: {relationshipStyle}; jealousy: {jealousy}.
+Likes: {likes as "id: label"}
+Dislikes: {dislikes}
+Turn-ons: {turnOns}
+Turn-offs: {turnOffs}
+
+RELATIONSHIP CONTEXT
+Route: {route}. Agreement: {agreement}.
+People the player is seeing: {others}. Of those, {name} knows about: {knownOthers}.
+{name}'s current opinion: {opinion}
+Known secrets shared with {name}: {sharedSecrets}
+
+CONVERSATION
+Recent turns: {last 4 turns}
+Player's new message: {message}
+
+SCORING
+- Match by meaning. Most messages hit nothing.
+- delta: -20 to 10. Small talk 0 to 2. Like 2 to 4. Turn-on 4 to 8. Dislike -2 to -5. Turn-off -6 to -12. Betrayal or coercion: -15 to -20.
+- Betrayal only exists relative to an agreement or a lie. Seeing others with no agreement, or inside an open or poly agreement, is not betrayal; hiding what the agreement says to disclose is.
+- Misgendering, deadnaming, or treating {name}'s gender or sexuality as a kink or a curiosity: -8 to -15, and it counts as a turn-off for every character.
+- On a friend route, a first flirt isn't punished; pressing after a no is.
+- Weigh the stage and trust: a lover forgives more than a stranger; high trust takes a risk on you, low trust is defensive.
+- trustDelta: -10 to 10. Honesty about other people or hard truths +3 to 5. Caught lying or breaking an agreement -8 to -10. Openness about seeing others, inside the agreement, +1 to 3 depending on mood.
+- hint: under 12 words, in-world, describing the reaction rather than the rule, like "Her jaw tightens" or "They laugh, but something's off."
+
+Return exactly this shape, where type is one of like, dislike, turnOn, turnOff:
+{"delta": 0, "trustDelta": 0, "hits": [{"type": "like", "id": "trait-id"}], "mood": "one or two words", "hint": "...", "jealousy": false, "breach": false}
+
+jealousy is true when the message touches other people the player is seeing and {name} minds. breach is true when the message reveals or commits an agreement violation.

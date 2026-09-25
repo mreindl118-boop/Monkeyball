@@ -1,0 +1,48 @@
+.root {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 22px;
+  max-width: 760px;
+}
+
+.intro {
+  display: grid;
+  gap: 10px;
+}
+
+.title {
+  font-style: italic;
+  font-size: clamp(30px, 8vw, 44px);
+}
+
+.sub {
+  color: var(--smoke);
+  max-width: 56ch;
+}
+
+.actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap-reverse;
+  gap: 10px;
+  margin: 0 calc(-1 * var(--gutter));
+  padding: 14px var(--gutter) calc(var(--safe-bottom) + 14px);
+  background: linear-gradient(180deg, transparent 0, var(--velvet) 22px);
+}
+
+.actions > * {
+  flex: 1 1 140px;
+}
+
+@media (min-width: 720px) {
+  .actions {
+    justify-content: flex-end;
+  }
+
+  .actions > * {
+    flex: 0 0 auto;
+    min-width: 180px;
+  }
+}

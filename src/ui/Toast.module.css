@@ -1,0 +1,71 @@
+.host {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--safe-bottom) + 20px);
+  z-index: var(--z-toast);
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 0 calc(var(--safe-right) + var(--gutter)) 0 calc(var(--safe-left) + var(--gutter));
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(480px, 100%);
+  min-height: var(--tap);
+  padding: 8px 8px 8px 16px;
+  border-radius: var(--radius-m);
+  background: var(--velvet-deep);
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.5);
+  font-size: 14.5px;
+  font-weight: 500;
+}
+
+.toast::before {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--smoke);
+}
+
+.success::before {
+  background: var(--brass);
+}
+
+.error {
+  border-color: rgb(224 36 94 / 0.55);
+}
+
+.error::before {
+  background: var(--lipstick);
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+}
+
+.dismiss {
+  flex: none;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--radius-s);
+  background: transparent;
+  color: var(--smoke);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.dismiss:hover {
+  color: var(--blush);
+  background: var(--blush-soft);
+}

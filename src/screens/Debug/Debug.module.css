@@ -1,0 +1,135 @@
+.root {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  max-width: 960px;
+  --accent: var(--brass);
+}
+
+.intro {
+  color: var(--smoke);
+  font-size: 14px;
+}
+
+.stack {
+  display: grid;
+  gap: 22px;
+}
+
+.kind {
+  display: grid;
+  gap: 10px;
+}
+
+.kindHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.kindTitle {
+  font-style: italic;
+  font-size: 20px;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.count {
+  font-size: 14px;
+  color: var(--smoke);
+}
+
+.entries {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry {
+  border-radius: var(--radius-m);
+  border: 1px solid var(--line);
+  background: var(--oxblood);
+  overflow: hidden;
+}
+
+.entry[open] {
+  border-color: var(--line-strong);
+}
+
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-height: var(--tap);
+  padding: 10px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.summary::-webkit-details-marker {
+  display: none;
+}
+
+.summary::before {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--smoke);
+  border-bottom: 2px solid var(--smoke);
+  transform: rotate(-45deg);
+  transition: transform 140ms var(--ease-out);
+}
+
+.entry[open] > .summary::before {
+  transform: rotate(45deg);
+}
+
+.summary:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: -2px;
+  border-radius: var(--radius-m);
+}
+
+.entryKind {
+  font-weight: 700;
+}
+
+.entryMeta {
+  font-size: 13px;
+  color: var(--smoke);
+  font-variant-numeric: tabular-nums;
+}
+
+.entryBody {
+  display: grid;
+  gap: 12px;
+  padding: 4px 14px 14px;
+}
+
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--smoke);
+}
+
+.empty strong {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--blush);
+}

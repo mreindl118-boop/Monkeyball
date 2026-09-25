@@ -1,0 +1,153 @@
+.root {
+  display: grid;
+  gap: 14px;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.label {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.current {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 1.1;
+  color: var(--blush);
+}
+
+.current b {
+  color: var(--lipstick);
+  font-weight: 600;
+}
+
+.pips {
+  display: flex;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 6px;
+  border-radius: var(--radius-l);
+  background: var(--field-bg);
+  border: 1px solid var(--line);
+}
+
+.pip {
+  position: relative;
+  flex: 1 1 0;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 64px;
+  padding: 8px 2px 6px;
+  border: 0;
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: color-mix(in srgb, var(--smoke) 75%, transparent);
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 140ms var(--ease-out),
+    color 140ms var(--ease-out);
+}
+
+.pip:hover {
+  background: var(--blush-soft);
+}
+
+.pip:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 0;
+  border-radius: var(--radius-m);
+}
+
+.kiss {
+  width: 36px;
+  height: 25px;
+  transition: transform 160ms var(--ease-out);
+}
+
+/* Pips at or below the chosen level are pressed in lipstick; deeper levels get a darker shade. */
+.on {
+  color: var(--lipstick);
+}
+
+.on .kiss {
+  filter: drop-shadow(0 2px 6px var(--lipstick-glow));
+}
+
+.on[data-level='4'] {
+  color: color-mix(in srgb, var(--lipstick) 88%, #000);
+}
+
+.on[data-level='5'] {
+  color: color-mix(in srgb, var(--lipstick) 76%, #000);
+}
+
+.selected {
+  background: var(--lipstick-soft);
+}
+
+.selected .kiss {
+  transform: scale(1.12) rotate(-4deg);
+}
+
+.pipName {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--smoke);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.selected .pipName {
+  color: var(--blush);
+}
+
+.description {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--blush);
+  min-height: 3em;
+}
+
+.compact .description {
+  color: var(--smoke);
+  font-size: 13.5px;
+  min-height: 0;
+}
+
+.compact .pip {
+  min-height: 52px;
+}
+
+.compact .pipName {
+  display: none;
+}
+
+@media (max-width: 380px) {
+  .pipName {
+    display: none;
+  }
+
+  .pip {
+    min-height: 52px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .selected .kiss {
+    transform: none;
+  }
+}

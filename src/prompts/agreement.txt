@@ -1,0 +1,9 @@
+The player and {name} just talked about what they are to each other. The player asked for: {requestedAgreement}. {name} is {relationshipStyle} with {jealousy} jealousy, trusts the player {trust}/100, and has these partners: {partners}.
+
+Conversation:
+{dtr turns}
+
+Reply with JSON only:
+{"agreement": "exclusive|open|poly|casual|none", "accepted": true, "terms": "one sentence in {name}'s words", "trustDelta": 0}
+
+accepted false means {name} declined or the talk didn't resolve; agreement then stays as it was. trustDelta is -5 to 5 for how the talk itself went.

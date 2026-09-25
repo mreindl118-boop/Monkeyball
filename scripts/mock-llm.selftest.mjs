@@ -1,0 +1,275 @@
+#!/usr/bin/env node
+// Self-check for scripts/mock-llm.mjs: starts mock servers on random ports and hits every route
+// and toggle. Run: node scripts/mock-llm.selftest.mjs  (exits 1 on any failure)
+
+import assert from 'node:assert/strict'
+import { createMockServer } from './mock-llm.mjs'
+
+const STORY_SYSTEM = `You are the story engine of crushLAB, an adults-only dating sim. You play Nova Castellanos and narrate the scene. The player is a consenting adult; address them as "you".
+
+CHARACTER
+Nova Castellanos, 28, she/her. Late-night DJ.
+
+SCENE
+Venue: Record store. Nova Castellanos loves this place.
+No gift this time.
+Turn 3 of 10.
+
+HOW THE PLAYER'S LAST MESSAGE LANDED (private; never mention it)
+Mood: delighted. It touched a turn-on: Getting out-bantered.
+React so it's clear how it landed without explaining why.`
+
+const judgeSystem = (message) => `You score one message in a dating sim. Reply with JSON only.
+
+CHARACTER
+Nova Castellanos, stage Stranger (0/100, trust 0/100). Woman, she/her. Teasing and quick.
+Likes: vinyl: Vinyl records and liner-note trivia; diner: 3am diner food
+Dislikes: phones: Phones out on a date
+Turn-ons: banter: Getting out-bantered
+Turn-offs: pushy: Pushiness; cute: Being called cute
+
+CONVERSATION
+Recent turns: none yet
+Player's new message: ${message}`
+
+let failures = 0
+let passes = 0
+async function check(name, fn) {
+  try {
+    await fn()
+    passes++
+    console.log(`ok    ${name}`)
+  } catch (e) {
+    failures++
+    console.log(`FAIL  ${name}\n      ${e && e.message}`)
+  }
+}
+
+async function start(options = {}) {
+  const server = createMockServer({ quiet: true, delay: 1, ...options })
+  await new Promise((r) => server.listen(0, '127.0.0.1', r))
+  const { port } = server.address()
+  return { server, base: `http://127.0.0.1:${port}/v1` }
+}
+
+async function post(base, body, headers = {}) {
+  return fetch(`${base}/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify(body),
+  })
+}
+
+async function complete(base, messages, extra = {}) {
+  const res = await post(base, { model: 'mock-story', messages, ...extra })
+  assert.equal(res.status, 200, `status ${res.status}`)
+  const json = await res.json()
+  return json.choices[0].message.content
+}
+
+async function judge(base, message, extra = {}) {
+  return JSON.parse(await complete(base, [{ role: 'system', content: judgeSystem(message) }, { role: 'user', content: 'Score the new message.' }], extra))
+}
+
+/** Read an SSE response and return { text, chunks, done }. */
+async function readStream(res) {
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buf = ''
+  let text = ''
+  let chunks = 0
+  let done = false
+  for (;;) {
+    const { value, done: end } = await reader.read()
+    if (end) break
+    buf += decoder.decode(value, { stream: true })
+    let i
+    while ((i = buf.indexOf('\n\n')) >= 0) {
+      const event = buf.slice(0, i)
+      buf = buf.slice(i + 2)
+      for (const line of event.split('\n')) {
+        if (!line.startsWith('data: ')) continue
+        const data = line.slice(6)
+        if (data === '[DONE]') {
+          done = true
+          continue
+        }
+        chunks++
+        text += JSON.parse(data).choices[0].delta.content ?? ''
+      }
+    }
+  }
+  return { text, chunks, done }
+}
+
+const main = await start()
+const { base } = main
+
+await check('GET /v1/models lists models with CORS headers', async () => {
+  const res = await fetch(`${base}/models`)
+  assert.equal(res.status, 200)
+  assert.equal(res.headers.get('access-control-allow-origin'), '*')
+  const json = await res.json()
+  assert.deepEqual(json.data.map((m) => m.id), ['mock-story', 'mock-judge'])
+})
+
+await check('GET /models works without the /v1 prefix', async () => {
+  const res = await fetch(base.replace(/\/v1$/, '') + '/models')
+  assert.equal(res.status, 200)
+})
+
+await check('OPTIONS preflight answers 204 with allowed headers', async () => {
+  const res = await fetch(`${base}/chat/completions`, { method: 'OPTIONS' })
+  assert.equal(res.status, 204)
+  assert.match(res.headers.get('access-control-allow-headers'), /Authorization/)
+})
+
+await check('story streams SSE chunks, ends with [DONE]', async () => {
+  const res = await post(base, { model: 'mock-story', stream: true, messages: [{ role: 'system', content: STORY_SYSTEM }, { role: 'user', content: 'hi' }] })
+  assert.equal(res.status, 200)
+  assert.match(res.headers.get('content-type'), /text\/event-stream/)
+  const { text, chunks, done } = await readStream(res)
+  assert.ok(done, 'no [DONE]')
+  assert.ok(chunks > 3, `only ${chunks} chunks`)
+  assert.match(text, /\*Nova [^*]+\*/)
+  assert.match(text, /"[^"]+"/)
+})
+
+await check('story non-stream returns a chat.completion', async () => {
+  const text = await complete(base, [{ role: 'system', content: STORY_SYSTEM }, { role: 'user', content: 'hi' }])
+  assert.match(text, /Nova/)
+})
+
+await check('story turn 0 uses the opener line', async () => {
+  const sys = STORY_SYSTEM.replace('Turn 3 of 10.', "Turn 0 of 10. Open the date: Nova Castellanos arrives and greets the player. Use this line: You're either lost or you have excellent taste. Which is it?")
+  const text = await complete(base, [{ role: 'system', content: sys }, { role: 'user', content: '(The date begins.)' }])
+  assert.match(text, /excellent taste/)
+})
+
+await check('story exit note writes the character leaving', async () => {
+  const sys = STORY_SYSTEM.replace('Turn 3 of 10.', 'Turn 4 of 10. The date has gone badly: write Nova Castellanos leaving.')
+  const text = await complete(base, [{ role: 'system', content: sys }, { role: 'user', content: 'whatever' }])
+  assert.match(text, /call it a night|door/)
+})
+
+await check('story reacts to a bad mood', async () => {
+  const sys = STORY_SYSTEM.replace('Mood: delighted.', 'Mood: annoyed.')
+  const text = await complete(base, [{ role: 'system', content: sys }, { role: 'user', content: 'x' }])
+  assert.match(text, /smile slips/)
+})
+
+const judgeCases = [
+  ['you are cute', { delta: -8, hit: ['turnOff', 'cute'] }],
+  ["it's now or never", { delta: -9, hit: ['turnOff', 'pushy'] }],
+  ['I love vinyl', { delta: 3, hit: ['like', 'vinyl'] }],
+  ['banter time', { delta: 6, hit: ['turnOn', 'banter'] }],
+  ['[lie] I was home all night', { delta: -15, trustDelta: -9, breach: true }],
+  ['misgender test', { delta: -10, trustDelta: -6, hit: ['turnOff', 'misgendering'] }],
+  ['[tank]', { delta: -20 }],
+  ['nice weather tonight', { delta: 2, trustDelta: 1 }],
+]
+for (const [message, want] of judgeCases) {
+  await check(`judge: "${message}"`, async () => {
+    const j = await judge(base, message)
+    assert.equal(j.delta, want.delta)
+    if (want.trustDelta !== undefined) assert.equal(j.trustDelta, want.trustDelta)
+    if (want.breach) assert.equal(j.breach, true)
+    if (want.hit) assert.deepEqual(j.hits[0], { type: want.hit[0], id: want.hit[1] })
+    else if (!want.breach) assert.deepEqual(j.hits, [])
+    for (const k of ['delta', 'trustDelta', 'hits', 'mood', 'hint', 'jealousy', 'breach']) assert.ok(k in j, `missing ${k}`)
+  })
+}
+
+await check('judge streams too when asked', async () => {
+  const res = await post(base, { model: 'mock-judge', stream: true, messages: [{ role: 'system', content: judgeSystem('vinyl') }, { role: 'user', content: 'Score the new message.' }] })
+  const { text } = await readStream(res)
+  assert.equal(JSON.parse(text).delta, 3)
+})
+
+await check('agreement accepts the requested agreement', async () => {
+  const sys = `The player and Nova Castellanos just talked about what they are to each other. The player asked for: exclusive (only each other). Nova Castellanos is open with low jealousy, trusts the player 40/100, and has these partners: none.\n\nConversation:\nPlayer: hi\n\nReply with JSON only:`
+  const a = JSON.parse(await complete(base, [{ role: 'system', content: sys }, { role: 'user', content: 'Settle the agreement.' }]))
+  assert.equal(a.agreement, 'exclusive')
+  assert.equal(a.accepted, true)
+  assert.equal(typeof a.terms, 'string')
+})
+
+await check('suggestions use romantic keys', async () => {
+  const sys = 'Suggest three things the player could say next to Nova: one sweet, one flirty, one bold. Reply with JSON only: {"sweet": "...", "flirty": "...", "bold": "..."}'
+  const s = JSON.parse(await complete(base, [{ role: 'system', content: sys }, { role: 'user', content: 'Suggest the three lines.' }]))
+  assert.deepEqual(Object.keys(s), ['sweet', 'flirty', 'bold'])
+})
+
+await check('suggestions use friend-route keys', async () => {
+  const sys = 'Suggest three things the player could say next to Nova: one sweet, one curious, one honest. Reply with JSON only: {"sweet": "...", "curious": "...", "honest": "..."}'
+  const s = JSON.parse(await complete(base, [{ role: 'system', content: sys }, { role: 'user', content: 'Suggest the three lines.' }]))
+  assert.deepEqual(Object.keys(s), ['sweet', 'curious', 'honest'])
+})
+
+await check('memory is two plain sentences', async () => {
+  const text = await complete(base, [{ role: 'system', content: "Summarize this date in 2–3 sentences in Nova's voice." }, { role: 'user', content: 'The date: ...' }])
+  assert.equal(text.split(/(?<=\.)\s+/).length, 2)
+  assert.doesNotMatch(text, /[{}]/)
+})
+
+await check('tiny completion honours max_tokens', async () => {
+  const text = await complete(base, [{ role: 'user', content: 'Reply with the word ok.' }], { max_tokens: 8 })
+  assert.equal(text, 'ok')
+})
+
+await check('unknown route is a 404 JSON error', async () => {
+  const res = await fetch(`${base}/nope`)
+  assert.equal(res.status, 404)
+  assert.ok((await res.json()).error.message)
+})
+
+main.server.close()
+
+// Toggles
+{
+  const { server, base: b } = await start({ rejectJsonMode: true })
+  await check('MOCK_REJECT_JSON_MODE: 400 with response_format, 200 without', async () => {
+    const msgs = [{ role: 'system', content: judgeSystem('hi') }, { role: 'user', content: 'Score the new message.' }]
+    const bad = await post(b, { model: 'mock-judge', messages: msgs, response_format: { type: 'json_object' } })
+    assert.equal(bad.status, 400)
+    assert.match((await bad.json()).error.message, /response_format is not supported/)
+    const good = await post(b, { model: 'mock-judge', messages: msgs })
+    assert.equal(good.status, 200)
+  })
+  server.close()
+}
+{
+  const { server, base: b } = await start({ requireKey: 'secret' })
+  await check('MOCK_REQUIRE_KEY: 401 without the key, 200 with it', async () => {
+    assert.equal((await fetch(`${b}/models`)).status, 401)
+    assert.equal((await fetch(`${b}/models`, { headers: { Authorization: 'Bearer wrong' } })).status, 401)
+    assert.equal((await fetch(`${b}/models`, { headers: { Authorization: 'Bearer secret' } })).status, 200)
+    const res = await post(b, { model: 'mock-story', messages: [{ role: 'user', content: 'x' }] }, { Authorization: 'Bearer secret' })
+    assert.equal(res.status, 200)
+  })
+  server.close()
+}
+{
+  const { server, base: b } = await start({ badJson: true })
+  await check('MOCK_BAD_JSON: prose first, valid JSON after the nudge', async () => {
+    const msgs = [{ role: 'system', content: judgeSystem('vinyl') }, { role: 'user', content: 'Score the new message.' }]
+    const first = await complete(b, msgs)
+    assert.doesNotMatch(first, /\{/)
+    const second = await complete(b, [...msgs, { role: 'assistant', content: first }, { role: 'user', content: 'Reply with valid JSON only. No prose, no code fences.' }])
+    assert.equal(JSON.parse(second).delta, 3)
+  })
+  server.close()
+}
+{
+  const { server, base: b } = await start({ noCors: true, strictModels: true })
+  await check('MOCK_NO_CORS omits CORS headers; MOCK_STRICT_MODELS 404s unknown models', async () => {
+    const res = await fetch(`${b}/models`)
+    assert.equal(res.headers.get('access-control-allow-origin'), null)
+    const r = await post(b, { model: 'nope', messages: [{ role: 'user', content: 'x' }] })
+    assert.equal(r.status, 404)
+  })
+  server.close()
+}
+
+console.log(`\n${passes} passed, ${failures} failed`)
+process.exit(failures ? 1 : 0)

@@ -1,0 +1,86 @@
+.panel {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  padding: 20px;
+  border-radius: var(--radius-l);
+  background:
+    radial-gradient(140% 90% at 0% 0%, rgb(242 198 207 / 0.06), transparent 55%),
+    var(--oxblood);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-panel);
+}
+
+@media (min-width: 720px) {
+  .panel {
+    padding: 24px 28px;
+  }
+}
+
+.brass {
+  border-color: rgb(201 164 92 / 0.35);
+  background:
+    radial-gradient(140% 90% at 0% 0%, var(--brass-soft), transparent 55%),
+    var(--oxblood);
+}
+
+.flat {
+  box-shadow: none;
+  background: var(--blush-soft);
+}
+
+.header {
+  display: grid;
+  gap: 4px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 1.15;
+}
+
+.description {
+  color: var(--smoke);
+  font-size: 14px;
+}
+
+/* Note / callout */
+.note {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--line);
+  background: var(--blush-soft);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.noteBrass {
+  border-color: rgb(201 164 92 / 0.4);
+  background: var(--brass-soft);
+}
+
+.noteBrass .noteTitle {
+  color: var(--brass);
+}
+
+.noteLipstick {
+  border-color: rgb(224 36 94 / 0.5);
+  background: var(--lipstick-soft);
+}
+
+.noteTitle {
+  font-weight: 700;
+}
+
+.divider {
+  height: 1px;
+  border: 0;
+  margin: 0;
+  background: var(--line);
+}

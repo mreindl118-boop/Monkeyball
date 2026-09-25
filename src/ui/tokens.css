@@ -13,6 +13,18 @@
 
   --font-display: 'Bodoni Moda', 'Didot', 'Bodoni 72', Georgia, serif;
   --font-ui: 'Figtree Variable', 'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', 'Cascadia Mono', 'Roboto Mono', Menlo, Consolas,
+    monospace;
+
+  /* Tints derived from the palette (same hues, lower alpha). */
+  --lipstick-soft: rgb(224 36 94 / 0.16);
+  --lipstick-glow: rgb(224 36 94 / 0.35);
+  --brass-soft: rgb(201 164 92 / 0.14);
+  --blush-soft: rgb(242 198 207 / 0.08);
+  --field-bg: rgb(28 9 20 / 0.72);
+
+  /* Minimum touch target (Android first: 48px). */
+  --tap: 48px;
 
   --radius-s: 8px;
   --radius-m: 14px;
@@ -30,6 +42,8 @@
   --content-max: 960px;
 
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --z-sheet: 50;
+  --z-toast: 70;
 
   color-scheme: dark;
 }
@@ -67,7 +81,8 @@ body {
 
 h1,
 h2,
-h3 {
+h3,
+h4 {
   font-family: var(--font-display);
   font-weight: 600;
   line-height: 1.15;
@@ -125,6 +140,20 @@ button {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+code,
+pre,
+kbd {
+  font-family: var(--font-mono);
+}
+
+/* Long-press targets: no text selection or callout menu. */
+.long-press {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 
 /* Screen root: safe areas and the standard gutter. */

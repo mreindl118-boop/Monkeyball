@@ -1,0 +1,35 @@
+.mark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.04em;
+  margin: 0;
+  line-height: 1;
+  color: var(--blush);
+  font-size: var(--wm-size, 48px);
+  white-space: nowrap;
+}
+
+.crush {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.lab {
+  font-family: var(--font-ui);
+  font-weight: 800;
+  font-size: 0.56em;
+  letter-spacing: 0.14em;
+  color: var(--lipstick);
+  transform: translateY(-0.06em);
+}
+
+.kiss {
+  width: 0.62em;
+  height: 0.43em;
+  margin-left: 0.12em;
+  color: var(--lipstick);
+  transform: rotate(-14deg) translateY(-0.5em);
+  opacity: 0.9;
+}

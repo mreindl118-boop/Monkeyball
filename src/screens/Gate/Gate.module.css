@@ -1,0 +1,104 @@
+.root {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 28px;
+  padding-top: calc(var(--safe-top) + 40px);
+  padding-bottom: calc(var(--safe-bottom) + 32px);
+}
+
+.hero {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.tagline {
+  max-width: 30ch;
+  color: var(--smoke);
+  font-size: 15px;
+}
+
+.card {
+  width: 100%;
+  max-width: 520px;
+}
+
+.lede {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+.list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 12px;
+  align-items: start;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.item strong {
+  display: block;
+  font-weight: 700;
+  color: var(--blush);
+}
+
+.item span {
+  color: color-mix(in srgb, var(--blush) 78%, var(--smoke));
+}
+
+.icon {
+  width: 28px;
+  height: 20px;
+  margin-top: 2px;
+  color: var(--lipstick);
+}
+
+.iconBrass {
+  color: var(--brass);
+}
+
+.actions {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  max-width: 520px;
+}
+
+.exit {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  max-width: 420px;
+  text-align: center;
+}
+
+.exit h2 {
+  font-style: italic;
+  font-size: 28px;
+}
+
+.exit p {
+  color: var(--smoke);
+}
+
+.fine {
+  max-width: 520px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--smoke);
+  text-align: center;
+}

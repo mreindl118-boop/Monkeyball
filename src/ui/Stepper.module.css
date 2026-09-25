@@ -1,0 +1,89 @@
+.stepper {
+  display: inline-flex;
+  justify-self: start;
+  align-items: stretch;
+  max-width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--field-bg);
+  overflow: hidden;
+}
+
+.stepper:focus-within {
+  border-color: var(--brass);
+  box-shadow: 0 0 0 3px var(--brass-soft);
+}
+
+.btn {
+  flex: none;
+  width: var(--tap);
+  min-height: var(--tap);
+  border: 0;
+  background: transparent;
+  color: var(--blush);
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--blush-soft);
+}
+
+.btn:active:not(:disabled) {
+  background: var(--lipstick-soft);
+}
+
+.btn:disabled {
+  color: var(--smoke);
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: -4px;
+  border-radius: 999px;
+}
+
+.valueWrap {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  min-width: 88px;
+  padding: 0 4px;
+  border-inline: 1px solid var(--line);
+}
+
+.input {
+  width: 5ch;
+  min-height: var(--tap);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--blush);
+  font-size: 17px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.input::-webkit-outer-spin-button,
+.input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.input:focus-visible {
+  outline: none;
+}
+
+.unit {
+  font-size: 13px;
+  color: var(--smoke);
+  white-space: nowrap;
+}

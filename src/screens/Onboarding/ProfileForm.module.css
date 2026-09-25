@@ -1,0 +1,42 @@
+.form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 26px;
+}
+
+.pair {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  border-radius: var(--radius-m);
+  border: 1px dashed var(--line-strong);
+  background: var(--blush-soft);
+}
+
+.pronounRow {
+  display: grid;
+  gap: 10px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.actions > * {
+  flex: 1 1 200px;
+}
+
+@media (min-width: 720px) {
+  .actions > * {
+    flex: 0 0 auto;
+    min-width: 200px;
+  }
+}
+
+.status {
+  font-size: 14px;
+  color: var(--smoke);
+}

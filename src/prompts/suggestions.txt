@@ -1,0 +1,1 @@
+Suggest three things the player could say next to {name}: one sweet, one flirty, one bold. Under 15 words each, in the player's voice, fitting the scene, the route and this intensity: {heatDescription}. Reply with JSON only: {"sweet": "...", "flirty": "...", "bold": "..."}

@@ -1,0 +1,143 @@
+.root {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 22px;
+  max-width: 720px;
+  padding-top: calc(var(--safe-top) + 20px);
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.greeting {
+  display: grid;
+  gap: 8px;
+  padding: 12px 0 4px;
+}
+
+.hello {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(34px, 9vw, 52px);
+  line-height: 1.05;
+}
+
+.hello .name {
+  font-style: italic;
+  color: var(--blush);
+}
+
+.sub {
+  color: var(--smoke);
+  max-width: 46ch;
+}
+
+.status {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  align-items: start;
+  gap: 4px 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--line);
+  background: var(--field-bg);
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--smoke);
+}
+
+.dotOk {
+  background: var(--brass);
+  box-shadow: 0 0 0 4px var(--brass-soft);
+}
+
+.dotFail {
+  background: var(--lipstick);
+  box-shadow: 0 0 0 4px var(--lipstick-soft);
+}
+
+.dotChecking {
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.statusTitle {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.statusDetail {
+  grid-column: 2;
+  font-size: 13.5px;
+  color: var(--smoke);
+  overflow-wrap: anywhere;
+}
+
+.statusActions {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.soon {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.coasters {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.coaster {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 1px dashed var(--line-strong);
+  background:
+    radial-gradient(circle at 50% 50%, transparent 52%, rgb(242 198 207 / 0.06) 53%, transparent 60%),
+    var(--velvet-deep);
+}
+
+.coaster:nth-child(2) {
+  transform: rotate(8deg) translateY(4px);
+}
+
+.coaster:nth-child(3) {
+  transform: rotate(-6deg);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.actions > * {
+  flex: 1 1 160px;
+}
+
+@media (min-width: 720px) {
+  .actions > * {
+    flex: 0 0 auto;
+    min-width: 160px;
+  }
+}
