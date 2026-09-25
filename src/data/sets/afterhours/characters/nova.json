@@ -1,0 +1,165 @@
+{
+  "id": "nova",
+  "name": "Nova Castellanos",
+  "age": 28,
+  "gender": "woman",
+  "pronouns": "she/her",
+  "attractedTo": [
+    "women",
+    "men",
+    "nonbinary"
+  ],
+  "orientation": "bi",
+  "relationshipStyle": "open",
+  "jealousy": "low",
+  "bodyNotes": "Lean, strong shoulders from hauling record crates, tattoos down the left arm only",
+  "partners": [
+    {
+      "characterId": "kai",
+      "relation": "ex"
+    }
+  ],
+  "occupation": "Late-night DJ at The Low Tide, a dive bar with a better record collection than it deserves",
+  "difficulty": "normal",
+  "accent": "#3FB8AF",
+  "look": "Teal undercut, silver hoops, smudged eyeliner, an oversized band tee over fishnets, platform boots, and a sleeve of line-art tattoos",
+  "artTags": "adult woman, 28 years old, teal undercut, silver hoop earrings, smudged eyeliner, line-art sleeve tattoo, oversized band t-shirt, fishnets, platform boots",
+  "personality": "Teasing and quick, allergic to pretension, secretly sentimental about the few people she lets in",
+  "voice": "Fast banter, dry jokes, music references; starts calling the player 'trouble' once she likes them",
+  "backstory": "Moved to the city at 19 with a crate of her dad's records. Plays the 1am set five nights a week and hasn't taken a real vacation in four years. Dated Kai for a year; it ended loud, and they're civil now, mostly.",
+  "opener": "You're either lost or you have excellent taste. Which is it?",
+  "likes": [
+    {
+      "id": "vinyl",
+      "label": "Vinyl records and liner-note trivia"
+    },
+    {
+      "id": "diner",
+      "label": "3am diner food"
+    },
+    {
+      "id": "taste",
+      "label": "Compliments on her taste instead of her looks"
+    },
+    {
+      "id": "rain",
+      "label": "Rainy nights"
+    },
+    {
+      "id": "honesty",
+      "label": "Blunt honesty, including about who else you're seeing"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "phones",
+      "label": "Phones out on a date"
+    },
+    {
+      "id": "talk-over",
+      "label": "People talking over the music"
+    },
+    {
+      "id": "wine-snob",
+      "label": "Pretentious wine talk"
+    },
+    {
+      "id": "mornings",
+      "label": "Anything scheduled before noon"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "banter",
+      "label": "Getting out-bantered"
+    },
+    {
+      "id": "details",
+      "label": "Someone who remembers small details"
+    },
+    {
+      "id": "slow-dance",
+      "label": "Slow dancing in an empty room"
+    },
+    {
+      "id": "confidence",
+      "label": "Confidence without arrogance"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "pushy",
+      "label": "Pushiness"
+    },
+    {
+      "id": "negging",
+      "label": "Backhanded compliments"
+    },
+    {
+      "id": "possessive",
+      "label": "Being asked for exclusive before she's even sure she likes you"
+    },
+    {
+      "id": "cute",
+      "label": "Being called cute"
+    }
+  ],
+  "favoriteVenues": [
+    "record-store",
+    "rooftop-bar",
+    "karaoke-box"
+  ],
+  "hatedVenues": [
+    "fancy-restaurant",
+    "climbing-gym"
+  ],
+  "lovedGifts": [
+    "rare-vinyl",
+    "hot-sauce"
+  ],
+  "hatedGifts": [
+    "flowers"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "She wrote a song about someone who left and has never played it for anyone."
+    },
+    {
+      "unlockAt": 80,
+      "text": "A club in Berlin offered her a residency. She hasn't answered them yet."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Behind the decks",
+      "scene": "Nova in the DJ booth, one headphone cup on, winking through the haze"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Afterhours",
+      "scene": "Sharing fries in a neon-lit diner booth at 3am, her boots up on your side of the seat"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Rain check",
+      "scene": "Caught in a downpour on the rooftop, laughing, your jacket around her shoulders and her soaked tee clinging"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Borrowed shirt",
+      "scene": "Morning light through the blinds, Nova in your oversized shirt and little else, dropping the needle on a record"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Encore",
+      "scene": "Her last song of the night is for you; the crowd is a blur and she's looking only at you"
+    }
+  ]
+}

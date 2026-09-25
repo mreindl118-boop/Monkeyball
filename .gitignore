@@ -1,0 +1,9 @@
+node_modules
+dist
+dev-dist
+*.local
+.DS_Store
+coverage
+server/.env
+test-results
+scripts/e2e/out
