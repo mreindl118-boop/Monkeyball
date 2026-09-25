@@ -1,0 +1,167 @@
+name: Build crushLAB
+
+on:
+  push:
+    branches: ['**']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  BUILD_NUMBER: ${{ github.run_number }}
+
+jobs:
+  web:
+    name: Web build and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: crushlab-web
+          path: dist/
+
+  pages:
+    # The PWA: installable from Chrome on Android (and any browser).
+    # Soft-fails until the repo owner sets Settings -> Pages -> Source: "GitHub Actions";
+    # the CI token can't flip that switch itself.
+    name: Deploy PWA to GitHub Pages
+    runs-on: ubuntu-latest
+    needs: web
+    continue-on-error: true
+    permissions:
+      pages: write
+      id-token: write
+      contents: read
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: crushlab-web
+          path: dist
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    needs: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      # Reuse the tested web build (BUILD_NUMBER is already baked in).
+      - uses: actions/download-artifact@v4
+        with:
+          name: crushlab-web
+          path: dist
+      - name: Generate Android project
+        run: npx cap add android
+      - name: Stamp version from run number
+        run: |
+          sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/" android/app/build.gradle
+          sed -i "s/versionName \"1.0\"/versionName \"1.0.${{ github.run_number }}\"/" android/app/build.gradle
+          grep -q "versionCode ${{ github.run_number }}" android/app/build.gradle || { echo "::error::versionCode stamp did not apply"; exit 1; }
+      - name: Velvet window and launch background (no white flash)
+        run: |
+          f=android/app/src/main/res/values/styles.xml
+          sed -i 's#</resources>#    <color name="crushVelvet">\#FF2A0F1F</color>\n</resources>#' "$f"
+          sed -i 's#<item name="android:background">@drawable/splash</item>#<item name="android:background">@color/crushVelvet</item>\n        <item name="windowSplashScreenBackground">@color/crushVelvet</item>#' "$f"
+          sed -i 's#<item name="android:background">@null</item>#<item name="android:background">@null</item>\n        <item name="android:windowBackground">@color/crushVelvet</item>#' "$f"
+          grep -q crushVelvet "$f" || { echo "::error::styles.xml patch did not apply"; exit 1; }
+          cat "$f"
+      - name: Allow plain-http model servers on the LAN
+        run: |
+          f=android/app/src/main/AndroidManifest.xml
+          grep -q usesCleartextTraffic "$f" || sed -i 's#<application#<application android:usesCleartextTraffic="true"#' "$f"
+          grep -q 'usesCleartextTraffic="true"' "$f" || { echo "::error::cleartext patch did not apply"; exit 1; }
+      - name: Sync web assets and plugins
+        run: npx cap sync android
+      - name: Pin the signing key
+        # Android only upgrades an app in place if the signature matches the installed one,
+        # so every build is signed with the repo's debug keystore.
+        run: |
+          cat >> android/app/build.gradle <<'EOG'
+
+          android {
+              signingConfigs {
+                  debug {
+                      storeFile file("${rootDir}/../signing/debug.keystore")
+                      storePassword "android"
+                      keyAlias "androiddebugkey"
+                      keyPassword "android"
+                  }
+              }
+              buildTypes {
+                  debug {
+                      signingConfig signingConfigs.debug
+                  }
+              }
+          }
+          EOG
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --no-daemon
+        working-directory: android
+      - name: Verify the APK is signed with the pinned key
+        run: |
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          FP_APK=$(keytool -printcert -jarfile "$APK" | grep -oE '([0-9A-F]{2}:){31}[0-9A-F]{2}' | head -1)
+          FP_KEY=$(keytool -list -v -keystore signing/debug.keystore -storepass android | grep -oE '([0-9A-F]{2}:){31}[0-9A-F]{2}' | head -1)
+          echo "APK: $FP_APK"
+          echo "KEY: $FP_KEY"
+          [ -n "$FP_APK" ] && [ "$FP_APK" = "$FP_KEY" ] || { echo "::error::APK signature does not match the pinned keystore"; exit 1; }
+      - name: Name the APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk "crushlab-${{ github.run_number }}.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: crushlab-android
+          path: crushlab-${{ github.run_number }}.apk
+
+  release:
+    name: Publish release (APK download link and update feed)
+    runs-on: ubuntu-latest
+    needs: android
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: crushlab-android
+          path: .
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: crushLAB build ${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          body: |
+            crushLAB build ${{ github.run_number }} from `${{ github.ref_name }}` (${{ github.sha }}). Adults only (18+).
+
+            - **Android**: download `crushlab-${{ github.run_number }}.apk` below and open it to install or upgrade
+              (allow installs from your browser or file manager when Android asks).
+            - **Web app**: https://mreindl118-boop.github.io/Monkeyball/ can be installed from Chrome on Android
+              (menu, then Install app). The web app can use OpenRouter or a model running on the phone; a PC
+              on your Wi-Fi needs the APK.
+          files: crushlab-${{ github.run_number }}.apk

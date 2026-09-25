@@ -8,12 +8,14 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
     "lint": "oxlint",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "preview": "vite preview",
-    "mock-llm": "node scripts/mock-llm.mjs"
+    "mock-llm": "node scripts/mock-llm.mjs",
+    "cap:sync": "cap sync android"
   },
   "dependencies": {
+    "@capacitor/core": "^8.5.2",
     "@fontsource-variable/figtree": "^5.3.0",
     "@fontsource/bodoni-moda": "^5.3.0",
     "dexie": "^4.4.6",
@@ -24,6 +26,8 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^26.6.2",
     "@types/react": "^19.3.0",

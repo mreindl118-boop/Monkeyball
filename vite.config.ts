@@ -5,6 +5,11 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Relative base: works inside the Android app and under the GitHub Pages sub-path.
+  base: './',
+  define: {
+    'import.meta.env.VITE_BUILD_NUMBER': JSON.stringify(process.env.BUILD_NUMBER ?? '0'),
+  },
   plugins: [
     react(),
     VitePWA({
