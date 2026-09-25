@@ -292,3 +292,60 @@ film becomes a fade; stamp press and sheet slides become instant.
   message ("cute", "pushy", "[lie]") force specific judge results for e2e checks. Sends CORS headers.
 - `scripts/e2e/*.mjs` — playwright-core scripts launching `/opt/pw-browsers/chromium` against
   `vite preview` + the mock, covering onboarding, a full 10-turn date, reload persistence, etc.
+
+## Android first
+
+Android is the primary target. The app ships two ways, from the same web build:
+
+1. **APK (primary)**: Capacitor 8 Android wrapper (`capacitor.config.ts`, appId `app.crushlab.game`,
+   appName `crushLAB`, `webDir: dist`, portrait). GitHub Actions (`.github/workflows/build.yml`)
+   builds a debug APK on every push, signs it with the pinned `signing/debug.keystore` (so installs
+   upgrade in place), uploads it as an artifact and publishes a GitHub release `build-<run>`
+   (the in-app update check reads the latest release). The `android/` folder is generated in CI
+   (`npx cap add android`) and patched there; it is not committed.
+2. **PWA**: the same build deployed to GitHub Pages and installable from Chrome on Android
+   (and any other browser). Offline shell via vite-plugin-pwa.
+
+Platform layer (`src/platform/`): the only place that knows whether we're native.
+
+- `platform.ts` — `isNative()`, `platformName()` via `@capacitor/core`'s `Capacitor`.
+- `files.ts` — `saveFile(blob, filename, mime)`: web → anchor download; native → write to the
+  cache dir with `@capacitor/filesystem` and open the Android share sheet with `@capacitor/share`
+  (WebView blob downloads don't work). Every export in the app goes through this.
+- `backButton.ts` — `@capacitor/app` `backButton` listener: close the top sheet/dialog if one is
+  open, else `useNav.back()`, and at the hub root minimize the app instead of exiting abruptly.
+- `http.ts` — native HTTP fallback: in the APK, if a WebView `fetch` to the model or image server
+  fails with a CORS/network TypeError, retry through `CapacitorHttp` (no CORS, cleartext allowed).
+  CapacitorHttp does not stream, so the story text then arrives in one piece; the client already
+  handles non-streamed bodies. Streaming is used whenever the server sends CORS headers.
+- `updates.ts` — APK only: compare the build number baked in at build time
+  (`import.meta.env.VITE_BUILD_NUMBER`, 0 in dev) with the latest GitHub release tag
+  (`build-<n>`) of the repo; offer to download the new APK. Manual "Check for updates" in Settings,
+  plus an on-launch check that the player can switch off (it sends nothing about the player).
+- System UI: status bar and navigation bar tinted velvet; content respects safe-area insets.
+
+Capacitor config: `server.androidScheme: 'http'` (http://localhost is still a secure context, and
+it lets the WebView reach `http://192.168.x.x` model servers on the LAN without mixed-content
+blocking), `server.cleartext: true`, `android.allowMixedContent: true`.
+
+Model servers from an Android phone:
+- OpenRouter (HTTPS) works from both the APK and the PWA.
+- A PC on the same Wi-Fi running Ollama or LM Studio: use the PC's LAN address
+  (e.g. `http://192.168.1.20:11434/v1`). Ollama must listen on the LAN (`OLLAMA_HOST=0.0.0.0`) and,
+  for streaming, allow the origin (`OLLAMA_ORIGINS=*`); LM Studio: "Serve on local network" + CORS.
+  Works in the APK. The HTTPS PWA can't reach plain-http LAN servers (mixed content); the Phase 7
+  LAN server covers that case.
+- On-device (e.g. Ollama in Termux): `http://127.0.0.1:11434/v1` works from both.
+The connection screen explains this and the Ollama/LM Studio presets have a "PC on my Wi-Fi" host
+field that rewrites the base URL. Diagnostics mention `OLLAMA_HOST=0.0.0.0` when a LAN address is
+unreachable.
+
+Android UX rules for every screen:
+- Design and test at 412x915 (Pixel-class) with touch emulation first, then 360x800, tablet and
+  desktop. Thumb-reachable primary actions near the bottom; 48px touch targets.
+- `<meta name="viewport" ... interactive-widget=resizes-content>` so the soft keyboard resizes the
+  layout; the date screen's input stays visible above the keyboard (use `100dvh`, no fixed heights).
+- Long-press targets set `user-select: none` and `-webkit-touch-callout: none`.
+- Keep GPU cost modest for mid-range phones: avoid large `backdrop-filter` blurs and animating
+  box-shadows; prefer transforms/opacity.
+- Light haptics (`@capacitor/haptics`, no-op on web) on stamp press and unlocks.
