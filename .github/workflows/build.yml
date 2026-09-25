@@ -127,10 +127,13 @@ jobs:
         run: ./gradlew assembleDebug --no-daemon
         working-directory: android
       - name: Verify the APK is signed with the pinned key
+        # minSdk 24 means v2/v3 signing only, which keytool -printcert can't read; use apksigner.
         run: |
           APK=android/app/build/outputs/apk/debug/app-debug.apk
-          FP_APK=$(keytool -printcert -jarfile "$APK" | grep -oE '([0-9A-F]{2}:){31}[0-9A-F]{2}' | head -1)
-          FP_KEY=$(keytool -list -v -keystore signing/debug.keystore -storepass android | grep -oE '([0-9A-F]{2}:){31}[0-9A-F]{2}' | head -1)
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/apksigner" verify --print-certs "$APK" | tee signer.txt
+          FP_APK=$(grep -m1 'SHA-256 digest' signer.txt | awk '{print $NF}' | tr -d ':' | tr 'a-f' 'A-F')
+          FP_KEY=$(keytool -list -v -keystore signing/debug.keystore -storepass android | grep -oE '([0-9A-F]{2}:){31}[0-9A-F]{2}' | head -1 | tr -d ':')
           echo "APK: $FP_APK"
           echo "KEY: $FP_KEY"
           [ -n "$FP_APK" ] && [ "$FP_APK" = "$FP_KEY" ] || { echo "::error::APK signature does not match the pinned keystore"; exit 1; }
