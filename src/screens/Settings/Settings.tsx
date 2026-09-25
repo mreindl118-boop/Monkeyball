@@ -90,7 +90,7 @@ export default function Settings() {
         id="settings-connection"
         className={styles.section}
         title="Connection"
-        description="The model that plays every character. Only story calls leave this device."
+        description="The models that play every character. Your messages and keys go only to the providers you pick."
       >
         <ConnectionForm idPrefix="settings-conn" />
       </Panel>
@@ -186,7 +186,7 @@ export default function Settings() {
         >
           crushLAB {APP_VERSION}
         </button>
-        <p className={styles.fine}>Made for adults. Nothing leaves this device except model calls.</p>
+        <p className={styles.fine}>Made for adults. Nothing about you leaves this device except the model calls you set up.</p>
       </footer>
 
       <ConfirmDialog

@@ -7,3 +7,5 @@ coverage
 server/.env
 test-results
 scripts/e2e/out
+# Generated in CI by `npx cap add android` (see .github/workflows/build.yml); never committed.
+/android

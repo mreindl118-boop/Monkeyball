@@ -6,7 +6,10 @@
 import {
   canUseNativeHttp,
   isFetchBlocked,
+  isIdempotentMethod,
+  isWebviewBlocked,
   NativeHttpError,
+  probeWebview,
   request as nativeRequest,
   toResponse,
   type HttpResult,
@@ -33,7 +36,13 @@ export interface Endpoint {
   maxTokens: number
 }
 
-export type LlmErrorKind = 'network' | 'http' | 'cors' | 'aborted' | 'parse' | 'timeout'
+/**
+ * - empty: the model spent its whole token cap (on reasoning) and wrote nothing
+ *   (finish_reason 'length' with no text). Worth another try, not a reply.
+ * - setup: the call can't work with the current settings (no model picked, no address, or a
+ *   provider pointed at the wrong API); nothing was sent. `fix` says what to change.
+ */
+export type LlmErrorKind = 'network' | 'http' | 'cors' | 'aborted' | 'parse' | 'timeout' | 'empty' | 'setup'
 
 /** Every failure the client surfaces. `kind` says what went wrong; `status`/`body` for HTTP. */
 export class LlmError extends Error {
@@ -45,13 +54,20 @@ export class LlmError extends Error {
    * failure here is not about CORS: the fallback has none).
    */
   via?: 'native'
+  /** For kind 'setup': what the player should change. */
+  fix?: string
 
-  constructor(kind: LlmErrorKind, message: string, opts: { status?: number; body?: string; cause?: unknown } = {}) {
+  constructor(
+    kind: LlmErrorKind,
+    message: string,
+    opts: { status?: number; body?: string; cause?: unknown; fix?: string } = {},
+  ) {
     super(message, opts.cause !== undefined ? { cause: opts.cause } : undefined)
     this.name = 'LlmError'
     this.kind = kind
     if (opts.status !== undefined) this.status = opts.status
     if (opts.body !== undefined) this.body = opts.body
+    if (opts.fix !== undefined) this.fix = opts.fix
   }
 }
 
@@ -116,8 +132,15 @@ export const JUDGE_TEMPERATURE = 0.2
 /**
  * Completion cap for OpenAI's and xAI's APIs. Their reasoning models spend completion tokens on
  * thinking before any text, so a small cap returns nothing; reply length comes from the prompt.
+ * Matches Claude's cap (CLAUDE_MAX_TOKENS).
  */
-export const HOSTED_MIN_TOKENS = 4000
+export const HOSTED_MIN_TOKENS = 16_000
+
+/**
+ * reasoning_effort for OpenAI's API: chat is latency-sensitive (Claude runs at effort low too),
+ * and less reasoning leaves more of the cap for the reply. Models that reject it are learned.
+ */
+export const OPENAI_REASONING_EFFORT = 'low'
 
 /** The extra user message for the one JSON retry. */
 export const JSON_NUDGE = 'Reply with valid JSON only. No prose, no code fences.'
@@ -152,7 +175,12 @@ export function headersFor(conn: Endpoint, json = true): Record<string, string> 
 // parameter with a 400 that names it, the call is retried without it and the choice is remembered.
 
 /** Optional request parameters a server may reject. */
-export type OptionalParam = 'temperature' | 'response_format' | 'max_tokens' | 'max_completion_tokens'
+export type OptionalParam =
+  | 'temperature'
+  | 'response_format'
+  | 'max_tokens'
+  | 'max_completion_tokens'
+  | 'reasoning_effort'
 
 const rejectedParams = new Map<string, Set<OptionalParam>>()
 
@@ -301,11 +329,40 @@ class Deadline {
 // the request is retried once through native HTTP (src/platform/http.ts). Native HTTP can't
 // stream, so a streaming request asks for a plain JSON answer on that retry and the text arrives
 // in one piece (readCompletion already handles non-streamed bodies). On the web nothing changes.
+//
+// A TypeError on a POST doesn't prove the request never reached the server (the connection can
+// drop after the body went out, or a gateway can answer without CORS headers after the model ran),
+// and a completion costs money. So a POST is only sent again natively once a probe (a GET of the
+// server's /models with the same headers) proves the WebView can't reach that origin at all; then
+// the POST's preflight failed and nothing ran. Proven origins skip the WebView from then on.
 
 interface SendInit {
   method: 'GET' | 'POST'
   headers: Record<string, string>
   body?: string
+}
+
+/** How send() may fall back to native HTTP. */
+interface SendFallback {
+  /** Replaces the body on the native retry (a streaming request asks for one piece). */
+  nativeBody?: string
+  /** A GET on the same server that proves whether the WebView can reach it (for POSTs). */
+  probeUrl?: string
+}
+
+/** A native failure as an LlmError (via: native): a timeout, an empty HTTP error, or no answer. */
+function nativeFailure(e: unknown, url: string, deadline: Deadline): LlmError {
+  let err: LlmError
+  if (e instanceof NativeHttpError && e.timedOut) {
+    err = new LlmError('timeout', `The model server at ${url} took too long to answer.`, { cause: e })
+  } else if (e instanceof NativeHttpError && e.httpErrorNoBody) {
+    // It answered (a 4xx or 5xx with an empty body), so this isn't "unreachable".
+    err = new LlmError('http', `The model server at ${url} answered with an error and no details.`, { cause: e })
+  } else {
+    err = deadline.wrap(e, url)
+  }
+  err.via = 'native'
+  return err
 }
 
 /** A fetch Response from a native answer; an unusable status becomes a network LlmError. */
@@ -333,27 +390,54 @@ async function viaNative(url: string, init: SendInit, deadline: Deadline): Promi
       timeoutMs: deadline.timeoutMs,
     })
   } catch (e) {
-    const err =
-      e instanceof NativeHttpError && e.timedOut
-        ? new LlmError('timeout', `The model server at ${url} took too long to answer.`, { cause: e })
-        : deadline.wrap(e, url)
-    err.via = 'native'
-    throw err
+    throw nativeFailure(e, url, deadline)
   }
   deadline.bump()
   return responseFrom(out, url)
 }
 
+/** Time allowed for each probe step (the WebView GET, then the native one). */
+const PROBE_TIMEOUT_MS = 15_000
+
 /**
- * fetch, then (Android app only) one native retry when the WebView blocked the request.
- * `nativeBody` replaces the body for that retry. Errors come back as LlmError.
+ * fetch, then (Android app only) one native retry when the WebView blocked the request: GETs on
+ * any TypeError, POSTs only once a probe of `fallback.probeUrl` proves the WebView can't reach
+ * the origin (see the note above). Errors come back as LlmError.
  */
-async function send(url: string, init: SendInit, deadline: Deadline, nativeBody?: string): Promise<Response> {
+async function send(url: string, init: SendInit, deadline: Deadline, fallback: SendFallback = {}): Promise<Response> {
+  const nativeInit = fallback.nativeBody === undefined ? init : { ...init, body: fallback.nativeBody }
+  if (canUseNativeHttp() && isWebviewBlocked(url)) return viaNative(url, nativeInit, deadline)
   try {
     return await fetch(url, { ...init, signal: deadline.signal })
   } catch (e) {
     if (!isFetchBlocked(e) || deadline.signal.aborted || !canUseNativeHttp()) throw deadline.wrap(e, url)
-    return viaNative(url, nativeBody === undefined ? init : { ...init, body: nativeBody }, deadline)
+    if (isIdempotentMethod(init.method)) return viaNative(url, nativeInit, deadline)
+    if (!fallback.probeUrl) throw deadline.wrap(e, url)
+    let probe: Awaited<ReturnType<typeof probeWebview>>
+    try {
+      probe = await probeWebview(
+        fallback.probeUrl,
+        {
+          headers: init.headers,
+          signal: deadline.signal,
+          timeoutMs: deadline.timeoutMs > 0 ? Math.min(deadline.timeoutMs, PROBE_TIMEOUT_MS) : PROBE_TIMEOUT_MS,
+        },
+        nativeRequest,
+      )
+    } catch (abort) {
+      throw deadline.wrap(abort, url)
+    }
+    deadline.bump()
+    switch (probe.verdict) {
+      case 'blocked':
+        return viaNative(url, nativeInit, deadline)
+      case 'unreachable':
+        // Native HTTP got no answer either: the server is down or not listening.
+        throw nativeFailure(probe.error, url, deadline)
+      default:
+        // The WebView reaches the server, so the POST failed in transit and may have run.
+        throw deadline.wrap(e, url)
+    }
   }
 }
 
@@ -684,7 +768,7 @@ async function postCompletion(args: RequestArgs): Promise<Completion> {
       url,
       { method: 'POST', headers: headersFor(args.conn), body: JSON.stringify(args.body) },
       deadline,
-      nativeBody,
+      { nativeBody, probeUrl: modelsUrl(args.conn) },
     )
     deadline.bump()
     if (!res.ok) throw await httpError(res)
@@ -732,6 +816,10 @@ function bodyFor(
       body[field] = cap
       sent.push(field)
     }
+  }
+  if (isOpenAiApi(opts.conn) && !rejected.has('reasoning_effort')) {
+    body.reasoning_effort = OPENAI_REASONING_EFFORT
+    sent.push('reasoning_effort')
   }
   if (jsonMode && !rejected.has('response_format')) {
     body.response_format = { type: 'json_object' }
@@ -788,6 +876,12 @@ async function loggedCompletion(
         timeoutMs: opts.timeoutMs,
         onDelta,
       })
+      if (!out.refused && !out.text && out.finishReason === 'length') {
+        throw new LlmError(
+          'empty',
+          'The model used its whole token cap before it wrote anything (finish_reason length).',
+        )
+      }
       finishDebug(id, {
         response: out.text,
         ...(out.refused ? { error: `Refused: ${out.refusal || `finish_reason ${out.finishReason}`}` } : {}),

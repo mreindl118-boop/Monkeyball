@@ -1,7 +1,8 @@
 // Every export in the app goes through saveFile(). On the web it is an anchor download. In the
 // APK the WebView ignores blob downloads, so the file is written to the app's cache directory
-// with @capacitor/filesystem and handed to the Android share sheet with @capacitor/share, where
-// the player picks Files, Drive, a messenger and so on (ARCHITECTURE, Android first).
+// with @capacitor/filesystem (in pieces of WRITE_CHUNK_BYTES) and handed to the Android share
+// sheet with @capacitor/share, where the player picks Files, Drive, a messenger and so on
+// (ARCHITECTURE, Android first).
 
 import { isNative } from './platform'
 
@@ -58,20 +59,54 @@ function isUnimplemented(e: unknown): boolean {
   return code === 'UNIMPLEMENTED' || code === 'UNAVAILABLE' || /not implemented/i.test(msg)
 }
 
-/** Android: write to the cache dir, then open the share sheet on it. */
+/**
+ * Bytes per write across the native bridge. The bridge JSON-encodes every call, so a large export
+ * sent in one piece exists several times over in the WebView; mid-range phones can run out of
+ * memory on a save with images. A multiple of 3, so each base64 piece stands on its own.
+ */
+export const WRITE_CHUNK_BYTES = 3 * 512 * 1024
+
+/** The blob as the pieces written to disk: UTF-8 text, or base64 of whole bytes. */
+async function* chunksOf(blob: Blob, text: boolean, size = WRITE_CHUNK_BYTES): AsyncGenerator<string> {
+  // Text is decoded slice by slice; the decoder carries a character split across two slices.
+  const decoder = text ? new TextDecoder() : null
+  for (let start = 0; start < blob.size; start += size) {
+    const part = blob.slice(start, start + size)
+    if (decoder) {
+      const last = start + size >= blob.size
+      yield decoder.decode(new Uint8Array(await part.arrayBuffer()), { stream: !last })
+    } else {
+      yield await blobToBase64(part)
+    }
+  }
+}
+
+/** Android: write to the cache dir in pieces, then open the share sheet on it. */
 async function shareNative(blob: Blob, filename: string, mime: string): Promise<SaveFileResult> {
-  let uri: string
+  let uri = ''
   try {
     const { Directory, Encoding, Filesystem } = await import('@capacitor/filesystem')
     const text = isTextType(mime)
-    const written = await Filesystem.writeFile({
-      path: `exports/${filename}`,
-      directory: Directory.Cache,
-      recursive: true,
-      data: text ? await blob.text() : await blobToBase64(blob),
-      ...(text ? { encoding: Encoding.UTF8 } : {}),
-    })
-    uri = written.uri
+    const encoding = text ? { encoding: Encoding.UTF8 } : {}
+    const path = `exports/${filename}`
+    // Earlier exports have been shared already; don't let them pile up in the cache.
+    try {
+      await Filesystem.rmdir({ path: 'exports', directory: Directory.Cache, recursive: true })
+    } catch {
+      // Nothing there yet.
+    }
+    let written = false
+    for await (const data of chunksOf(blob, text)) {
+      if (!written) {
+        uri = (await Filesystem.writeFile({ path, directory: Directory.Cache, recursive: true, data, ...encoding })).uri
+        written = true
+      } else {
+        await Filesystem.appendFile({ path, directory: Directory.Cache, data, ...encoding })
+      }
+    }
+    if (!written) {
+      uri = (await Filesystem.writeFile({ path, directory: Directory.Cache, recursive: true, data: '', ...encoding })).uri
+    }
   } catch (e) {
     if (isUnimplemented(e)) throw new FileSaveUnavailableError()
     throw e

@@ -17,6 +17,9 @@ const config: CapacitorConfig = {
   },
   android: {
     allowMixedContent: true,
+    // CI ships a debug build, which would otherwise let anyone with the unlocked phone and a USB
+    // cable open the WebView in chrome://inspect and read the stored API keys and history.
+    webContentsDebuggingEnabled: false,
   },
   plugins: {
     // Edge to edge (Capacitor 8): Android 15+ always draws the app under the status and

@@ -105,11 +105,12 @@
   font-size: 14px;
 }
 
-/* Keep a 48px hit area even when the visible pill is smaller. */
+/* Keep a 48px hit area even when the visible pill is smaller. The ::before sits inside the 1px
+   border, so it reaches 5px past the padding box: 38 + 2 * 5 = 48. */
 .small::before {
   content: '';
   position: absolute;
-  inset: -4px 0;
+  inset: -5px -1px;
 }
 
 .block {

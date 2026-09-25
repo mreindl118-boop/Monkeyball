@@ -2,12 +2,13 @@
 // Failures come back as a problem that names the fix. testConnection() works per preset and
 // handles both wire formats; testEndpoint() is the OpenAI-compatible test on its own.
 
+import { resetWebviewBlocked } from '../platform/http'
 import { latestReleasePage } from '../platform/updates'
 import type { ConnectionPreset, ConnectionSettings } from '../types'
 import { createClaude, listClaudeModels } from './anthropic'
 import { chat, errorMessageFrom, isLlmError, LlmError, listModels, modelsUrl, type Endpoint } from './client'
 import { extractJson } from './json'
-import { chatModels, pickModels, sameModel } from './models'
+import { chatModels, claudeListed, pickModels, sameModel } from './models'
 import {
   CLAUDE_JUDGE_MODEL,
   detectPreset,
@@ -20,11 +21,11 @@ import {
   normalizeBaseUrl,
   presetFor,
 } from './presets'
-import { endpointFor, modelsOnPreset, resolveRoute, rolePreset, slotFor, type Route } from './routes'
+import { endpointFor, modelsOnPreset, pointsAtClaudeApi, resolveRoute, rolePreset, slotFor, type Route } from './routes'
 
 export { sameModel }
 
-export type ProblemKind = 'cors' | 'unreachable' | 'auth' | 'model' | 'rate_limit' | 'other'
+export type ProblemKind = 'cors' | 'unreachable' | 'auth' | 'billing' | 'model' | 'rate_limit' | 'setup' | 'other'
 
 export interface ConnectionProblem {
   kind: ProblemKind
@@ -124,7 +125,7 @@ function mixedContentNote(conn: ProblemTarget): string {
   return ` This page is served over https, so the browser blocks plain http servers other than this device (mixed content). ${mixedContentWays()}`
 }
 
-/** "port 11434" from a base URL (the scheme's default when it names none), or ''. */
+/** "port 11434" from a base URL (the scheme's default when it names none). */
 function portNote(baseUrl: string): string {
   try {
     const u = new URL(normalizeBaseUrl(baseUrl))
@@ -239,6 +240,46 @@ function authProblem(conn: ProblemTarget, status?: number): ConnectionProblem {
       }
 }
 
+/** Where each hosted provider's credits are topped up. */
+const BILLING_PAGE: Partial<Record<ConnectionPreset, string>> = {
+  claude: 'console.anthropic.com/settings/billing',
+  chatgpt: 'platform.openai.com/settings/organization/billing',
+  grok: 'console.x.ai',
+  openrouter: 'openrouter.ai/settings/credits',
+}
+
+const BILLING_WORDS =
+  /credit balance|billing|purchase credits|insufficient[_ ]quota|exceeded your current quota|insufficient (credits|funds|balance)|(out of|no|any) credits/i
+
+/** A hosted provider saying the account has no credit (Anthropic's 400, OpenAI's insufficient_quota 429). */
+function isBillingError(e: LlmError): boolean {
+  if (e.kind !== 'http' || e.status === undefined || e.status < 400 || e.status >= 500) return false
+  if (errorObject(e.body)?.code === 'insufficient_quota') return true
+  return BILLING_WORDS.test(serverMessage(e))
+}
+
+function billingProblem(conn: ProblemTarget, e: LlmError): ConnectionProblem {
+  const hosted = hostedPreset(conn) ?? conn.preset
+  const name = presetFor(hosted).label
+  const page = BILLING_PAGE[hosted]
+  return {
+    kind: 'billing',
+    message: `${name} says this account is out of credit: ${serverMessage(e)}`,
+    fix: page
+      ? `Add credits at ${page}, then try again. New keys usually need a payment method first.`
+      : 'Add credits to the account that owns this key, then try again.',
+  }
+}
+
+/** The problem for an OpenAI-compatible preset (Custom) pointed at Anthropic's API. */
+export function claudeApiProblem(): ConnectionProblem {
+  return {
+    kind: 'setup',
+    message: "This address is Anthropic's API, which crushLAB only talks to through the Claude card.",
+    fix: 'Paste the key into the Claude card and pick Claude as the provider, then clear this address.',
+  }
+}
+
 function rateLimitProblem(conn: ProblemTarget): ConnectionProblem {
   const hosted = hostedPreset(conn)
   const name = hosted ? presetFor(hosted).label : isOpenRouter(conn) ? 'OpenRouter' : 'The server'
@@ -328,6 +369,16 @@ export function explainError(err: unknown, conn: ProblemTarget, model?: string):
       }
     case 'aborted':
       return { kind: 'other', message: 'The request was cancelled.', fix: 'Try again.' }
+    case 'empty':
+      return {
+        kind: 'other',
+        message: 'The model used its whole token budget thinking and wrote nothing.',
+        fix: hosted
+          ? 'Try again. If it keeps happening, pick a model that reasons less, such as a mini model.'
+          : 'Try again, or raise Max tokens in Settings.',
+      }
+    case 'setup':
+      return { kind: 'setup', message: err.message, fix: err.fix ?? 'Check the connection in Settings.' }
     case 'parse':
       return {
         kind: 'unreachable',
@@ -335,6 +386,8 @@ export function explainError(err: unknown, conn: ProblemTarget, model?: string):
         fix: unreachableFix(conn),
       }
     case 'http':
+      // Checked first: Anthropic says it with a 400, OpenAI with a 429 (insufficient_quota).
+      if ((hosted || isOpenRouter(conn)) && isBillingError(err)) return billingProblem(conn, err)
       if (err.status === 401 || err.status === 403) return authProblem(conn, err.status)
       if (err.status === 429) return rateLimitProblem(conn)
       if (looksLikeModelError(err)) {
@@ -350,6 +403,14 @@ export function explainError(err: unknown, conn: ProblemTarget, model?: string):
           kind: 'other',
           message: `${presetFor(hosted).label} is busy or having trouble right now (HTTP ${err.status}).`,
           fix: 'Try again in a moment.',
+        }
+      }
+      if (hosted) {
+        // No server logs to read on a hosted API: say what it said.
+        return {
+          kind: 'other',
+          message: `${presetFor(hosted).label} turned the request down${err.status ? ` (HTTP ${err.status})` : ''}: ${serverMessage(err)}`,
+          fix: 'Check the model and settings, then try again.',
         }
       }
       return { kind: 'other', message: err.message, fix: 'Check the server logs, then try again.' }
@@ -436,6 +497,13 @@ export async function testEndpoint(conn: Endpoint, opts: TestOptions = {}): Prom
     })
   }
 
+  // Claude goes through its own card (the official SDK), not an OpenAI-compatible preset.
+  if (pointsAtClaudeApi(conn)) {
+    const problem = claudeApiProblem()
+    steps.push({ label: STEP_LABELS.list, ok: false, detail: problem.message })
+    return fail(problem)
+  }
+
   // An https page can't reach a plain-http server elsewhere; say so before a request fails.
   if (blockedAsMixedContent(conn)) {
     const problem = mixedContentProblem(conn)
@@ -449,6 +517,10 @@ export async function testEndpoint(conn: Endpoint, opts: TestOptions = {}): Prom
     steps.push({ label: STEP_LABELS.list, ok: false, detail: problem.message })
     return fail(problem)
   }
+
+  // Test afresh whether the Android WebView can reach this server (the player may have fixed
+  // CORS since a probe sent it to native HTTP).
+  resetWebviewBlocked(modelsUrl(conn))
 
   // Step 1: list models.
   let listed = true
@@ -581,12 +653,6 @@ export async function testEndpoint(conn: Endpoint, opts: TestOptions = {}): Prom
   }
 
   return { ok: true, models, steps }
-}
-
-/** A Claude id is listed as itself or as a dated snapshot of it (claude-x-20250101). */
-function claudeListed(models: readonly string[], model: string): boolean {
-  const m = model.trim().toLowerCase()
-  return models.some((x) => sameModel(x, m) || (x.toLowerCase().startsWith(`${m}-`) && /-\d{8}$/.test(x)))
 }
 
 /** Test Claude: key present, Models API, configured models listed, tiny completion. */

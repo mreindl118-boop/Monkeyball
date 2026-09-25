@@ -9,12 +9,11 @@
 //                               safe zone (Android launchers mask and move it)
 //
 // Outputs (commit them; CI does not run this script):
-//   public/favicon.svg, public/icons/icon.svg   rounded-square SVG favicon
+//   public/favicon.svg                          rounded-square SVG favicon
 //   public/icons/favicon-32.png                 rounded, for browsers without SVG favicons
 //   public/icons/icon-192.png, icon-512.png     PWA "any" icons (rounded, transparent corners)
 //   public/icons/icon-maskable-512.png          PWA maskable icon (full bleed)
 //   public/icons/apple-touch-icon-180.png       full bleed (iOS rounds it and shows alpha as black)
-//   public/icons/apple-touch-icon.png           same picture under the name index.html uses
 //   assets/android/res/**                       Android launcher icons and the splash icon. The
 //                                               Android CI job copies this folder over the res/ of
 //                                               the generated project (see .github/workflows).
@@ -123,10 +122,8 @@ async function render(
 
 await mkdir(ICONS, { recursive: true })
 const rounded = roundedSvg(icon)
-for (const file of [path.join(PUBLIC, 'favicon.svg'), path.join(ICONS, 'icon.svg')]) {
-  await writeFile(file, rounded)
-  console.log(`wrote ${path.relative(ROOT, file)}`)
-}
+await writeFile(path.join(PUBLIC, 'favicon.svg'), rounded)
+console.log('wrote public/favicon.svg')
 
 const browser = await chromium.launch({ executablePath: CHROMIUM, args: ['--no-sandbox'] })
 try {
@@ -139,7 +136,6 @@ try {
   await render(page, at(ICONS, 'icon-512.png'), { svg: icon, size: 512, radius: ROUND })
   await render(page, at(ICONS, 'icon-maskable-512.png'), { svg: icon, size: 512 })
   await render(page, at(ICONS, 'apple-touch-icon-180.png'), { svg: icon, size: 180 })
-  await render(page, at(ICONS, 'apple-touch-icon.png'), { svg: icon, size: 180 })
 
   // Sources for @capacitor/assets (Android launcher icons and splash).
   await render(page, at(ASSETS, 'icon-only.png'), { svg: icon, size: 1024 })

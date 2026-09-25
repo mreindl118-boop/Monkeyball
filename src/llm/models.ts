@@ -14,6 +14,27 @@ export function sameModel(a: string, b: string): boolean {
 // ---------------------------------------------------------------------------
 // Claude
 
+/**
+ * True when `id` is the Claude model `alias` or a dated snapshot of it: the Models API lists
+ * Haiku 4.5 as claude-haiku-4-5-20251001, which the alias claude-haiku-4-5 points at.
+ */
+export function isClaudeSnapshotOf(id: string, alias: string): boolean {
+  const x = id.trim().toLowerCase()
+  const a = alias.trim().toLowerCase()
+  if (!a) return false
+  return sameModel(x, a) || (x.startsWith(`${a}-`) && /^-\d{8}$/.test(x.slice(a.length)))
+}
+
+/** A Claude id is listed as itself or as a dated snapshot of it. */
+export function claudeListed(models: readonly string[], model: string): boolean {
+  return models.some((x) => isClaudeSnapshotOf(x, model))
+}
+
+/** The same Claude model, whichever of the two is the alias and which the dated snapshot. */
+export function sameClaudeModel(a: string, b: string): boolean {
+  return isClaudeSnapshotOf(a, b) || isClaudeSnapshotOf(b, a)
+}
+
 interface ClaudeId {
   family: string
   major: number
@@ -58,7 +79,7 @@ export function claudeAcceptsEffort(model: string): boolean {
 }
 
 /** Models that take the server-side refusal fallback (`fallbacks: 'default'`). */
-export const FALLBACK_MODELS: readonly string[] = ['claude-opus-5', 'claude-fable-5-1', 'claude-opus-5-5']
+export const FALLBACK_MODELS: readonly string[] = ['claude-opus-5', 'claude-fable-5', 'claude-fable-5-1', 'claude-opus-5-5']
 
 export function claudeSupportsFallbacks(model: string): boolean {
   return FALLBACK_MODELS.includes(model.trim().toLowerCase())
@@ -67,12 +88,25 @@ export function claudeSupportsFallbacks(model: string): boolean {
 // ---------------------------------------------------------------------------
 // Chat-model lists and auto-pick
 
+// deep-research models (o3-deep-research...) only work on the Responses API, like -pro ones.
 const NOT_CHAT =
-  /(embed|audio|image|imagine|dall-e|tts|whisper|moderation|realtime|transcribe|search|instruct|codex|computer-use|video|vision|sora|babbage|davinci)/i
+  /(embed|audio|image|imagine|dall-e|tts|whisper|moderation|realtime|transcribe|search|instruct|codex|computer-use|video|vision|sora|babbage|davinci|deep-research)/i
 
-/** The ids worth offering in a model picker for this preset (drops image, audio, embedding...). */
+/**
+ * The ids worth offering in a model picker for this preset (drops image, audio, embedding...).
+ * Claude: a dated snapshot of a default model (claude-haiku-4-5-20251001) is offered as the
+ * default's alias, so the picker and the settings use the exact id without a date.
+ */
 export function chatModels(preset: ConnectionPreset, ids: readonly string[]): string[] {
   switch (preset) {
+    case 'claude': {
+      const out: string[] = []
+      for (const id of ids) {
+        const alias = [CLAUDE_STORY_MODEL, CLAUDE_JUDGE_MODEL].find((a) => isClaudeSnapshotOf(id, a)) ?? id
+        if (!out.includes(alias)) out.push(alias)
+      }
+      return out
+    }
     case 'chatgpt':
       return ids.filter((id) => /^(gpt-|o\d|chatgpt-)/i.test(id) && !NOT_CHAT.test(id) && !/-pro\b/i.test(id))
     case 'grok':
@@ -141,7 +175,8 @@ export interface ModelPicks {
  */
 export function pickModels(preset: ConnectionPreset, ids: readonly string[]): ModelPicks {
   if (preset === 'claude') {
-    const has = (m: string) => ids.length === 0 || ids.some((x) => sameModel(x, m))
+    // The alias counts as listed when the API lists a dated snapshot of it; the alias is stored.
+    const has = (m: string) => ids.length === 0 || claudeListed(ids, m)
     const story = has(CLAUDE_STORY_MODEL) ? CLAUDE_STORY_MODEL : ids.find((x) => /opus/.test(x)) ?? ids[0]
     const judge = has(CLAUDE_JUDGE_MODEL) ? CLAUDE_JUDGE_MODEL : ids.find((x) => /haiku/.test(x)) ?? story
     return { story, judge }

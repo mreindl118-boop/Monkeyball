@@ -82,8 +82,9 @@ everything else after confirm.
 ## Stores (`src/store/`)
 
 - `settings.ts` — `useSettings`: `{ loaded, settings: Settings, profile: PlayerProfile | null,
-  load(), update(patch), updateConnection(patch), updateImage(patch), setProfile(p) }`. Every
-  mutation persists to kv. Defaults live in `src/store/defaults.ts`.
+  load(), update(patch), updateConnection(patch), updateProvider(preset, patch), updateImage(patch),
+  setProfile(p) }`. Every mutation persists to kv. Defaults live in `src/store/defaults.ts`;
+  connection migration and key stripping/masking in `src/store/connection.ts` (pure).
 - `roster.ts` — `useRoster`: `{ loaded, sets: SetManifest[] (bundled + packs), entries:
   Record<string, RosterEntry>, load(), reload() }` plus selectors `activeEntries(settings)`,
   `setOf(id)`, `relationsFor(id)` (manifest relationships + card partners, deduped).
@@ -96,31 +97,58 @@ everything else after confirm.
 
 ## LLM (`src/llm/`)
 
-- `presets.ts` — the four presets from the spec table.
+- `index.ts` — the front door. Every call names a role and passes the connection settings:
+  `streamChat` / `chat` / `jsonChat({ conn, role, messages, kind?, onDelta?, coerce?, fallback? })`
+  → `{ text, refused, refusal?, truncated, route, model }` (jsonChat → `{ value, ok, raw }`). The
+  role resolves (`routes.ts`, `resolveRoute(conn, role)`) to a preset, wire format, base URL, key
+  and model, and the call goes to Claude (`anthropic.ts`) or the OpenAI-compatible client
+  (`client.ts`). Nothing above `src/llm` branches on the provider. The result's `route` never
+  carries the API key (`PublicRoute`), so results can be stored and logged. A route that can't work
+  fails before any request: no key (401-style `http` error), no address, no model, or an
+  OpenAI-compatible preset pointed at api.anthropic.com (`LlmError` kind `setup` with a `fix`). Also `listModels(conn, preset)`,
+  `testConnection(conn, { preset })`, `roleTakesTemperature`, `roleTakesEffort`,
+  `refusalBeat(name)` ("{name} changes the subject.") and `REFUSAL_NOTE` for declined story turns.
+- `presets.ts` — the seven presets (Claude, ChatGPT, Grok; Ollama, LM Studio, OpenRouter, Custom
+  under "Other providers"), each with wire format, default base URL, key link and default models.
+- `models.ts` — model-id rules (which Claude models take temperature, effort, server-side
+  fallbacks) and the auto-pick after Test connection (`pickModels`). The Models API lists some
+  Claude models under a dated id (claude-haiku-4-5-20251001); `isClaudeSnapshotOf` /
+  `claudeListed` treat it as the alias, the pickers offer the alias, and settings only ever store
+  exact ids without a date.
+- `schemas.ts` — JSON schemas for Claude structured outputs (judge, agreement, suggestions).
 - `sse.ts` — incremental SSE parser for `data:` lines, handles `[DONE]`, split chunks, CRLF.
 - `json.ts` — `extractJson(text)`: strip ``` fences, take the first balanced `{...}` block,
   `JSON.parse`; returns `null` on failure.
-- `client.ts` —
-  - `streamChat({ conn, model, messages, temperature, maxTokens, signal, onDelta, debug })` →
-    full text. POST `{baseUrl}/chat/completions` with `stream: true`; falls back to reading a
-    non-streamed JSON body if the server ignores `stream`.
-  - `chat(...)` non-streaming → text.
-  - `jsonChat<T>({ ..., coerce: (raw: unknown) => T | null, fallback: T })` → `{ value, ok, raw }`:
-    sends `response_format: {type:'json_object'}` unless this baseUrl+model is known to reject it
-    (a 400/422 whose body mentions response_format/json → remember and retry without); parse with
-    `extractJson` + `coerce`; on failure retry ONCE with an extra user message
+- `client.ts` (OpenAI-compatible) —
+  - POST `{baseUrl}/chat/completions` with `stream: true`; reads a non-streamed JSON body if the
+    server ignores `stream`.
+  - JSON calls send `response_format: {type:'json_object'}` unless this baseUrl+model is known to
+    reject it; parse with `extractJson` + `coerce`; on failure retry ONCE with
     `Reply with valid JSON only. No prose, no code fences.`; then return `fallback`. Never throws
     for parse problems (network errors still throw so the UI can say what to fix).
-  - Judge calls always use temperature 0.2 and `conn.judgeModel || conn.storyModel`.
-  - `listModels(conn)` → `string[]` from GET `{baseUrl}/models` (`data[].id`).
+  - Any optional parameter a server rejects by name (400/422) is dropped, retried and remembered
+    per server and model. Judge calls use temperature 0.2.
   - Auth header `Authorization: Bearer {apiKey}` only when a key is set. OpenRouter also gets
     `X-Title: crushLAB`.
-- `diagnose.ts` — `testConnection(conn)` → `{ ok, models, steps[], problem?: { kind:
-  'cors'|'unreachable'|'auth'|'model'|'other', message, fix } }`. Distinguish CORS from
-  unreachable by retrying with `fetch(url, { mode: 'no-cors' })`: an opaque success means the
-  server is up but blocks CORS. Fix text: Ollama → "Set OLLAMA_ORIGINS=* (or this app's origin)
-  and restart Ollama"; LM Studio → "Enable CORS in LM Studio's server settings"; 401/403 → bad
-  key; model not in list or 404 on completion → unknown model.
+  - Android app: when the WebView's fetch throws a TypeError (CORS, LAN), the request is retried
+    once through native HTTP (`src/platform/http.ts`): a GET (the model list) right away, a
+    completion POST only after the `/models` probe proves the WebView can't reach the server (see
+    Android first, `http.ts`), so a generation is never paid for twice. A stream is resent with
+    `stream: false` and the text reaches `onDelta` in one piece. Such errors carry
+    `via: 'native'`.
+  - A reply with `finish_reason: 'length'` and no text (a reasoning model spent the whole cap
+    thinking) is an `LlmError` of kind `empty`, not a reply.
+- `diagnose.ts` — `testConnection(conn, { preset })` → `{ ok, models, steps[], problem?: { kind:
+  'cors'|'unreachable'|'auth'|'billing'|'model'|'rate_limit'|'setup'|'other', message, fix } }`.
+  Hosted providers: "no credit" (Anthropic's 400 credit balance, OpenAI's `insufficient_quota`
+  429, OpenRouter's insufficient credits) is `billing` with the billing page; other hosted 4xx show
+  what the API said (never "check the server logs"). Distinguish CORS
+  from unreachable by retrying with `fetch(url, { mode: 'no-cors' })` (skipped after a native
+  retry). Fix text per provider (Ollama → `OLLAMA_ORIGINS`, LM Studio → Enable CORS, LAN addresses
+  → `OLLAMA_HOST=0.0.0.0`, the PC's firewall and port; 401/403 → the key; unknown model). The
+  https web app pointed at a plain-http server on another machine is reported as mixed content
+  (kind 'unreachable') without sending the request, with the APK, OpenRouter or the LAN server
+  as the ways out.
 
 ## Prompts (`src/prompts/`)
 
@@ -299,6 +327,10 @@ film becomes a fade; stamp press and sheet slides become instant.
   message ("cute", "pushy", "[lie]") force specific judge results for e2e checks. Sends CORS headers.
 - `scripts/e2e/*.mjs` — playwright-core scripts launching `/opt/pw-browsers/chromium` against
   `vite preview` + the mock, covering onboarding, a full 10-turn date, reload persistence, etc.
+- `scripts/e2e/android.mjs` (`npm run e2e:android`) — the first-launch flow as Chrome on a Pixel 7
+  (touch, 412x915 at 2.625x, Android user agent), then every screen again at 360x800: no sideways
+  scroll, every tappable thing hit-tested at 48px or more (`E2E_MIN_TAP=44` relaxes it), the design
+  rules, the viewport meta and the PWA manifest icons. Screenshots `scripts/e2e/out/android-*.png`.
 
 ## Android first
 
@@ -311,31 +343,106 @@ Android is the primary target. The app ships two ways, from the same web build:
    (the in-app update check reads the latest release). The `android/` folder is generated in CI
    (`npx cap add android`) and patched there; it is not committed.
 2. **PWA**: the same build deployed to GitHub Pages and installable from Chrome on Android
-   (and any other browser). Offline shell via vite-plugin-pwa.
+   (and any other browser). Offline shell via vite-plugin-pwa. Pages only deploys from the
+   repository's default branch unless the github-pages environment allows another, so until the
+   owner makes crushLAB's branch the default (or adds it under Settings, Environments,
+   github-pages, Deployment branches) the Pages URL keeps serving the older project and the
+   README and release notes don't advertise it.
 
 Platform layer (`src/platform/`): the only place that knows whether we're native.
 
-- `platform.ts` — `isNative()`, `platformName()` via `@capacitor/core`'s `Capacitor`.
-- `files.ts` — `saveFile(blob, filename, mime)`: web → anchor download; native → write to the
-  cache dir with `@capacitor/filesystem` and open the Android share sheet with `@capacitor/share`
-  (WebView blob downloads don't work). Every export in the app goes through this. Until those two
-  plugins are added, `canSaveFiles()` is false in the APK and `saveFile()` throws
-  `FileSaveUnavailableError`; callers say "isn't available in the Android app yet" instead.
+- `platform.ts` — `isNative()`, `platformName()`, `isAndroidApp()`, `hasPlugin(name)` via
+  `@capacitor/core`'s `Capacitor`.
+- `init.ts` — `initPlatform()`, called once from `App.tsx` (safe to call twice): sets
+  `<html data-platform>`, the service worker (below), and in the APK the system bars, back button,
+  keyboard and the launch update check.
+- `files.ts` — `saveFile(blob, filename, mime)` → `'downloaded' | 'shared' | 'cancelled'`: web →
+  anchor download; APK → write to the cache dir with `@capacitor/filesystem` and open the Android
+  share sheet with `@capacitor/share` (WebView blob downloads don't work). The file crosses the
+  bridge in pieces of 1.5 MB (`writeFile`, then `appendFile`; UTF-8 text slices or base64 of whole
+  3-byte groups) so a save with images can't exhaust the WebView's memory, and earlier exports are
+  cleared first. Every export in the app goes through this; closing the share sheet is not an
+  error.
 - `backButton.ts` — `@capacitor/app` `backButton` listener: close the top sheet/dialog if one is
-  open, else `useNav.back()`, and at the hub root minimize the app instead of exiting abruptly.
-- `http.ts` — native HTTP fallback: in the APK, if a WebView `fetch` to the model or image server
-  fails with a CORS/network TypeError, retry through `CapacitorHttp` (no CORS, cleartext allowed).
-  CapacitorHttp does not stream, so the story text then arrives in one piece; the client already
-  handles non-streamed bodies. Streaming is used whenever the server sends CORS headers.
+  open (the overlay registry lives in `src/ui/overlays.ts`, re-exported by `platform/overlays.ts`;
+  Sheet and ConfirmDialog register themselves), else `useNav.back()`, and at a root (hub, gate,
+  onboarding with nothing behind it) minimize the app instead of exiting abruptly. A screen that
+  wants a "leave?" confirm on back registers one with `pushOverlay`.
+- `http.ts` — native HTTP: `request(url, { method, headers, body, timeoutMs, signal })` →
+  `{ status, text, headers }` through `CapacitorHttp` (no CORS, cleartext allowed), and
+  `fetchWithFallback(url, { ..., probeUrl })` for other callers such as the Phase 5 image server.
+  `CapacitorHttp` does not patch `window.fetch` (`enabled: false`), so streaming keeps working; the
+  model client has its own fallback with the same rule. Claude calls don't need it: Anthropic
+  sends CORS headers.
+  **Never send a paid request twice.** A fetch TypeError doesn't prove the request never left the
+  phone (the connection can drop after the body went out; a gateway can answer without CORS
+  headers after the server did the work). GET and HEAD retry natively on any TypeError. Any other
+  method retries natively only when `probeWebview(probeUrl)` proves the WebView can't reach the
+  origin at all: a WebView GET of a cheap URL on the same server (the model client uses
+  `{baseUrl}/models`) with the same headers, so it gets the same preflight, fails, and a native GET
+  answers (any status, an empty 4xx included). Then the POST's preflight failed and nothing ran;
+  the origin is remembered and later calls go straight to native HTTP (Test connection forgets it
+  and checks again). If the probe reaches the server, the error stays a network error and nothing
+  is re-sent. A native 4xx/5xx with an empty body (Android reports FileNotFoundException) is an
+  answer, not "unreachable".
 - `updates.ts` — APK only: compare the build number baked in at build time
-  (`import.meta.env.VITE_BUILD_NUMBER`, 0 in dev) with the latest GitHub release tag
-  (`build-<n>`) of the repo; offer to download the new APK. Manual "Check for updates" in Settings,
-  plus an on-launch check that the player can switch off (it sends nothing about the player).
+  (`import.meta.env.VITE_BUILD_NUMBER` from `BUILD_NUMBER`, 0 in dev) with the latest GitHub
+  release tag (`build-<n>`) of `UPDATE_REPO`; prefer its `crushlab.apk` asset. `checkForUpdate()`
+  never throws. Manual "Check for updates" in Settings (App section), plus an on-launch check
+  2.5 s after start that the player can switch off (`Settings.autoUpdateCheck`; it sends nothing
+  about the player and stays quiet until the age gate is passed). A newer build raises
+  `UpdateNotice` ("Build N is ready", Download / Not now); Download opens the APK URL, which
+  Capacitor hands to the system browser.
+- `serviceWorker.ts` — the web app and PWA register `sw.js` (offline shell, background updates;
+  vite-plugin-pwa's own registration script is off). The APK never does and removes any old
+  registration: it serves its files from the APK, and a service worker would serve the previous
+  build's bundle on the first launch after an upgrade.
+- `statusBar.ts`, `keyboard.ts`, `haptics.ts` — velvet bars with light icons; while the keyboard
+  is up the focused field is scrolled into view and `<html data-keyboard="open">` is set;
+  `tap()` / `success()` haptics (no-op on the web). A bottom-pinned action bar (sticky, bottom 0)
+  gets `data-keyboard-static`, which `tokens.css` turns static while the keyboard is up, and
+  `html { scroll-padding-bottom }` keeps a field clear of such a bar when it is scrolled into view.
+  The date composer must do the same.
 - System UI: status bar and navigation bar tinted velvet; content respects safe-area insets.
 
-Capacitor config: `server.androidScheme: 'http'` (http://localhost is still a secure context, and
-it lets the WebView reach `http://192.168.x.x` model servers on the LAN without mixed-content
-blocking), `server.cleartext: true`, `android.allowMixedContent: true`.
+Capacitor config (`capacitor.config.ts`): `server.androidScheme: 'http'` (http://localhost is still
+a secure context, and it lets the WebView reach `http://192.168.x.x` model servers on the LAN
+without mixed-content blocking), `server.cleartext: true`, `android.allowMixedContent: true`,
+velvet `backgroundColor`, `SystemBars.insetsHandling: 'css'` (edge to edge; on WebView 140+
+`env(safe-area-inset-*)` holds the real bar sizes, on older WebViews Capacitor pads the view),
+`CapacitorHttp.enabled: false`, `android.webContentsDebuggingEnabled: false` (CI ships a debug
+build; without this anyone with the unlocked phone and a USB cable could read the stored keys and
+history through chrome://inspect).
+
+Icons: `scripts/make-icons.mjs` draws every icon from `assets/icon.svg` (full bleed) and
+`assets/icon-foreground.svg` (adaptive-icon safe zone): the PWA icons and favicons in `public/`,
+and the Android resources in `assets/android/res/` (adaptive + monochrome launcher icons, legacy
+icons, the Android 12+ splash icon), which CI copies over the generated project's `res/`.
+
+CI (`.github/workflows/build.yml`), Android job: `npx cap add android`, copy the icon resources,
+patch `styles.xml` (velvet window and bars; the launch theme's `android:background` is replaced by
+`windowSplashScreenBackground` + `windowSplashScreenAnimatedIcon`, because a theme-level
+background would paint over core-splashscreen's icon on Android 7 to 11), the manifest (portrait,
+`windowSoftInputMode="adjustResize"` so Android 10 and older report keyboard insets,
+`allowBackup="false"` so keys and history stay out of Google backups, cleartext), `cap sync`, stamp
+`versionCode` = run number and `versionName` "0.1.0 (build N)" and pin the signing key in an
+appended Gradle block, build, then verify the APK's signer against `signing/debug.keystore`
+(apksigner) and its package, versionCode, cleartext and backup flags (aapt2). Every patch fails
+the job if it doesn't apply. The release job publishes `crushlab.apk` and `crushlab-<n>.apk` under
+`build-<n>`. Only builds of the release branch (repository variable `RELEASE_BRANCH`, falling back
+to the branch named in the workflow) can become latest, and only when no newer build is out;
+every other branch publishes a prerelease, which the update check and the
+`releases/latest/download/crushlab.apk` link ignore. The workflow token is read-only except in the
+release job, and checkouts don't keep it. Pages deploy is `continue-on-error` until Pages is
+switched on and accepts the branch (above).
+
+Sideloading and Android developer verification: the APK is installed from GitHub, outside any
+store. Google's developer verification for apps installed on certified devices (announced for
+Brazil, Indonesia, Singapore and Thailand from September 2026 and worldwide in 2027; dates not
+re-checked here) blocks installing apps whose package isn't registered to a verified developer.
+Before it reaches the player's country, register a developer account (the hobbyist tier is
+enough) and register `app.crushlab.game` with the certificate in `signing/debug.keystore`. That's
+why the key stays pinned: a new key would need a new registration and would break upgrades.
 
 Model servers from an Android phone:
 - OpenRouter (HTTPS) works from both the APK and the PWA.
@@ -379,11 +486,13 @@ The story route serves story and memory calls; the judge route serves judge, agr
 suggestions calls. So Claude can write the story while Grok or a ChatGPT mini model judges, etc.
 Test connection runs per configured preset.
 
-Already in place (Phase 1): `ConnectionSettings.providers?: Partial<Record<ConnectionPreset,
-ProviderSlot>>` keeps each inactive preset's `{ baseUrl, apiKey }`; the active preset's live in
-`baseUrl`/`apiKey`. Switching presets (`switchPreset()` in `screens/ConnectionSetup/connectionHelpers.ts`)
-stores the old slot and restores the new one, so a key is never sent to another provider's server.
-The per-role routing above builds on this field.
+Built: `ConnectionSettings` is `{ providers: Record<ConnectionPreset, { baseUrl, apiKey }>, story,
+judge, storyTemperature, maxTokens, effort }`. Every preset keeps its own address and key, so a key
+is never sent to another provider's server. Stored Phase 1 settings migrate on load
+(`src/store/connection.ts`, `migrateConnection`); new installs start on Claude for both roles
+(`claude-opus-5` writes, `claude-haiku-4-5` judges, effort low, no key). After the first
+successful Test connection, if the story provider has no key, both roles move to the tested
+provider. Store action: `updateProvider(preset, patch)`.
 
 - `src/llm/anthropic.ts` — Claude via the official `@anthropic-ai/sdk` (`new Anthropic({ apiKey,
   dangerouslyAllowBrowser: true })`; the SDK sends the direct-browser-access CORS header). No raw
@@ -406,12 +515,25 @@ The per-role routing above builds on this field.
     in-world beat ("{name} changes the subject.") plus a system note in the date suggesting a lower
     heat; judge/JSON calls fall back to the neutral result. Never crash or stall the date.
   - Models list: `client.models.list()`; Test connection lists them and runs a tiny completion.
+  - Retries: the story stream and the model list keep the SDK's retries (they only re-send before
+    anything was generated). Non-streamed calls (judge, memory, test) get `maxRetries: 0`, since a
+    timeout or a dropped connection there can follow a finished, billed generation; they retry
+    once themselves, only on 429 or 529 (not billed), after the server's retry-after (at most
+    10 s).
+  - Errors read the API's own message (`error.error.message`), not the SDK's JSON dump.
 - `src/llm/client.ts` (OpenAI-compatible, used for ChatGPT and the others): for api.openai.com send
-  `max_completion_tokens` instead of `max_tokens`; if a model rejects `temperature` or another
+  `max_completion_tokens` instead of `max_tokens` and `reasoning_effort: 'low'`; OpenAI's and
+  xAI's APIs get a cap of at least 16000 (`HOSTED_MIN_TOKENS`, like Claude's) because reasoning
+  spends it before any text; if a model rejects `temperature`, `reasoning_effort` or another
   parameter (400 naming it), retry once without it and remember per model; `response_format`
   json_object as before. Refusals (`message.refusal`, `finish_reason: 'content_filter'`) are handled
   like Claude's.
 - Keys are stored only on the device (Dexie), masked in the UI, never included in save exports.
+  Claude, ChatGPT and Grok always use their own API address (their cards have no address field;
+  `migrateConnection` resets any other), and a save import keeps this device's address wherever it
+  keeps this device's key, so a file can't send a key to a server of its choosing. A Phase 1
+  Custom slot aimed at api.anthropic.com moves to the Claude card on load (Claude only goes through
+  the official SDK).
 - Heat and provider policies: Claude and ChatGPT follow their providers' usage policies and generally
   won't write explicit sexual content; heat 4–5 will often be declined or toned down. The heat
   control shows that note when a Claude or ChatGPT preset is active; local/OpenRouter models are the

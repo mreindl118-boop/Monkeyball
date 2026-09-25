@@ -20,7 +20,7 @@ import {
   type JsonChatResult,
 } from './client'
 import { presetFor } from './presets'
-import { endpointFor, endpointForRoute, resolveRoute, routeGap, slotFor, type Route } from './routes'
+import { endpointFor, endpointForRoute, pointsAtClaudeApi, resolveRoute, routeGap, slotFor, type Route } from './routes'
 import { AGREEMENT_SCHEMA, JUDGE_SCHEMA, type JsonSchema } from './schemas'
 
 export { explainError, explainRoleError, testConnection, testEndpoint } from './diagnose'
@@ -31,6 +31,9 @@ export { chatModels, pickModels, sameModel } from './models'
 export { MAIN_PRESETS, OTHER_PRESETS, PRESETS, PRESET_LIST, presetFor } from './presets'
 export { endpointFor, modelsOnPreset, resolveRoute, rolePreset, routeGap, slotFor } from './routes'
 export type { Route, RouteGap } from './routes'
+
+/** Where a call went, without its API key (results get stored and logged; keys must not be). */
+export type PublicRoute = Omit<Route, 'apiKey'>
 export { AGREEMENT_SCHEMA, JUDGE_SCHEMA, suggestionsSchema } from './schemas'
 
 export interface RoleCallOptions {
@@ -77,8 +80,8 @@ export interface ChatResult {
   refusal?: { category: string | null; explanation: string | null }
   /** Cut off at the token cap; the text is kept. */
   truncated: boolean
-  /** Where the call went. */
-  route: Route
+  /** Where the call went (never the key). */
+  route: PublicRoute
   /** The model that answered (a Claude server-side fallback can differ from route.model). */
   model: string
 }
@@ -100,13 +103,39 @@ function temperatureOf(opts: RoleCallOptions): number {
   return opts.temperature ?? (opts.role === 'judge' ? JUDGE_TEMPERATURE : opts.conn.storyTemperature)
 }
 
-/** Resolve the role and refuse early when the route can't work (no key for a keyed provider). */
+/**
+ * Resolve the role and refuse early, without a request, when the route can't work: no key for a
+ * keyed provider, no address, no model, or an OpenAI-compatible preset aimed at Anthropic's API.
+ */
 function routeFor(opts: RoleCallOptions): Route {
   const route = resolveRoute(opts.conn, opts.role)
-  if (routeGap(route) === 'key') {
-    throw new LlmError('http', `${presetFor(route.preset).label} needs an API key.`, { status: 401 })
+  const label = presetFor(route.preset).label
+  const gap = routeGap(route)
+  if (gap === 'key') {
+    throw new LlmError('http', `${label} needs an API key.`, { status: 401 })
+  }
+  if (gap === 'url') {
+    throw new LlmError('setup', `${label} has no server address yet.`, {
+      fix: `Enter the server's address on the ${label} card in Settings, then run Test connection.`,
+    })
+  }
+  if (gap === 'model') {
+    throw new LlmError('setup', `${label} has no ${opts.role} model picked.`, {
+      fix: 'Pick one in Settings, or run Test connection to fill it in.',
+    })
+  }
+  if (pointsAtClaudeApi(route)) {
+    throw new LlmError('setup', `${label} points at Anthropic's API, which crushLAB only talks to through the Claude card.`, {
+      fix: 'Paste the key into the Claude card and pick Claude as the provider.',
+    })
   }
   return route
+}
+
+/** The route as results carry it: everything but the key. */
+function publicRoute(route: Route): PublicRoute {
+  const { apiKey: _key, ...rest } = route
+  return rest
 }
 
 function claudeTarget(route: Route): ClaudeTarget {
@@ -140,7 +169,13 @@ function openAiOptions(opts: RoleCallOptions, route: Route) {
 }
 
 function fromClaude(r: ClaudeResult, route: Route): ChatResult {
-  const out: ChatResult = { text: r.text, refused: r.refused, truncated: r.truncated, route, model: r.model || route.model }
+  const out: ChatResult = {
+    text: r.text,
+    refused: r.refused,
+    truncated: r.truncated,
+    route: publicRoute(route),
+    model: r.model || route.model,
+  }
   if (r.refusal) out.refusal = r.refusal
   return out
 }
@@ -150,7 +185,7 @@ function fromOpenAi(c: Completion, route: Route): ChatResult {
     text: c.refused ? '' : c.text,
     refused: c.refused,
     truncated: c.finishReason === 'length',
-    route,
+    route: publicRoute(route),
     model: route.model,
   }
   if (c.refused) out.refusal = { category: c.finishReason === 'content_filter' ? 'content_filter' : null, explanation: c.refusal ?? null }

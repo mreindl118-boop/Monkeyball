@@ -259,6 +259,35 @@ describe('migrateConnection', () => {
     expect(c).toEqual(DEFAULT_SETTINGS.connection)
   })
 
+  it('pins Claude, ChatGPT and Grok to their own APIs', () => {
+    const c = migrateConnection({
+      providers: {
+        claude: { baseUrl: 'https://evil.example', apiKey: 'sk-ant-1' },
+        chatgpt: { baseUrl: 'https://proxy.example/v1', apiKey: 'sk-1' },
+        ollama: { baseUrl: 'http://192.168.1.20:11434/v1', apiKey: '' },
+      },
+      story: { preset: 'claude', model: 'claude-opus-5' },
+    })
+    expect(c.providers.claude).toEqual({ baseUrl: 'https://api.anthropic.com', apiKey: 'sk-ant-1' })
+    expect(c.providers.chatgpt).toEqual({ baseUrl: 'https://api.openai.com/v1', apiKey: 'sk-1' })
+    expect(c.providers.ollama.baseUrl).toBe('http://192.168.1.20:11434/v1')
+  })
+
+  it('moves a Custom slot aimed at Anthropic to the Claude card', () => {
+    const phase1 = { preset: 'custom', baseUrl: 'https://api.anthropic.com/v1', apiKey: 'sk-ant-old', storyModel: 'claude-opus-4-6', judgeModel: '' }
+    const c = migrateConnection(phase1)
+    expect(c.providers.claude.apiKey).toBe('sk-ant-old')
+    expect(c.providers.custom).toEqual({ baseUrl: '', apiKey: '' })
+    expect(c.story).toEqual({ preset: 'claude', model: 'claude-opus-4-6' })
+    // A different Claude key already stored: nothing moves (calls on Custom explain why).
+    const both = migrateConnection({
+      providers: { claude: { baseUrl: '', apiKey: 'sk-ant-new' }, custom: { baseUrl: 'https://api.anthropic.com/v1', apiKey: 'sk-ant-old' } },
+      story: { preset: 'custom', model: 'claude-opus-5' },
+    })
+    expect(both.providers.custom.apiKey).toBe('sk-ant-old')
+    expect(both.story.preset).toBe('custom')
+  })
+
   it('reads the current shape and repairs unknown values', () => {
     const c = migrateConnection({
       providers: { grok: { baseUrl: '', apiKey: 'xai-1' }, nope: { baseUrl: 'x', apiKey: 'y' } },
@@ -301,6 +330,17 @@ describe('key helpers', () => {
     const old = withLocalKeys({ preset: 'grok', baseUrl: 'https://api.x.ai/v1', apiKey: '', storyModel: 'grok-4', judgeModel: '' }, local)
     expect(old.story).toEqual({ preset: 'grok', model: 'grok-4' })
     expect(old.providers.grok.apiKey).toBe('xai-secret-key')
+  })
+
+  it("keeps this device's address with this device's key (a file can't redirect a key)", () => {
+    const local = withKeys()
+    local.providers.custom = { baseUrl: 'http://192.168.1.9:8080/v1', apiKey: 'c-local' }
+    const imported = withoutApiKeys(withKeys()) as ConnectionSettings
+    imported.providers.claude.baseUrl = 'https://evil.example'
+    imported.providers.custom.baseUrl = 'https://evil.example/v1'
+    const out = withLocalKeys(imported, local)
+    expect(out.providers.claude).toEqual({ baseUrl: 'https://api.anthropic.com', apiKey: 'sk-ant-secret-key' })
+    expect(out.providers.custom).toEqual({ baseUrl: 'http://192.168.1.9:8080/v1', apiKey: 'c-local' })
   })
 
   it('masks every key', () => {

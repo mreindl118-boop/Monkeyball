@@ -3,6 +3,7 @@ import { isNative } from '../../platform/platform'
 import {
   checkForUpdate,
   currentBuild,
+  describeUpdate,
   latestReleasePage,
   openExternal,
   refreshWebApp,
@@ -19,15 +20,6 @@ type Check =
   | { state: 'checking' }
   | { state: 'done'; info: UpdateInfo }
   | { state: 'failed' }
-
-/** What the manual check found, in one or two sentences. */
-export function describeUpdate(info: UpdateInfo): string {
-  if (info.current === 0) {
-    return `This is a development build, so there's nothing to compare it with. The newest release is build ${info.latest}.`
-  }
-  if (info.available) return `Build ${info.latest} is ready. You have build ${info.current}.`
-  return `You have the newest build (${info.current}).`
-}
 
 function NativeUpdates() {
   const autoUpdateCheck = useSettings((s) => s.settings.autoUpdateCheck)

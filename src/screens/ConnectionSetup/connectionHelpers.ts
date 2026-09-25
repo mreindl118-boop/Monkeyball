@@ -1,4 +1,4 @@
-import { pickModels, sameModel } from '../../llm/models'
+import { pickModels, sameClaudeModel, sameModel } from '../../llm/models'
 import { isLoopbackHost, presetFor } from '../../llm/presets'
 import { resolveRoute, routeGap, slotFor } from '../../llm/routes'
 import type { ConnectionPreset, ConnectionSettings, ProviderSlot } from '../../types'
@@ -34,12 +34,17 @@ export function localBaseUrl(preset: ConnectionPreset, mode: HostMode, host: str
 
 /**
  * The id the server lists for a stored model name, or undefined when it isn't listed. Ollama
- * lists "llama3.1:latest" for a model the player typed as "llama3.1".
+ * lists "llama3.1:latest" for a model the player typed as "llama3.1"; a Claude alias and its
+ * dated snapshot (claude-haiku-4-5, claude-haiku-4-5-20251001) are the same model.
  */
 export function listedModel(models: readonly string[], model: string): string | undefined {
   const m = model.trim()
   if (!m) return undefined
-  return models.includes(m) ? m : models.find((x) => sameModel(m, x))
+  if (models.includes(m)) return m
+  return (
+    models.find((x) => sameModel(m, x)) ??
+    (/^claude-/i.test(m) ? models.find((x) => sameClaudeModel(m, x)) : undefined)
+  )
 }
 
 /** True when a preset has what it needs to be called: an address, and a key if it requires one. */

@@ -29,7 +29,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'icons/icon.svg', 'icons/favicon-32.png', 'icons/apple-touch-icon.png'],
+      // src/platform/serviceWorker.ts registers sw.js on the web only (never in the Android app).
+      injectRegister: false,
+      includeAssets: ['favicon.svg', 'icons/favicon-32.png', 'icons/apple-touch-icon-180.png'],
       manifest: {
         name: 'crushLAB',
         short_name: 'crushLAB',
@@ -47,7 +49,9 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,woff2,woff,svg,png,webp,jpg,ico,webmanifest}'],
+        // woff2 only: every browser that runs the app loads the woff2 fonts, so precaching the
+        // .woff fallbacks would only cost mobile data on each install and update.
+        globPatterns: ['**/*.{js,css,html,woff2,svg,png,webp,jpg,ico,webmanifest}'],
         // Model and image calls always go to the network.
         navigateFallbackDenylist: [/^\/llm/, /^\/img/],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,

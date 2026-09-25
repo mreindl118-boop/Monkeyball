@@ -4,7 +4,8 @@ An adults-only (18+) dating sim where every character is played by a language mo
 roster of original characters, all fictional adults, and what you say moves affection and trust,
 unlocks their stories and galleries, and decides how things end. Intimacy in the story is always
 consensual. Your profile, saves and settings stay on your device; the only thing sent anywhere is
-the story itself, to the model you connect.
+the story itself, to the model provider you pick. The Android app also asks GitHub whether a newer
+build exists (you can switch that off in Settings).
 
 Android is the main platform. The same app also runs in any modern browser.
 
@@ -19,16 +20,27 @@ signed with the same key. Every build is on the
 [releases page](https://github.com/mreindl118-boop/Monkeyball/releases), also under its build
 number (`crushlab-<n>.apk`).
 
-**The web app.** Open https://mreindl118-boop.github.io/Monkeyball/ in Chrome, then use the menu and
-pick Install app. It works offline once installed. It can use a hosted model or one running on the
-phone itself, but not a PC on your Wi-Fi (see below).
+**The web app (not published yet).** CI builds an installable web app (PWA) too, but GitHub Pages
+for this repository still serves an older project: it only deploys from the repository's default
+branch, which isn't crushLAB's yet. Once the owner makes crushLAB's branch the default (or allows it
+under Settings, Environments, github-pages), the web app will be at
+https://mreindl118-boop.github.io/Monkeyball/: open it in Chrome, then use the menu and pick
+Install app. It works offline once installed and can use a hosted model or one running on the phone
+itself, but not a PC on your Wi-Fi (see below). Until then, use the APK.
 
 ## Connect a model on Android
 
-crushLAB talks to any OpenAI-compatible server. Pick where your model runs on the connection
-screen, then Test connection.
+Open the provider you want on the connection screen (or in Settings), paste its key and tap Test
+connection. Keys are stored only on the phone and each one is only ever sent to its own provider.
+Under Roles you can mix providers: one writes the story while another, cheaper model judges.
 
-**A hosted model (OpenRouter).** Choose OpenRouter and paste an API key from
+**Claude, ChatGPT or Grok (your own API key).** Claude is the default. Get a key at
+https://console.anthropic.com/settings/keys, https://platform.openai.com/api-keys or
+https://console.x.ai. Works in the app and the web app. Claude and ChatGPT follow their providers'
+content policies, so heat 4 and 5 are often declined or toned down; use a local or OpenRouter model
+for those.
+
+**OpenRouter.** Under Other providers, choose OpenRouter and paste a key from
 https://openrouter.ai/keys. Works in the app and the web app.
 
 **A PC on your Wi-Fi (Ollama or LM Studio).** Needs the Android app: the web app is served over
@@ -73,10 +85,15 @@ The e2e scripts use the Chromium at `/opt/pw-browsers/chromium` (set `CHROMIUM_P
 another); screenshots land in `scripts/e2e/out/`.
 
 The Android app is built by GitHub Actions (`.github/workflows/build.yml`) on every push: it builds
-and tests the web app, deploys it to GitHub Pages, wraps it with Capacitor 8, signs the APK with
-`signing/debug.keystore` and publishes it as release `build-<n>`. The `android/` folder is
-generated there and never committed. To build locally you need JDK 21 and the Android SDK; follow
-the Android job's steps in that workflow.
+and tests the web app, deploys it to GitHub Pages (once Pages accepts this branch), wraps it with
+Capacitor 8, signs the APK with `signing/debug.keystore` and publishes it as release `build-<n>`.
+Only builds from the release branch (the `RELEASE_BRANCH` repository variable, or the branch named
+in the workflow) are offered to installed apps as updates; other branches publish prereleases. The
+`android/` folder is generated there and never committed. To build locally you need JDK 21 and the
+Android SDK; follow the Android job's steps in that workflow.
+
+The app keeps no Android backup of its data (API keys and history stay on the phone). To move to a
+new phone, export a save in Settings and import it there.
 
 More: `docs/SPEC.md` (the product), `docs/ARCHITECTURE.md` (how it's built), `PROGRESS.md` (where
 it stands).

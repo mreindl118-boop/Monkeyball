@@ -443,6 +443,21 @@ describe('hosted OpenAI-compatible APIs', () => {
     mockFetch(jsonResponse(completion('ok')))
     await chat({ conn: conn(), messages })
     expect(calls[0].body).toMatchObject({ max_tokens: 600 })
+    expect(calls[0].body.reasoning_effort).toBeUndefined()
+  })
+
+  it('asks OpenAI for low reasoning effort, and learns when a model turns it down', async () => {
+    const openai = conn({ preset: 'chatgpt', baseUrl: 'https://api.openai.com/v1', storyModel: 'gpt-4.1' })
+    mockFetch(
+      jsonResponse({ error: { message: 'Unrecognized request argument supplied: reasoning_effort', type: 'invalid_request_error', param: 'reasoning_effort' } }, 400),
+      jsonResponse(completion('ok')),
+      jsonResponse(completion('ok')),
+    )
+    expect(await chat({ conn: openai, messages })).toBe('ok')
+    expect(calls[0].body.reasoning_effort).toBe('low')
+    expect(calls[1].body.reasoning_effort).toBeUndefined()
+    await chat({ conn: openai, messages })
+    expect(calls[2].body.reasoning_effort).toBeUndefined()
   })
 })
 
@@ -476,5 +491,13 @@ describe('refusals', () => {
   it("reports finish_reason 'length'", async () => {
     mockFetch(jsonResponse({ choices: [{ message: { role: 'assistant', content: 'cut sho' }, finish_reason: 'length' }] }))
     expect(await chatCompletion({ conn: conn(), messages })).toMatchObject({ refused: false, finishReason: 'length', text: 'cut sho' })
+  })
+
+  it("fails a reply that used the whole cap on reasoning and wrote nothing ('length', no text)", async () => {
+    mockFetch(jsonResponse({ choices: [{ message: { role: 'assistant', content: '' }, finish_reason: 'length' }] }))
+    const err = await chatCompletion({ conn: conn(), messages }).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(LlmError)
+    expect((err as LlmError).kind).toBe('empty')
+    expect(useDebug.getState().lastByKind.story?.error).toMatch(/empty/)
   })
 })

@@ -30,6 +30,10 @@ function num(v: unknown, fallback: number): number {
  * new defaults instead: Claude for both roles.
  */
 export function migrateConnection(stored: unknown): ConnectionSettings {
+  return settleProviders(migrateShape(stored))
+}
+
+function migrateShape(stored: unknown): ConnectionSettings {
   const d = structuredClone(DEFAULT_CONNECTION) as ConnectionSettings
   if (!isPlainObject(stored)) return d
 
@@ -87,6 +91,41 @@ export function migrateConnection(stored: unknown): ConnectionSettings {
   return out
 }
 
+/** A role on the Custom preset moves to Claude (see settleProviders). */
+function customToClaude<T extends string>(preset: T): T | 'claude' {
+  return preset === 'custom' ? 'claude' : preset
+}
+
+/**
+ * Addresses the app itself decides:
+ * - Claude, ChatGPT and Grok always talk to their own API. Their cards have no address field, so
+ *   a stored address (from an imported file, say) could send a key somewhere the player can't
+ *   see; it is reset to the preset's.
+ * - A Custom slot pointed at Anthropic's API (a Phase 1 setup) moves to the Claude card, which
+ *   uses the official SDK: its key goes to Claude when Claude has none (or the same one), and
+ *   roles on Custom move to Claude with their models. With a different Claude key already
+ *   stored, nothing moves and calls on Custom stop with a "use the Claude card" problem.
+ */
+function settleProviders(conn: ConnectionSettings): ConnectionSettings {
+  const providers = { ...conn.providers }
+  for (const id of PRESET_IDS) {
+    if (presetFor(id).group === 'main') providers[id] = { ...providers[id], baseUrl: presetFor(id).baseUrl }
+  }
+  const custom = providers.custom
+  if (detectPreset(custom.baseUrl) !== 'claude') return { ...conn, providers }
+  const customKey = custom.apiKey.trim()
+  const claudeKey = providers.claude.apiKey.trim()
+  if (claudeKey && customKey && claudeKey !== customKey) return { ...conn, providers }
+  if (!claudeKey && customKey) providers.claude = { ...providers.claude, apiKey: custom.apiKey }
+  providers.custom = { baseUrl: presetFor('custom').baseUrl, apiKey: '' }
+  return {
+    ...conn,
+    providers,
+    story: { ...conn.story, preset: customToClaude(conn.story.preset) },
+    judge: { ...conn.judge, preset: customToClaude(conn.judge.preset) },
+  }
+}
+
 /**
  * Connection settings (any stored version) with every API key blanked: save exports never carry
  * keys. Older shapes are migrated first, so a Phase 1 key at the top level can't slip through.
@@ -102,15 +141,17 @@ export function withoutApiKeys(stored: unknown): ConnectionSettings {
 
 /**
  * Imported connection settings (any version) with this device's keys: each preset keeps the key
- * stored here for that preset, so a key never moves to another provider. A key the file itself
- * carries (older exports) wins.
+ * stored here for that preset, so a key never moves to another provider. Wherever a local key is
+ * kept, the local address comes with it: a file can't point this device's key at a server of its
+ * choosing. A slot whose file carries its own key (older exports) is taken whole from the file.
  */
 export function withLocalKeys(imported: unknown, local: ConnectionSettings): ConnectionSettings {
   const conn = migrateConnection(imported)
   const providers = { ...conn.providers }
   for (const id of PRESET_IDS) {
-    const key = local.providers?.[id]?.apiKey ?? ''
-    if (key && !providers[id].apiKey) providers[id] = { ...providers[id], apiKey: key }
+    const localSlot = local.providers?.[id]
+    const key = localSlot?.apiKey ?? ''
+    if (key && !providers[id].apiKey) providers[id] = { baseUrl: localSlot?.baseUrl ?? providers[id].baseUrl, apiKey: key }
   }
   return { ...conn, providers }
 }

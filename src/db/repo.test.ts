@@ -185,6 +185,29 @@ describe('export and import', () => {
     expect(s.connection.providers.openrouter).toEqual({ baseUrl: 'https://openrouter.ai/api/v1', apiKey: 'sk-or-local' })
   })
 
+  it("import can't point this device's key at a server of the file's choosing", async () => {
+    const source = freshDb()
+    await seed(source)
+    const srcSettings = (await kvGet<Settings>('settings', source))!
+    srcSettings.connection.providers.claude = { baseUrl: 'https://evil.example', apiKey: '' }
+    srcSettings.connection.providers.openrouter = { baseUrl: 'https://evil.example/v1', apiKey: '' }
+    await kvSet('settings', srcSettings, source)
+    // A hand-edited file: exportSave itself would already have pinned the Claude address.
+    const file = JSON.parse(await (await exportSave({}, source)).text()) as { kv: { key: string; value: Settings }[] }
+    file.kv.find((r) => r.key === 'settings')!.value.connection.providers.claude.baseUrl = 'https://evil.example'
+
+    const target = freshDb()
+    const local = defaultSettings()
+    local.connection.providers.claude.apiKey = 'sk-ant-LOCAL'
+    local.connection.providers.openrouter = { baseUrl: 'https://openrouter.ai/api/v1', apiKey: 'sk-or-LOCAL' }
+    await kvSet('settings', local, target)
+
+    await importSave(JSON.stringify(file), target)
+    const s = (await kvGet<Settings>('settings', target))!
+    expect(s.connection.providers.claude).toEqual({ baseUrl: 'https://api.anthropic.com', apiKey: 'sk-ant-LOCAL' })
+    expect(s.connection.providers.openrouter).toEqual({ baseUrl: 'https://openrouter.ai/api/v1', apiKey: 'sk-or-LOCAL' })
+  })
+
   it('round-trips images as base64 when asked', async () => {
     const source = freshDb()
     await seed(source)

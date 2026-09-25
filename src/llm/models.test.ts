@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { chatModels, claudeAcceptsEffort, claudeAcceptsSampling, claudeSupportsFallbacks, parseClaudeId, pickModels } from './models'
+import {
+  chatModels,
+  claudeAcceptsEffort,
+  claudeAcceptsSampling,
+  claudeListed,
+  claudeSupportsFallbacks,
+  isClaudeSnapshotOf,
+  parseClaudeId,
+  pickModels,
+} from './models'
 
 describe('Claude model rules', () => {
   it('parses current and older ids', () => {
@@ -22,6 +31,7 @@ describe('Claude model rules', () => {
     expect(claudeAcceptsEffort('claude-fable-5-1')).toBe(true)
     expect(claudeSupportsFallbacks('claude-opus-5')).toBe(true)
     expect(claudeSupportsFallbacks('claude-fable-5-1')).toBe(true)
+    expect(claudeSupportsFallbacks('claude-fable-5')).toBe(true)
     expect(claudeSupportsFallbacks('claude-opus-5-5')).toBe(true)
     expect(claudeSupportsFallbacks('claude-haiku-4-5')).toBe(false)
   })
@@ -60,6 +70,8 @@ const OPENAI_LIST = [
   'gpt-5.1-codex-mini',
   'o3',
   'o4-mini',
+  'o3-deep-research',
+  'o4-mini-deep-research',
 ]
 
 const XAI_LIST = [
@@ -81,13 +93,32 @@ const XAI_LIST = [
 describe('chatModels', () => {
   it('drops image, audio, embedding, moderation, realtime and other non-chat models', () => {
     const chat = chatModels('chatgpt', OPENAI_LIST)
-    for (const id of ['whisper-1', 'dall-e-3', 'tts-1-hd', 'text-embedding-3-large', 'omni-moderation-latest', 'gpt-4o-realtime-preview', 'gpt-4o-audio-preview', 'gpt-4o-mini-transcribe', 'gpt-4o-mini-tts', 'gpt-image-1', 'gpt-4o-search-preview', 'gpt-5-pro', 'gpt-5-codex', 'gpt-3.5-turbo-instruct']) {
+    for (const id of ['whisper-1', 'dall-e-3', 'tts-1-hd', 'text-embedding-3-large', 'omni-moderation-latest', 'gpt-4o-realtime-preview', 'gpt-4o-audio-preview', 'gpt-4o-mini-transcribe', 'gpt-4o-mini-tts', 'gpt-image-1', 'gpt-4o-search-preview', 'gpt-5-pro', 'gpt-5-codex', 'gpt-3.5-turbo-instruct', 'o3-deep-research', 'o4-mini-deep-research']) {
       expect(chat).not.toContain(id)
     }
     expect(chat).toEqual(expect.arrayContaining(['gpt-5.1', 'gpt-5-mini', 'gpt-4o', 'o3', 'o4-mini']))
     expect(chatModels('grok', XAI_LIST)).not.toEqual(expect.arrayContaining(['grok-imagine-image']))
     expect(chatModels('grok', XAI_LIST)).not.toContain('grok-2-image-1212')
     expect(chatModels('ollama', ['a', 'b'])).toEqual(['a', 'b'])
+  })
+
+  it('offers a dated snapshot of a Claude default as its alias', () => {
+    expect(chatModels('claude', ['claude-opus-5', 'claude-haiku-4-5-20251001', 'claude-sonnet-4-5-20250929'])).toEqual([
+      'claude-opus-5',
+      'claude-haiku-4-5',
+      'claude-sonnet-4-5-20250929',
+    ])
+    expect(chatModels('claude', ['claude-haiku-4-5', 'claude-haiku-4-5-20251001'])).toEqual(['claude-haiku-4-5'])
+  })
+})
+
+describe('Claude snapshots', () => {
+  it('knows a dated snapshot of an alias', () => {
+    expect(isClaudeSnapshotOf('claude-haiku-4-5-20251001', 'claude-haiku-4-5')).toBe(true)
+    expect(isClaudeSnapshotOf('claude-haiku-4-5', 'claude-haiku-4-5')).toBe(true)
+    expect(isClaudeSnapshotOf('claude-haiku-4-5-20251001', 'claude-haiku-4')).toBe(false)
+    expect(isClaudeSnapshotOf('claude-opus-5-5', 'claude-opus-5')).toBe(false)
+    expect(claudeListed(['claude-haiku-4-5-20251001'], 'claude-haiku-4-5')).toBe(true)
   })
 })
 
@@ -114,6 +145,13 @@ describe('pickModels', () => {
       judge: 'claude-haiku-4-5',
     })
     expect(pickModels('claude', [])).toEqual({ story: 'claude-opus-5', judge: 'claude-haiku-4-5' })
+  })
+
+  it('Claude: the alias, never the dated id the Models API lists', () => {
+    expect(pickModels('claude', ['claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5-20251001'])).toEqual({
+      story: 'claude-opus-5',
+      judge: 'claude-haiku-4-5',
+    })
   })
 
   it('others: the first listed model for the story', () => {

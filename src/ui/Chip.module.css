@@ -19,10 +19,11 @@
     border-color 140ms var(--ease-out);
 }
 
+/* A 48px hit area around the 40px pill (the ::before sits inside the 1px border). */
 button.chip::before {
   content: '';
   position: absolute;
-  inset: -4px 0;
+  inset: -5px -1px;
 }
 
 button.chip:hover:not(:disabled) {

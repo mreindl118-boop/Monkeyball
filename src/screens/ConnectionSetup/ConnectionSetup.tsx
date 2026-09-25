@@ -14,7 +14,8 @@ export default function ConnectionSetup() {
   const back = useNav((s) => s.back)
   const reset = useNav((s) => s.reset)
   const firstRun = stack.length === 0
-  const [problem] = useState(takeOnboardingProblem)
+  // The onboarding check's problem, until a Test connection here succeeds.
+  const [problem, setProblem] = useState(takeOnboardingProblem)
 
   const toHub = () => reset({ name: 'hub' })
 
@@ -44,10 +45,16 @@ export default function ConnectionSetup() {
       )}
 
       <Panel as="div">
-        <ConnectionForm idPrefix="setup" />
+        <ConnectionForm
+          idPrefix="setup"
+          onTested={(result) => {
+            if (result.ok) setProblem(null)
+          }}
+        />
       </Panel>
 
-      <div className={styles.actions}>
+      {/* Sticky at the bottom, except while the keyboard is up (src/ui/tokens.css). */}
+      <div className={styles.actions} data-keyboard-static="">
         <Button variant="ghost" onClick={toHub}>
           Skip for now
         </Button>

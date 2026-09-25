@@ -3,7 +3,7 @@
 
 import type { ConnectionPreset, ConnectionSettings, ModelProvider, ModelRole, ProviderSlot } from '../types'
 import type { Endpoint } from './client'
-import { isPresetId, normalizeBaseUrl, presetFor } from './presets'
+import { detectPreset, isPresetId, normalizeBaseUrl, presetFor } from './presets'
 
 /** Everything one call needs to reach its model. */
 export interface Route {
@@ -55,6 +55,15 @@ export function resolveRoute(conn: ConnectionSettings, role: ModelRole): Route {
     apiKey: slot.apiKey.trim(),
     model,
   }
+}
+
+/**
+ * True when an OpenAI-compatible preset (Custom, usually) points at Anthropic's API. Claude only
+ * goes through the official SDK on the Claude card (refusal, fallback, effort and sampling
+ * handling live there), never through Anthropic's OpenAI compatibility layer.
+ */
+export function pointsAtClaudeApi(route: Pick<Route, 'preset' | 'baseUrl'>): boolean {
+  return presetFor(route.preset).provider === 'openai' && detectPreset(route.baseUrl) === 'claude'
 }
 
 /** What stops a route from working before any request is made, or null when nothing does. */

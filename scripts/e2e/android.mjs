@@ -8,7 +8,7 @@
 // panel (opened by a real touch long-press) -> a "not built yet" screen, with touch input at
 // 412x915 and a 2.625 device pixel ratio, then revisits every screen at 360x800. On each screen:
 //   - nothing scrolls sideways (scrollWidth fits the device width; see checkScreen),
-//   - every button, radio, tab, switch, link and field can be hit over at least 44px of height
+//   - every button, radio, tab, switch, link and field can be hit over at least 48px of height
 //     (hit-tested, so a small pill with a 48px ::before hit area passes),
 //   - the design checks from lib.mjs (no uppercase, arrows on buttons or middle-dot strings),
 //   - a screenshot: scripts/e2e/out/android-<screen>.png (and -full.png for long screens).
@@ -42,8 +42,11 @@ const PIXEL_7 = {
 }
 /** A small Android phone. */
 const SMALL = { width: 360, height: 800 }
-/** Minimum hit height for anything tappable. The design target is 48px; 44 is the hard floor. */
-const MIN_TAP = 44
+/**
+ * Minimum hit height for anything tappable. The design target is 48px, and that is what this
+ * checks; E2E_MIN_TAP=44 relaxes it to the hard floor.
+ */
+const MIN_TAP = Number(process.env.E2E_MIN_TAP) || 48
 
 const PROFILE = {
   name: 'Ana',
@@ -264,15 +267,20 @@ async function androidFlow(browser, app, mock) {
   }, page)
 
   await step('connect to the mock model server', async () => {
-    await page
-      .getByRole('radiogroup', { name: 'Where your model runs' })
-      .getByRole('radio', { name: /^Custom/ })
-      .tap()
-    await page.getByLabel('Base URL').fill(mock.baseUrl)
-    await page.getByRole('button', { name: 'Test connection' }).tap()
+    // Claude is the default provider; the mock is an OpenAI-compatible server under Other providers.
+    await page.getByRole('button', { name: /^Other providers/ }).tap()
+    await page.getByRole('button', { name: /^Custom/ }).tap()
+    await page.locator('#setup-custom-baseurl').fill(mock.baseUrl)
+    await page.getByRole('button', { name: 'Test connection to Custom' }).tap()
     await page.getByText('The server answered and 2 models are available.').waitFor({ timeout: 20_000 })
-    await page.getByLabel('Story model').selectOption('mock-story')
-    await page.getByLabel('Judge model').selectOption('mock-judge')
+    // The onboarding check's problem banner goes once a test here succeeds.
+    check(
+      (await page.getByRole('status').filter({ hasText: /Set up a provider below/ }).count()) === 0,
+      'the "needs an API key" banner is still up after a successful test',
+    )
+    // Claude has no key, so both roles moved to the tested provider.
+    await page.getByRole('group', { name: 'Story model' }).getByLabel('Model').selectOption('mock-story')
+    await page.getByRole('group', { name: 'Judge model' }).getByLabel('Model').selectOption('mock-judge')
     await checkScreen(page, '03-connection-tested', { full: true })
   }, page)
 

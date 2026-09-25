@@ -37,6 +37,12 @@ describe('listedModel', () => {
     expect(listedModel(['qwen3'], 'llama3.1')).toBeUndefined()
     expect(listedModel(['qwen3'], '')).toBeUndefined()
   })
+
+  it('matches a Claude alias and its dated snapshot either way', () => {
+    expect(listedModel(['claude-opus-5', 'claude-haiku-4-5-20251001'], 'claude-haiku-4-5')).toBe('claude-haiku-4-5-20251001')
+    expect(listedModel(['claude-haiku-4-5'], 'claude-haiku-4-5-20251001')).toBe('claude-haiku-4-5')
+    expect(listedModel(['claude-haiku-4-5-20251001'], 'claude-haiku-4')).toBeUndefined()
+  })
 })
 
 describe('slotUsable', () => {
@@ -109,6 +115,24 @@ describe('role patches', () => {
     c.judge = { preset: 'grok', model: 'grok-4-fast' }
     expect(storyPresetPatch(c, 'ollama')).toEqual({ story: { preset: 'ollama', model: '' } })
     expect(storyPresetPatch(c, 'claude')).toEqual({})
+  })
+
+  it('stores the Claude alias when the Models API lists a dated Haiku', () => {
+    const listed = ['claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5-20251001']
+    const c = fresh()
+    expect(bothRolesPatch(c, 'claude', listed)).toEqual({
+      story: { preset: 'claude', model: 'claude-opus-5' },
+      judge: { preset: 'same', model: 'claude-haiku-4-5' },
+    })
+    c.story = { preset: 'chatgpt', model: 'gpt-5' }
+    expect(storyPresetPatch(c, 'claude', listed)).toEqual({
+      story: { preset: 'claude', model: 'claude-opus-5' },
+      judge: { preset: 'same', model: 'claude-haiku-4-5' },
+    })
+    expect(judgePresetPatch(c, 'claude', listed)).toEqual({ judge: { preset: 'claude', model: 'claude-haiku-4-5' } })
+    // The story provider (ChatGPT) has no key: a tested Claude takes both roles.
+    c.judge = { preset: 'same', model: '' }
+    expect(afterTestPatch(c, 'claude', listed)?.judge).toEqual({ preset: 'same', model: 'claude-haiku-4-5' })
   })
 
   it('picks a judge model for the judge provider', () => {

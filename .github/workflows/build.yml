@@ -9,14 +9,21 @@ on:
     branches: ['**']
   workflow_dispatch:
 
+# Read-only by default: the web and android jobs run npm ci (third-party install scripts). Only
+# the release job gets write access, and no checkout keeps the token in .git/config.
 permissions:
-  contents: write
+  contents: read
 
 env:
   # Baked into the web build (import.meta.env.VITE_BUILD_NUMBER, see vite.config.ts). The APK's
   # in-app update check compares it with the newest build-<n> release, and the Android
   # versionCode uses the same number, so all three always agree.
   BUILD_NUMBER: ${{ github.run_number }}
+  # The branch whose builds are offered to installed apps as updates (and become the
+  # releases/latest/download/crushlab.apk link). Builds from any other branch are published as
+  # prereleases, which the update check and that link ignore. Set the repository variable
+  # RELEASE_BRANCH to change it (for example to main once crushLAB is merged there).
+  RELEASE_BRANCH: ${{ vars.RELEASE_BRANCH || 'claude/repo-fresh-start-gxm2p6' }}
 
 jobs:
   web:
@@ -24,6 +31,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -39,8 +48,10 @@ jobs:
 
   pages:
     # The PWA: installable from Chrome on Android (and any browser).
-    # Soft-fails until the repo owner sets Settings -> Pages -> Source: "GitHub Actions";
-    # the CI token can't flip that switch itself.
+    # Soft-fails until the repo owner sets Settings, Pages, Source: "GitHub Actions" AND lets this
+    # branch deploy: the github-pages environment only accepts the default branch unless
+    # Settings, Environments, github-pages, Deployment branches lists this one (or this branch
+    # becomes the default). The CI token can't change either setting itself.
     name: Deploy PWA to GitHub Pages
     runs-on: ubuntu-latest
     needs: web
@@ -89,6 +100,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -127,7 +140,10 @@ jobs:
         run: |
           f=android/app/src/main/res/values/styles.xml
           sed -i 's#</resources>#    <color name="crushVelvet">\#FF2A0F1F</color>\n</resources>#' "$f"
-          sed -i 's#<item name="android:background">@drawable/splash</item>#<item name="android:background">@color/crushVelvet</item>\n        <item name="windowSplashScreenBackground">@color/crushVelvet</item>\n        <item name="windowSplashScreenAnimatedIcon">@drawable/crush_splash_icon</item>#' "$f"
+          # The launch theme loses its android:background entirely: a theme-level background paints
+          # every view of the starting window, which would cover core-splashscreen's icon on
+          # Android 7 to 11 (drawn through android:windowBackground from the two items below).
+          sed -i 's#<item name="android:background">@drawable/splash</item>#<item name="windowSplashScreenBackground">@color/crushVelvet</item>\n        <item name="windowSplashScreenAnimatedIcon">@drawable/crush_splash_icon</item>#' "$f"
           sed -i 's#<item name="android:background">@null</item>#<item name="android:background">@null</item>\n        <item name="android:windowBackground">@color/crushVelvet</item>\n        <item name="android:statusBarColor">@color/crushVelvet</item>\n        <item name="android:navigationBarColor">@color/crushVelvet</item>\n        <item name="android:windowLightStatusBar">false</item>#' "$f"
           cat "$f"
           for want in \
@@ -141,13 +157,27 @@ jobs:
             grep -qF "$want" "$f" || { echo "::error::styles.xml patch did not apply: $want"; exit 1; }
           done
           if grep -q '@drawable/splash<' "$f"; then echo "::error::the launch theme still uses the template splash"; exit 1; fi
-      - name: Portrait on phones
+          launch=$(sed -n '/name="AppTheme.NoActionBarLaunch"/,/<\/style>/p' "$f")
+          if echo "$launch" | grep -q '"android:background"'; then echo "::error::the launch theme still sets android:background, which hides the splash icon before Android 12"; exit 1; fi
+      - name: Portrait on phones, keyboard resizes, no backups
         # ARCHITECTURE: the APK is portrait. Android 16 ignores this on tablets and foldables
         # (targetSdk 36), which is what we want there.
+        # adjustResize: up to Android 10 the WebView only gets the keyboard's (IME) insets, which
+        # the SystemBars plugin pads it by, when the window's soft input mode is adjustResize.
+        # allowBackup="false": the app's storage holds the player's API keys and adults-only
+        # history; it stays out of Google backups (saves move between phones by export).
         run: |
           f=android/app/src/main/AndroidManifest.xml
           grep -q 'android:screenOrientation' "$f" || sed -i 's#<activity#<activity android:screenOrientation="portrait"#' "$f"
           grep -q 'android:screenOrientation="portrait"' "$f" || { echo "::error::orientation patch did not apply"; exit 1; }
+          grep -q 'android:windowSoftInputMode' "$f" || sed -i 's#<activity#<activity android:windowSoftInputMode="adjustResize"#' "$f"
+          grep -q 'android:windowSoftInputMode="adjustResize"' "$f" || { echo "::error::soft input mode patch did not apply"; exit 1; }
+          if grep -q 'android:allowBackup=' "$f"; then
+            sed -i 's#android:allowBackup="true"#android:allowBackup="false"#' "$f"
+          else
+            sed -i 's#<application#<application android:allowBackup="false"#' "$f"
+          fi
+          grep -q 'android:allowBackup="false"' "$f" || { echo "::error::backup patch did not apply"; exit 1; }
       - name: Allow plain-http model servers on the LAN
         # Also set by server.cleartext in capacitor.config.ts (checked after sync); this keeps the
         # app manifest explicit.
@@ -223,8 +253,14 @@ jobs:
           "$BT/aapt2" dump xmltree --file AndroidManifest.xml "$APK" > manifest.txt
           cleartext=$(grep -m1 'usesCleartextTraffic' manifest.txt || true)
           echo "${cleartext:-usesCleartextTraffic missing}"
-          if [ -z "$cleartext" ] || echo "$cleartext" | grep -Eq '=(false|0x0+)\b'; then
+          # aapt2 prints booleans as =true / =false; older formats print (type 0x12)0xffffffff / 0x0.
+          if [ -z "$cleartext" ] || echo "$cleartext" | grep -Eq '=false\b|=(\(type 0x12\))?0x0+\b'; then
             echo "::error::the merged manifest does not allow cleartext; LAN model servers would be blocked"; exit 1
+          fi
+          backup=$(grep -m1 'allowBackup' manifest.txt || true)
+          echo "${backup:-allowBackup missing}"
+          if [ -z "$backup" ] || echo "$backup" | grep -Eq '=true\b|=(\(type 0x12\))?0xffffffff\b'; then
+            echo "::error::the merged manifest allows backups; API keys would reach Google backups"; exit 1
           fi
           ls -l "$APK"
       - name: Name the APK
@@ -244,6 +280,8 @@ jobs:
     name: Publish release (APK download link and update feed)
     runs-on: ubuntu-latest
     needs: [android]
+    permissions:
+      contents: write
     # One publish at a time, so the check below can't race another run's release. (If two more
     # runs queue up behind a publish, GitHub cancels the older waiting one; the newer one ships.)
     concurrency:
@@ -260,10 +298,21 @@ jobs:
         id: order
         env:
           GH_TOKEN: ${{ github.token }}
+        # Only a crushLAB release counts: this repo's other branch once published another game's
+        # build-<n> releases, and one of those must not keep the latest mark from a crushLAB build.
         run: |
-          current=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName 2>/dev/null || true)
+          if [[ "$GITHUB_REF_NAME" != "$RELEASE_BRANCH" ]]; then
+            echo "::notice::$GITHUB_REF_NAME is not the release branch ($RELEASE_BRANCH); publishing build-${{ github.run_number }} as a prerelease"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+            echo "latest=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          latest=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName,assets 2>/dev/null || echo '{}')
+          current=$(jq -r '.tagName // ""' <<<"$latest")
+          ours=$(jq -r '[.assets[]?.name] | index("crushlab.apk") != null' <<<"$latest")
           n=${current#build-}
-          if [[ "$n" =~ ^[0-9]+$ ]] && (( n > ${{ github.run_number }} )); then
+          if [[ "$ours" == "true" && "$n" =~ ^[0-9]+$ ]] && (( n > ${{ github.run_number }} )); then
             echo "::notice::$current is newer; publishing build-${{ github.run_number }} without marking it latest"
             echo "latest=false" >> "$GITHUB_OUTPUT"
           else
@@ -274,6 +323,7 @@ jobs:
           tag_name: build-${{ github.run_number }}
           name: crushLAB build ${{ github.run_number }}
           target_commitish: ${{ github.sha }}
+          prerelease: ${{ steps.order.outputs.prerelease }}
           make_latest: ${{ steps.order.outputs.latest }}
           body: |
             crushLAB build ${{ github.run_number }} from `${{ github.ref_name }}` (${{ github.sha }}). Adults only (18+).
@@ -284,10 +334,9 @@ jobs:
             same file with the build number in its name.
             Always-newest link: https://github.com/${{ github.repository }}/releases/latest/download/crushlab.apk
 
-            **Web app (PWA)**: https://mreindl118-boop.github.io/Monkeyball/ installs from Chrome on
-            Android (menu, then Install app). It works with OpenRouter or with a model running on the
-            phone itself. A PC on your Wi-Fi (Ollama, LM Studio) needs the APK: the https page can't
-            reach plain-http servers on the LAN.
+            **Web app (PWA)**: not published yet. GitHub Pages for this repository still serves an
+            older project until it deploys from the crushLAB branch; the README says when that changes.
+            Until then, use the APK.
           files: |
             crushlab-${{ github.run_number }}.apk
             crushlab.apk

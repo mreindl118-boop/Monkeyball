@@ -120,6 +120,9 @@ describe('role routing', () => {
     // Keys never cross providers.
     expect(openaiSeen[0].headers.get('x-api-key')).toBeNull()
     expect(claudeSeen[0].headers.get('authorization')).toBeNull()
+    // Results say where the call went, never with the key (they get stored and logged).
+    expect('apiKey' in s.route).toBe(false)
+    expect(JSON.stringify(s)).not.toContain('sk-ant-1')
   })
 
   it("uses the story's Effort setting for story calls and low for the rest", async () => {
@@ -154,6 +157,33 @@ describe('role routing', () => {
     fakes([], [])
     const c = structuredClone(DEFAULT_CONNECTION) as ConnectionSettings
     await expect(streamChat({ conn: c, role: 'story', messages: story })).rejects.toMatchObject({ kind: 'http', status: 401 })
+    expect(claudeSeen).toHaveLength(0)
+  })
+
+  it('refuses early, with a fix, when the role has no model or no address', async () => {
+    fakes([], [])
+    const c = mixed()
+    c.providers.chatgpt.apiKey = 'sk-1'
+    c.judge = { preset: 'chatgpt', model: '' }
+    const err = await jsonChat({ conn: c, role: 'judge', messages: judge, coerce: coerceJudge, fallback: neutralJudge() }).catch(
+      (e: unknown) => e,
+    )
+    expect(err).toMatchObject({ kind: 'setup', message: 'ChatGPT has no judge model picked.' })
+    expect((err as { fix?: string }).fix).toMatch(/Test connection/)
+    c.story = { preset: 'custom', model: 'm' }
+    await expect(chat({ conn: c, role: 'story', messages: story })).rejects.toMatchObject({ kind: 'setup' })
+    expect(openaiSeen).toHaveLength(0)
+  })
+
+  it('never sends Claude through Custom (the OpenAI compatibility layer)', async () => {
+    fakes([], [])
+    const c = mixed()
+    c.providers.custom = { baseUrl: 'https://api.anthropic.com/v1', apiKey: 'sk-ant-9' }
+    c.story = { preset: 'custom', model: 'claude-opus-5' }
+    const err = await streamChat({ conn: c, role: 'story', messages: story }).catch((e: unknown) => e)
+    expect(err).toMatchObject({ kind: 'setup' })
+    expect((err as { fix?: string }).fix).toMatch(/Claude card/)
+    expect(openaiSeen).toHaveLength(0)
     expect(claudeSeen).toHaveLength(0)
   })
 

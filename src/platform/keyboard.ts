@@ -1,7 +1,9 @@
 // The soft keyboard in the Android app. The layout already shrinks above the keyboard (SystemBars
 // pads the WebView by the keyboard's height, and index.html asks for resizes-content); this keeps
 // the focused field in view once the keyboard is up, and marks <html data-keyboard="open"> so
-// screens can hide bottom chrome while the player types.
+// screens can hide bottom chrome while the player types. src/ui/tokens.css uses it: a bottom-pinned
+// bar marked data-keyboard-static stops sticking, and html's scroll-padding-bottom keeps a field
+// clear of such a bar when it is scrolled into view.
 
 import { hasPlugin, isNative } from './platform'
 

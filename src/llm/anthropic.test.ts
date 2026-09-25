@@ -291,6 +291,15 @@ describe('errors', () => {
     expect(explainError(missing, target, 'claude-opus-5')).toMatchObject({ kind: 'model' })
   })
 
+  it("reports the API's own message, not the SDK's JSON dump", async () => {
+    const text = 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'
+    const err = await fail(apiError(400, 'invalid_request_error', text))
+    expect(err.message).toBe(`HTTP 400: ${text}`)
+    const p = explainError(err, target)
+    expect(p.kind).toBe('billing')
+    expect(p.fix).toMatch(/console\.anthropic\.com\/settings\/billing/)
+  })
+
   it('maps an overloaded API to a busy message', async () => {
     const err = await fail(apiError(529, 'overloaded_error', 'Overloaded'))
     expect(explainError(err, target).message).toMatch(/busy/)
@@ -308,6 +317,47 @@ describe('errors', () => {
     fake(json(message('late')))
     const err = await createClaude(request('claude-opus-5', { signal: ctrl.signal })).catch((e: unknown) => e)
     expect(err).toMatchObject({ kind: 'aborted' })
+  })
+})
+
+describe('retries', () => {
+  /** A busy answer that says to retry right away. */
+  const busy = (status: number, type: string) =>
+    new Response(JSON.stringify({ type: 'error', error: { type, message: type } }), {
+      status,
+      headers: { 'content-type': 'application/json', 'retry-after': '0', 'x-should-retry': 'true' },
+    })
+
+  /** The real retry policy (no test cap), through a fake fetch. */
+  function realRetries(...replies: Reply[]) {
+    const fn = fake(...replies)
+    setClaudeTransport({ fetch: fn as unknown as typeof fetch, maxRetryWaitMs: 0 })
+    return fn
+  }
+
+  it('never re-sends a non-streamed call after a dropped connection (it may have been billed)', async () => {
+    realRetries(new TypeError('Failed to fetch'), json(message('{"delta":1}')))
+    const err = await createClaude(request('claude-haiku-4-5', { debug: { kind: 'judge' } })).catch((e: unknown) => e)
+    expect(err).toMatchObject({ kind: 'network' })
+    expect(seen).toHaveLength(1)
+  })
+
+  it('retries a non-streamed call once on 429 or 529 (not billed)', async () => {
+    realRetries(busy(429, 'rate_limit_error'), json(message('ok')))
+    expect((await createClaude(request('claude-haiku-4-5'))).text).toBe('ok')
+    expect(seen).toHaveLength(2)
+
+    seen = []
+    realRetries(busy(529, 'overloaded_error'), json(message('ok')))
+    expect((await createClaude(request('claude-haiku-4-5'))).text).toBe('ok')
+    expect(seen).toHaveLength(2)
+  })
+
+  it('gives up after the one retry', async () => {
+    realRetries(busy(429, 'rate_limit_error'), busy(429, 'rate_limit_error'), json(message('ok')))
+    const err = await createClaude(request('claude-haiku-4-5')).catch((e: unknown) => e)
+    expect(err).toMatchObject({ kind: 'http', status: 429 })
+    expect(seen).toHaveLength(2)
   })
 })
 

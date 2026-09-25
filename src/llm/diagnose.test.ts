@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDebug } from '../store/debug'
 import { DEFAULT_CONNECTION } from '../store/defaults'
 import type { ConnectionSettings } from '../types'
-import { LlmError, resetJsonModeCache, type Endpoint } from './client'
+import { HOSTED_MIN_TOKENS, LlmError, resetJsonModeCache, type Endpoint } from './client'
 import { explainError, explainRoleError, looksLikeModelError, sameModel, testConnection, testEndpoint } from './diagnose'
 
 const conn = (patch: Partial<Endpoint> = {}): Endpoint => ({
@@ -193,8 +193,17 @@ describe('testEndpoint', () => {
     )
     expect(r.ok).toBe(true)
     const posts = seen.filter((s) => s.url.endsWith('/chat/completions'))
-    expect(posts[0].body).toMatchObject({ temperature: 0, max_completion_tokens: 4000 })
+    expect(posts[0].body).toMatchObject({ temperature: 0, max_completion_tokens: HOSTED_MIN_TOKENS, reasoning_effort: 'low' })
     expect(posts[1].body?.temperature).toBeUndefined()
+  })
+
+  it('sends a Custom preset aimed at Anthropic to the Claude card, without a request', async () => {
+    route({})
+    const r = await testEndpoint(conn({ preset: 'custom', baseUrl: 'https://api.anthropic.com/v1', apiKey: 'sk-ant-x' }))
+    expect(r.ok).toBe(false)
+    expect(r.problem?.kind).toBe('setup')
+    expect(r.problem?.fix).toMatch(/Claude card/)
+    expect(seen).toHaveLength(0)
   })
 
   it('asks ChatGPT and Grok for a key before sending anything', async () => {
@@ -357,6 +366,55 @@ describe('explainError for hosted providers', () => {
     const offline = explainError(new LlmError('network', 'x'), claude)
     expect(offline.kind).toBe('unreachable')
     expect(offline.fix).toMatch(/internet connection/)
+  })
+
+  it('turns "no credit" into a billing problem that says where to add credits', () => {
+    const credit = new LlmError('http', 'HTTP 400: Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.', {
+      status: 400,
+      body: JSON.stringify({
+        type: 'error',
+        error: { type: 'invalid_request_error', message: 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.' },
+      }),
+    })
+    const p = explainError(credit, claude)
+    expect(p.kind).toBe('billing')
+    expect(p.message).toMatch(/^Claude says this account is out of credit: Your credit balance is too low/)
+    expect(p.message).not.toMatch(/\{/)
+    expect(p.fix).toMatch(/console\.anthropic\.com\/settings\/billing/)
+
+    const chatgpt = { preset: 'chatgpt' as const, baseUrl: 'https://api.openai.com/v1', apiKey: 'sk-x' }
+    const quota = new LlmError('http', 'HTTP 429: You exceeded your current quota', {
+      status: 429,
+      body: JSON.stringify({ error: { message: 'You exceeded your current quota, please check your plan and billing details.', type: 'insufficient_quota', code: 'insufficient_quota' } }),
+    })
+    expect(explainError(quota, chatgpt)).toMatchObject({ kind: 'billing' })
+    expect(explainError(quota, chatgpt).fix).toMatch(/platform\.openai\.com/)
+    // An ordinary rate limit stays a rate limit.
+    expect(explainError(http(429), chatgpt).kind).toBe('rate_limit')
+  })
+
+  it('shows what a hosted API said for other 4xx, without "server logs"', () => {
+    const bad = new LlmError('http', 'HTTP 400: max_tokens: 99999999 > 128000', {
+      status: 400,
+      body: JSON.stringify({ type: 'error', error: { type: 'invalid_request_error', message: 'max_tokens: 99999999 > 128000' } }),
+    })
+    const p = explainError(bad, claude)
+    expect(p).toMatchObject({ kind: 'other', fix: 'Check the model and settings, then try again.' })
+    expect(p.message).toBe('Claude turned the request down (HTTP 400): max_tokens: 99999999 > 128000')
+    // Local servers still point at their logs.
+    expect(explainError(new LlmError('http', 'HTTP 400: x', { status: 400 }), conn()).fix).toMatch(/server logs/)
+  })
+
+  it('explains setup errors and empty replies', () => {
+    const setup = new LlmError('setup', 'ChatGPT has no judge model picked.', { fix: 'Pick one in Settings, or run Test connection to fill it in.' })
+    expect(explainError(setup, { preset: 'chatgpt', baseUrl: 'https://api.openai.com/v1', apiKey: 'k' })).toEqual({
+      kind: 'setup',
+      message: 'ChatGPT has no judge model picked.',
+      fix: 'Pick one in Settings, or run Test connection to fill it in.',
+    })
+    const empty = explainError(new LlmError('empty', 'x'), { preset: 'chatgpt', baseUrl: 'https://api.openai.com/v1', apiKey: 'k' })
+    expect(empty.message).toMatch(/wrote nothing/)
+    expect(empty.fix).toMatch(/mini model/)
   })
 
   it('explains a role error against that role\'s route', () => {

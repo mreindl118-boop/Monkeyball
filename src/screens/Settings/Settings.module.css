@@ -211,3 +211,8 @@
   font-size: 14px;
   color: var(--smoke-text);
 }
+
+/* An empty status line takes no room (it stays in place for screen readers). */
+.appNote:empty {
+  margin-top: -12px;
+}

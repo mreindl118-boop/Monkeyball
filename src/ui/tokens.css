@@ -65,6 +65,16 @@ html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   background: var(--velvet);
+  /* Room for a bottom-pinned action bar (position: sticky; bottom: 0) when the browser, or
+     revealFocusedField() once the soft keyboard is up, scrolls a focused field into view:
+     scrollIntoView and focus scrolling both respect it. */
+  scroll-padding-bottom: calc(var(--safe-bottom) + var(--tap) + 40px);
+}
+
+/* While the soft keyboard is up (src/platform/keyboard.ts), bottom-pinned bars marked
+   data-keyboard-static scroll with the page instead of covering the field being typed in. */
+html[data-keyboard='open'] [data-keyboard-static] {
+  position: static;
 }
 
 body {

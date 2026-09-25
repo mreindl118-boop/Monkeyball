@@ -78,7 +78,10 @@ export interface ClaudeResult {
 
 export interface ClaudeTransport {
   fetch?: typeof fetch
+  /** Caps every retry: the SDK's own and the rate-limit retry of non-streamed calls. */
   maxRetries?: number
+  /** Longest wait before the rate-limit retry, in ms. Default 10 s. */
+  maxRetryWaitMs?: number
 }
 
 let transport: ClaudeTransport = {}
@@ -88,7 +91,18 @@ export function setClaudeTransport(t: ClaudeTransport): void {
   transport = t
 }
 
-function clientFor(target: ClaudeTarget, timeoutMs?: number): Anthropic {
+/**
+ * Retries. The SDK retries connection errors, its own timeouts, 408, 409, 429 and 5xx, which
+ * re-sends the whole request. That's fine for the story stream (it only retries before the stream
+ * starts, when nothing was generated) and for the model list (free), but a non-streamed call
+ * (judge, memory, test) only gets headers once the whole generation is done, so a timeout or a
+ * dropped connection there can mean a finished, billed generation. Those calls get no SDK retries;
+ * run() retries them once itself, only on answers that weren't billed (429, 529 overloaded).
+ */
+type RetryPolicy = 'sdk' | 'none'
+
+function clientFor(target: ClaudeTarget, timeoutMs?: number, retries: RetryPolicy = 'sdk'): Anthropic {
+  const sdkRetries = retries === 'none' ? 0 : 2
   return new Anthropic({
     apiKey: target.apiKey.trim(),
     // Only the player's key: never pick up tokens or profiles from the environment.
@@ -97,9 +111,44 @@ function clientFor(target: ClaudeTarget, timeoutMs?: number): Anthropic {
     // The key belongs to the player and stays on their device; the SDK then sends the
     // direct-browser-access header Anthropic's CORS policy expects.
     dangerouslyAllowBrowser: true,
-    maxRetries: transport.maxRetries ?? 2,
+    maxRetries: Math.min(sdkRetries, transport.maxRetries ?? sdkRetries),
     timeout: timeoutMs && timeoutMs > 0 ? timeoutMs : DEFAULT_TIMEOUT_MS,
     ...(transport.fetch ? { fetch: transport.fetch } : {}),
+  })
+}
+
+/** An answer that wasn't billed and is worth one more try: rate limited (429) or overloaded (529). */
+function unbilledBusy(err: unknown): boolean {
+  if (err instanceof Anthropic.RateLimitError) return true
+  if (!(err instanceof Anthropic.APIError)) return false
+  return err.status === 529 || err.type === 'overloaded_error'
+}
+
+/** How long to wait before the rate-limit retry: the server's retry-after, else 2 s, capped. */
+function retryWaitMs(err: unknown): number {
+  const cap = transport.maxRetryWaitMs ?? 10_000
+  const headers = err instanceof Anthropic.APIError ? err.headers : undefined
+  const ms = Number(headers?.get('retry-after-ms') ?? Number.NaN)
+  const s = Number(headers?.get('retry-after') ?? Number.NaN)
+  const wait = Number.isFinite(ms) ? ms : Number.isFinite(s) ? s * 1000 : 2000
+  return Math.max(0, Math.min(wait, cap))
+}
+
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new Anthropic.APIUserAbortError())
+      return
+    }
+    const onAbort = () => {
+      clearTimeout(timer)
+      reject(new Anthropic.APIUserAbortError())
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort)
+      resolve()
+    }, ms)
+    signal?.addEventListener('abort', onAbort, { once: true })
   })
 }
 
@@ -237,7 +286,11 @@ export function toLlmError(err: unknown, target: ClaudeTarget): LlmError {
   const body = (e: InstanceType<typeof Anthropic.APIError>) => (e.error ? JSON.stringify(e.error).slice(0, 4000) : undefined)
   const http = (e: InstanceType<typeof Anthropic.APIError>, status: number) => {
     const b = body(e)
-    return new LlmError('http', `HTTP ${status}: ${e.message}`, { status, cause: e, ...(b ? { body: b } : {}) })
+    // The API's own words ({"type":"error","error":{"message":...}}), not the SDK's
+    // "400 {...json...}" message.
+    const apiMessage = (e.error as { error?: { message?: unknown } } | undefined)?.error?.message
+    const detail = typeof apiMessage === 'string' && apiMessage.trim() ? apiMessage.trim() : e.message
+    return new LlmError('http', `HTTP ${status}: ${detail}`, { status, cause: e, ...(b ? { body: b } : {}) })
   }
   if (err instanceof Anthropic.APIUserAbortError) return new LlmError('aborted', 'The request was cancelled.', { cause: err })
   if (err instanceof Anthropic.APIConnectionTimeoutError) {
@@ -315,13 +368,16 @@ const MAX_FEATURE_RETRIES = 4
 
 async function run(
   req: ClaudeRequest,
+  retries: RetryPolicy,
   send: (client: Anthropic, params: ClaudeParams) => Promise<Anthropic.Beta.BetaMessage>,
 ): Promise<ClaudeResult> {
+  // Non-streamed calls: one retry of their own, only on unbilled busy answers (see RetryPolicy).
+  let busyRetries = retries === 'none' ? Math.min(1, transport.maxRetries ?? 1) : 0
   for (let attempt = 0; ; attempt++) {
     const { params, sent } = buildParams(req)
     const id = startDebug(req)
     try {
-      const message = await send(clientFor(req.target, req.timeoutMs), params)
+      const message = await send(clientFor(req.target, req.timeoutMs, retries), params)
       const r = resultOf(message)
       debugResult(id, r)
       return r
@@ -329,15 +385,27 @@ async function run(
       const feature = attempt < MAX_FEATURE_RETRIES ? rejectedFeature(e, sent) : null
       const err = toLlmError(e, req.target)
       useDebug.getState().patch(id, { error: debugErrorText(err) })
-      if (!feature) throw err
-      refuse(req.target, feature)
+      if (feature) {
+        refuse(req.target, feature)
+        continue
+      }
+      if (busyRetries > 0 && unbilledBusy(e)) {
+        busyRetries--
+        try {
+          await sleep(retryWaitMs(e), req.signal)
+        } catch (abort) {
+          throw toLlmError(abort, req.target)
+        }
+        continue
+      }
+      throw err
     }
   }
 }
 
 /** Streamed Claude call (story). Text arrives through onDelta; the result says how it ended. */
 export function streamClaude(req: StreamClaudeRequest): Promise<ClaudeResult> {
-  return run(req, async (client, params) => {
+  return run(req, 'sdk', async (client, params) => {
     const stream = client.beta.messages.stream(params, { signal: req.signal })
     let full = ''
     stream.on('text', (delta) => {
@@ -352,7 +420,7 @@ export function streamClaude(req: StreamClaudeRequest): Promise<ClaudeResult> {
 
 /** Non-streamed Claude call (memory, JSON calls, the connection test). */
 export function createClaude(req: ClaudeRequest): Promise<ClaudeResult> {
-  return run(req, (client, params) => client.beta.messages.create(params, { signal: req.signal }))
+  return run(req, 'none', (client, params) => client.beta.messages.create(params, { signal: req.signal }))
 }
 
 /**
