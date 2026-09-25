@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { testConnection } from '../../llm/diagnose'
+import { rolePreset, slotFor } from '../../llm/routes'
 import { useNav } from '../../store/nav'
 import { useSettings } from '../../store/settings'
+import { afterTestPatch, slotSignature } from '../ConnectionSetup/connectionHelpers'
 import { setOnboardingProblem } from '../ConnectionSetup/lastCheck'
+import { useModelLists } from '../ConnectionSetup/modelLists'
 import type { OrientationMode, PlayerProfile } from '../../types'
 import { Button } from '../../ui/Button'
 import { Field } from '../../ui/Field'
@@ -48,9 +51,13 @@ export default function Onboarding() {
       const result = await testConnection(conn, { signal: ctrl.signal, completionTimeoutMs: 60_000 })
       if (ctrl.signal.aborted) return
       if (result.ok) {
-        if (!conn.storyModel.trim() && result.models[0]) {
-          await updateConnection({ storyModel: result.models[0] })
-        }
+        // Fill any empty role models from the story provider's list, and remember the list.
+        const preset = rolePreset(conn, 'story')
+        const sig = slotSignature(slotFor(conn, preset))
+        if (result.models.length) useModelLists.getState().put(preset, sig, result.models)
+        useModelLists.getState().markReady(preset, sig)
+        const patch = afterTestPatch(conn, preset, result.models)
+        if (patch) await updateConnection(patch)
         await finish(p, 'hub')
       } else {
         setOnboardingProblem(result.problem ?? null)

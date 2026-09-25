@@ -9,19 +9,27 @@ const { version } = JSON.parse(readFileSync(new URL('./package.json', import.met
   version: string
 }
 
+/** process.env.BUILD_NUMBER when it is a whole number, else '0' (a local or dev build). */
+function buildNumber(): string {
+  const n = (process.env.BUILD_NUMBER ?? '').trim()
+  return /^\d+$/.test(n) ? n : '0'
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   // Relative base: works inside the Android app and under the GitHub Pages sub-path.
   base: './',
   define: {
-    'import.meta.env.VITE_BUILD_NUMBER': JSON.stringify(process.env.BUILD_NUMBER ?? '0'),
+    // CI sets BUILD_NUMBER to the workflow run number: the APK's versionCode and its release tag
+    // (build-<n>) use the same number, and src/platform/updates.ts compares against it. 0 = dev.
+    'import.meta.env.VITE_BUILD_NUMBER': JSON.stringify(buildNumber()),
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(version),
   },
   plugins: [
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icons/icon.svg', 'icons/apple-touch-icon.png'],
+      includeAssets: ['favicon.svg', 'icons/icon.svg', 'icons/favicon-32.png', 'icons/apple-touch-icon.png'],
       manifest: {
         name: 'crushLAB',
         short_name: 'crushLAB',

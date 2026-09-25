@@ -205,29 +205,48 @@ export interface PlayerProfile {
   relationshipStyle: PlayerStyle;
 }
 
-export type ConnectionPreset = 'ollama' | 'lmstudio' | 'openrouter' | 'custom';
+/**
+ * Where a role's model runs. Claude, ChatGPT and Grok are the headline presets; the rest sit under
+ * "Other providers". See docs/ARCHITECTURE.md, "Providers: Claude and ChatGPT first".
+ */
+export type ConnectionPreset =
+  | 'claude'
+  | 'chatgpt'
+  | 'grok'
+  | 'ollama'
+  | 'lmstudio'
+  | 'openrouter'
+  | 'custom';
 
-/** A preset's own address and key, kept while another preset is active. */
+/** The wire format a preset speaks: Anthropic's Messages API (via the SDK) or OpenAI-compatible. */
+export type ModelProvider = 'anthropic' | 'openai';
+
+/** The two model roles. Story serves story + memory calls; judge serves judge, agreement, suggestions. */
+export type ModelRole = 'story' | 'judge';
+
+/** Claude's output_config.effort: trades speed and cost for depth. */
+export type Effort = 'low' | 'medium' | 'high';
+
+/** A preset's own address and key. Keys never leave the device (not in save exports). */
 export interface ProviderSlot {
   baseUrl: string;
   apiKey: string;
 }
 
 export interface ConnectionSettings {
-  preset: ConnectionPreset;
-  baseUrl: string;
-  apiKey: string;
+  /** Base URL and key for every preset, so one provider's key is never sent to another server. */
+  providers: Record<ConnectionPreset, ProviderSlot>;
+  /** The story role (story + memory calls). Empty model means the preset's default, if it has one. */
+  story: { preset: ConnectionPreset; model: string };
   /**
-   * Optional extension: base URL and key per preset, so switching presets never carries one
-   * provider's key to another server and switching back restores it. `baseUrl`/`apiKey` above
-   * are always the active preset's. Keys never leave the device (not in save exports).
+   * The judge role (judge, agreement, suggestions). 'same' runs on the story preset. An empty model
+   * means the story model when both roles share a preset, else the preset's default judge model.
    */
-  providers?: Partial<Record<ConnectionPreset, ProviderSlot>>;
-  storyModel: string;
-  /** Empty string means "same as story model". */
-  judgeModel: string;
-  storyTemperature: number; // default 0.9
-  maxTokens: number; // default 600
+  judge: { preset: ConnectionPreset | 'same'; model: string };
+  storyTemperature: number; // default 0.9; only sent to models that accept it
+  maxTokens: number; // default 600; OpenAI-compatible story calls (Claude always gets 16000)
+  /** Claude story effort, default 'low'. Other Claude calls always use 'low'. */
+  effort: Effort;
 }
 
 export type StylePreset = 'anime' | 'semiReal' | 'painterly';
@@ -265,6 +284,11 @@ export interface Settings {
   activeSets: string[];
   hubSort: 'affection' | 'trust' | 'name';
   hubSetFilter: string; // 'all' or a set id
+  /**
+   * Android app only: look for a newer APK (the latest GitHub release) at launch. Sends nothing
+   * about the player. Default true; the web app and PWA update themselves and ignore it.
+   */
+  autoUpdateCheck: boolean;
 }
 
 // ---------------------------------------------------------------------------

@@ -1,7 +1,10 @@
+import { CLAUDE_JUDGE_MODEL, CLAUDE_STORY_MODEL, PRESETS, PRESET_IDS } from '../llm/presets'
 import type {
+  ConnectionPreset,
   ConnectionSettings,
   ImageSettings,
   PlayerProfile,
+  ProviderSlot,
   Relationship,
   Settings,
   StylePreset,
@@ -21,14 +24,19 @@ export const DEFAULT_STYLE_PREFIXES: Readonly<Record<StylePreset, string>> = {
     'painterly illustration, visible brush strokes, rich oil colors, warm lamplight against deep shadows, romantic late-night mood',
 }
 
+/** Every preset's default address, with no key. */
+export const DEFAULT_PROVIDERS: Readonly<Record<ConnectionPreset, ProviderSlot>> = Object.fromEntries(
+  PRESET_IDS.map((id) => [id, { baseUrl: PRESETS[id].baseUrl, apiKey: '' }]),
+) as Record<ConnectionPreset, ProviderSlot>
+
+/** New installs: Claude for both roles (Opus 5 writes, Haiku 4.5 judges), no key yet. */
 export const DEFAULT_CONNECTION: Readonly<ConnectionSettings> = {
-  preset: 'ollama',
-  baseUrl: 'http://localhost:11434/v1',
-  apiKey: '',
-  storyModel: '',
-  judgeModel: '',
+  providers: DEFAULT_PROVIDERS,
+  story: { preset: 'claude', model: CLAUDE_STORY_MODEL },
+  judge: { preset: 'same', model: CLAUDE_JUDGE_MODEL },
   storyTemperature: 0.9,
   maxTokens: 600,
+  effort: 'low',
 }
 
 export const DEFAULT_IMAGE: Readonly<ImageSettings> = {
@@ -59,6 +67,7 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   activeSets: ['afterhours'],
   hubSort: 'affection',
   hubSetFilter: 'all',
+  autoUpdateCheck: true,
 }
 
 /** A fresh, deep copy of the default settings (safe to mutate). */

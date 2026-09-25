@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- crushLAB app icon: a lipstick kiss inside a brass coaster ring, with a spark on the rim.
+       Full-bleed square on velvet. The mark stays inside a circle of 77% of the canvas, so this
+       file also works as the maskable PWA icon (safe zone 80%).
+       The mark is shared with assets/icon-foreground.svg: keep the two in sync.
+       Render with: node scripts/make-icons.mjs -->
+  <defs>
+    <radialGradient id="cl-glow" cx="50%" cy="40%" r="70%">
+      <stop offset="0" stop-color="#44132C"/>
+      <stop offset="1" stop-color="#2A0F1F"/>
+    </radialGradient>
+    <linearGradient id="cl-lips" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#EC3670"/>
+      <stop offset="1" stop-color="#D41C57"/>
+    </linearGradient>
+    <linearGradient id="cl-brass" x1="0.15" y1="0" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#E2C47F"/>
+      <stop offset="0.55" stop-color="#C9A45C"/>
+      <stop offset="1" stop-color="#A88743"/>
+    </linearGradient>
+    <!-- Cuts the ring where the spark sits, so the spark reads on its own at small sizes. -->
+    <mask id="cl-ring-gap" maskUnits="userSpaceOnUse" x="-600" y="-600" width="1200" height="1200">
+      <rect x="-600" y="-600" width="1200" height="1200" fill="#fff"/>
+      <path transform="translate(312 -287)" d="M0 -100C12 -24 24 -12 100 0C24 12 12 24 0 100C-12 24 -24 12 -100 0C-24 -12 -12 -24 0 -100Z" fill="#000" stroke="#000" stroke-width="56" stroke-linejoin="round"/>
+    </mask>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#cl-glow)"/>
+
+  <!-- The mark, drawn in a 1000-unit circle around the origin. -->
+  <g transform="translate(512 512) scale(0.78)">
+    <circle r="424" fill="none" stroke="url(#cl-brass)" stroke-width="64" mask="url(#cl-ring-gap)"/>
+    <path transform="translate(312 -287)" d="M0 -100C12 -24 24 -12 100 0C24 12 12 24 0 100C-12 24 -24 12 -100 0C-24 -12 -12 -24 0 -100Z" fill="#E2C47F"/>
+    <g transform="rotate(-8) scale(24.4) translate(-16 -11.5)">
+      <g fill="url(#cl-lips)" stroke="#E0245E" stroke-width="0.6" stroke-linejoin="round">
+        <path d="M2.2 11.2C5 6.6 8.6 3.4 12 3.6c1.7.1 2.9 1.2 4 2.4 1.1-1.2 2.3-2.3 4-2.4 3.4-.2 7 3 9.8 7.6-3.6.2-6.8.2-9.8 0-1.4-.1-2.6-.1-4 .3-1.4-.4-2.6-.4-4-.3-3 .2-6.2.2-9.8 0Z"/>
+        <path d="M2.6 12.2c3.4.9 6.6 1.1 9.4 1 1.5-.1 2.7-.3 4-.1 1.3-.2 2.5 0 4 .1 2.8.1 6-.1 9.4-1-2.6 4.4-7.4 7.2-13.4 7.2S5.2 16.6 2.6 12.2Z"/>
+      </g>
+      <g stroke="#000" stroke-opacity="0.26" stroke-width="0.75" stroke-linecap="round" fill="none">
+        <path d="M9 14.8c.3 1.4.4 2.4.3 3.2M13 15.2c.1 1.4.1 2.6 0 3.6M19 15.2c-.1 1.4-.1 2.6 0 3.6M23 14.8c-.3 1.4-.4 2.4-.3 3.2"/>
+        <path d="M9.5 9.6c.2-1.2.6-2.4 1.2-3.4M22.5 9.6c-.2-1.2-.6-2.4-1.2-3.4"/>
+      </g>
+    </g>
+  </g>
+</svg>

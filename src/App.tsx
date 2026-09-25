@@ -1,5 +1,7 @@
 import { lazy, Suspense, useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import styles from './App.module.css'
+import { initPlatform } from './platform/init'
+import { UpdateNotice } from './platform/UpdateNotice'
 import { bindHistory, hashToScreen, screenToHash, useNav, type Screen, type ScreenName } from './store/nav'
 import { useSettings } from './store/settings'
 import { NotBuilt } from './ui/NotBuilt'
@@ -96,6 +98,8 @@ export default function App() {
   // Boot: load settings and profile, follow browser history, restore the screen from the hash.
   useEffect(() => {
     const unbind = bindHistory()
+    // Android app: system bars, back button, keyboard, launch update check. Web: nothing much.
+    const stopPlatform = initPlatform()
     let cancelled = false
     const start = () => {
       if (cancelled) return
@@ -130,6 +134,7 @@ export default function App() {
       unsub()
       cancelled = true
       unbind()
+      stopPlatform()
     }
   }, [])
 
@@ -160,6 +165,7 @@ export default function App() {
       <Suspense fallback={<Loading text="One moment" />}>
         {renderScreen(view, back, () => reset({ name: 'hub' }))}
       </Suspense>
+      <UpdateNotice />
       <ToastHost />
     </div>
   )

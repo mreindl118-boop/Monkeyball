@@ -1,0 +1,48 @@
+.host {
+  position: fixed;
+  top: calc(var(--safe-top) + 8px);
+  left: 0;
+  right: 0;
+  z-index: var(--z-toast);
+  display: grid;
+  justify-items: center;
+  padding: 0 calc(var(--safe-right) + var(--gutter)) 0 calc(var(--safe-left) + var(--gutter));
+  pointer-events: none;
+}
+
+.notice {
+  pointer-events: auto;
+  display: grid;
+  gap: 10px;
+  width: min(480px, 100%);
+  padding: 14px 14px 10px 16px;
+  border-radius: var(--radius-m);
+  background: var(--velvet-deep);
+  border: 1px solid rgb(201 164 92 / 0.45);
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.5);
+}
+
+.text {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 18px;
+  color: var(--brass);
+}
+
+.detail {
+  font-size: 14px;
+  color: var(--blush);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

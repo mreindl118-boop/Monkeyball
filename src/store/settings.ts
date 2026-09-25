@@ -1,8 +1,12 @@
 import { create } from 'zustand'
 import { db, type CrushDB } from '../db/db'
 import { kvGet, kvSet } from '../db/repo'
-import type { ConnectionSettings, ImageSettings, PlayerProfile, Settings } from '../types'
+import { resolveRoute } from '../llm/routes'
+import type { ConnectionPreset, ConnectionSettings, ImageSettings, PlayerProfile, ProviderSlot, Settings } from '../types'
+import { isPlainObject, migrateConnection } from './connection'
 import { DEFAULT_SETTINGS, defaultSettings } from './defaults'
+
+export { maskApiKeys, migrateConnection, withLocalKeys, withoutApiKeys } from './connection'
 
 export interface SettingsState {
   loaded: boolean
@@ -17,14 +21,12 @@ export interface SettingsState {
   load: () => Promise<void>
   update: (patch: Partial<Settings>) => Promise<void>
   updateConnection: (patch: Partial<ConnectionSettings>) => Promise<void>
+  /** Change one preset's base URL or key (the others are untouched). */
+  updateProvider: (preset: ConnectionPreset, patch: Partial<ProviderSlot>) => Promise<void>
   updateImage: (patch: Partial<ImageSettings>) => Promise<void>
   setProfile: (p: PlayerProfile) => Promise<void>
   /** Back to defaults in memory only (use after repo.wipeAll()). */
   resetInMemory: () => void
-}
-
-function isPlainObject(v: unknown): v is Record<string, unknown> {
-  return typeof v === 'object' && v !== null && !Array.isArray(v)
 }
 
 /**
@@ -54,7 +56,9 @@ export function mergeDeep<T>(defaults: T, stored: unknown): T {
 
 /** Stored settings (possibly from an older version) merged over the current defaults. */
 export function mergeSettings(stored: unknown): Settings {
-  return mergeDeep<Settings>(DEFAULT_SETTINGS as Settings, stored)
+  const merged = mergeDeep<Settings>(DEFAULT_SETTINGS as Settings, stored)
+  merged.connection = migrateConnection(isPlainObject(stored) ? stored.connection : undefined)
+  return merged
 }
 
 function normalizeProfile(stored: unknown): PlayerProfile | null {
@@ -139,6 +143,15 @@ export function createSettingsStore(d: CrushDB = db) {
         await persist(settings)
       },
 
+      updateProvider: async (preset, patch) => {
+        const prev = get().settings
+        const conn = prev.connection
+        const slot = { ...conn.providers[preset], ...patch }
+        const settings = { ...prev, connection: { ...conn, providers: { ...conn.providers, [preset]: slot } } }
+        set({ settings })
+        await persist(settings)
+      },
+
       updateImage: async (patch) => {
         const prev = get().settings
         const settings = { ...prev, image: { ...prev.image, ...patch } }
@@ -161,7 +174,7 @@ export function createSettingsStore(d: CrushDB = db) {
 
 export const useSettings = createSettingsStore()
 
-/** The judge model actually used: the judge model, or the story model when blank. */
+/** The judge model actually used (see resolveRoute in src/llm/routes.ts). */
 export function effectiveJudgeModel(conn: ConnectionSettings): string {
-  return conn.judgeModel.trim() || conn.storyModel
+  return resolveRoute(conn, 'judge').model
 }

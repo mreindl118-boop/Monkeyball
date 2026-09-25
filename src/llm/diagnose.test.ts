@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDebug } from '../store/debug'
+import { DEFAULT_CONNECTION } from '../store/defaults'
 import type { ConnectionSettings } from '../types'
-import { LlmError, resetJsonModeCache } from './client'
-import { explainError, looksLikeModelError, sameModel, testConnection } from './diagnose'
+import { LlmError, resetJsonModeCache, type Endpoint } from './client'
+import { explainError, explainRoleError, looksLikeModelError, sameModel, testConnection, testEndpoint } from './diagnose'
 
-const conn = (patch: Partial<ConnectionSettings> = {}): ConnectionSettings => ({
+const conn = (patch: Partial<Endpoint> = {}): Endpoint => ({
   preset: 'ollama',
   baseUrl: 'http://localhost:11434/v1',
   apiKey: '',
@@ -61,10 +62,10 @@ beforeEach(() => {
 })
 afterEach(() => vi.unstubAllGlobals())
 
-describe('testConnection', () => {
+describe('testEndpoint', () => {
   it('passes all three steps on a healthy server', async () => {
     route({ models: () => models('llama3.1', 'qwen3'), complete: () => completion('ok') })
-    const r = await testConnection(conn())
+    const r = await testEndpoint(conn())
     expect(r.ok).toBe(true)
     expect(r.problem).toBeUndefined()
     expect(r.models).toEqual(['llama3.1', 'qwen3'])
@@ -76,7 +77,7 @@ describe('testConnection', () => {
 
   it('classifies a blocked fetch with an opaque no-cors success as CORS (Ollama fix)', async () => {
     route({ probe: 'reachable' })
-    const r = await testConnection(conn())
+    const r = await testEndpoint(conn())
     expect(r.ok).toBe(false)
     expect(r.problem?.kind).toBe('cors')
     expect(r.problem?.fix).toMatch(/OLLAMA_ORIGINS/)
@@ -86,21 +87,21 @@ describe('testConnection', () => {
 
   it('gives the LM Studio CORS fix for LM Studio', async () => {
     route({ probe: 'reachable' })
-    const r = await testConnection(conn({ preset: 'lmstudio', baseUrl: 'http://localhost:1234/v1' }))
+    const r = await testEndpoint(conn({ preset: 'lmstudio', baseUrl: 'http://localhost:1234/v1' }))
     expect(r.problem?.kind).toBe('cors')
     expect(r.problem?.fix).toMatch(/Enable CORS in LM Studio's server settings/)
   })
 
   it('gives a generic CORS fix for custom servers', async () => {
     route({ probe: 'reachable' })
-    const r = await testConnection(conn({ preset: 'custom', baseUrl: 'http://10.0.0.5:8080/v1' }))
+    const r = await testEndpoint(conn({ preset: 'custom', baseUrl: 'http://10.0.0.5:8080/v1' }))
     expect(r.problem?.kind).toBe('cors')
     expect(r.problem?.fix).toMatch(/CORS settings/)
   })
 
   it('classifies a failed no-cors probe as unreachable', async () => {
     route({ probe: 'unreachable' })
-    const r = await testConnection(conn({ preset: 'custom', baseUrl: 'http://localhost:9999/v1' }))
+    const r = await testEndpoint(conn({ preset: 'custom', baseUrl: 'http://localhost:9999/v1' }))
     expect(r.problem?.kind).toBe('unreachable')
     expect(r.problem?.fix).toMatch(/running/)
     expect(r.problem?.fix).toMatch(/\/v1/)
@@ -109,21 +110,21 @@ describe('testConnection', () => {
 
   it('treats a /models 404 without a model set as a wrong URL', async () => {
     route({ models: () => json({ error: 'not found' }, 404) })
-    const r = await testConnection(conn({ preset: 'custom', baseUrl: 'http://localhost:11434', storyModel: '' }))
+    const r = await testEndpoint(conn({ preset: 'custom', baseUrl: 'http://localhost:11434', storyModel: '' }))
     expect(r.problem?.kind).toBe('unreachable')
     expect(r.problem?.fix).toMatch(/\/v1/)
   })
 
   it('reports a bad key on 401/403', async () => {
     route({ models: () => json({ error: { message: 'Invalid API key' } }, 401) })
-    const r = await testConnection(conn({ preset: 'custom', baseUrl: 'http://x.test/v1', apiKey: 'wrong' }))
+    const r = await testEndpoint(conn({ preset: 'custom', baseUrl: 'http://x.test/v1', apiKey: 'wrong' }))
     expect(r.problem?.kind).toBe('auth')
     expect(r.problem?.message).toMatch(/rejected the API key/)
   })
 
   it('flags OpenRouter without a key before the completion', async () => {
     route({ models: () => models('openai/gpt-4o-mini'), complete: () => completion('ok') })
-    const r = await testConnection(
+    const r = await testEndpoint(
       conn({ preset: 'openrouter', baseUrl: 'https://openrouter.ai/api/v1', storyModel: 'openai/gpt-4o-mini' }),
     )
     expect(r.problem?.kind).toBe('auth')
@@ -133,7 +134,7 @@ describe('testConnection', () => {
 
   it('reports an unknown story or judge model from the list', async () => {
     route({ models: () => models('qwen3'), complete: () => completion('ok') })
-    const r = await testConnection(conn())
+    const r = await testEndpoint(conn())
     expect(r.problem?.kind).toBe('model')
     expect(r.problem?.message).toMatch(/story model "llama3.1"/)
     expect(r.problem?.fix).toMatch(/ollama pull llama3.1/)
@@ -141,44 +142,89 @@ describe('testConnection', () => {
     expect(seen.some((s) => s.url.endsWith('/chat/completions'))).toBe(false)
 
     route({ models: () => models('llama3.1'), complete: () => completion('ok') })
-    const r2 = await testConnection(conn({ judgeModel: 'tiny' }))
+    const r2 = await testEndpoint(conn({ judgeModel: 'tiny' }))
     expect(r2.problem?.message).toMatch(/judge model "tiny"/)
   })
 
   it('matches Ollama :latest tags', async () => {
     route({ models: () => models('llama3.1:latest'), complete: () => completion('ok') })
-    expect((await testConnection(conn())).ok).toBe(true)
+    expect((await testEndpoint(conn())).ok).toBe(true)
   })
 
   it('reports a 404 on the completion as an unknown model', async () => {
     route({ models: () => models('llama3.1'), complete: () => json({ error: { message: 'model not found' } }, 404) })
-    const r = await testConnection(conn())
+    const r = await testEndpoint(conn())
     expect(r.problem?.kind).toBe('model')
     expect(r.steps[2].ok).toBe(false)
   })
 
   it("doesn't call an unrelated 400 an unknown model when the model is listed", async () => {
-    const unsupported = {
+    const tooLong = {
       error: {
-        message: "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.",
+        message: 'max_tokens is too large: 100000. This model supports at most 16384 completion tokens.',
         type: 'invalid_request_error',
-        param: 'max_tokens',
-        code: 'unsupported_parameter',
+        param: null,
+        code: null,
       },
     }
-    route({ models: () => models('gpt-5-mini'), complete: () => json(unsupported, 400) })
-    const r = await testConnection(
-      conn({ preset: 'custom', baseUrl: 'https://api.openai.com/v1', apiKey: 'sk-x', storyModel: 'gpt-5-mini' }),
+    route({ models: () => models('gpt-5-mini'), complete: () => json(tooLong, 400) })
+    const r = await testEndpoint(
+      conn({ preset: 'custom', baseUrl: 'http://x.test/v1', apiKey: 'sk-x', storyModel: 'gpt-5-mini' }),
     )
     expect(r.steps[1]).toMatchObject({ ok: true, detail: 'Found gpt-5-mini.' })
     expect(r.problem?.kind).toBe('other')
-    expect(r.problem?.message).toMatch(/max_completion_tokens/)
+    expect(r.problem?.message).toMatch(/max_tokens is too large/)
     expect(r.problem?.fix).not.toMatch(/Pick a model/)
+  })
+
+  it('learns an unsupported parameter during the test instead of failing', async () => {
+    const unsupported = {
+      error: {
+        message: "Unsupported value: 'temperature' does not support 0 with this model.",
+        type: 'invalid_request_error',
+        param: 'temperature',
+        code: 'unsupported_value',
+      },
+    }
+    let n = 0
+    route({ models: () => models('gpt-5-mini'), complete: () => (n++ === 0 ? json(unsupported, 400) : completion('ok')) })
+    const r = await testEndpoint(
+      conn({ preset: 'chatgpt', baseUrl: 'https://api.openai.com/v1', apiKey: 'sk-x', storyModel: 'gpt-5-mini' }),
+    )
+    expect(r.ok).toBe(true)
+    const posts = seen.filter((s) => s.url.endsWith('/chat/completions'))
+    expect(posts[0].body).toMatchObject({ temperature: 0, max_completion_tokens: 4000 })
+    expect(posts[1].body?.temperature).toBeUndefined()
+  })
+
+  it('asks ChatGPT and Grok for a key before sending anything', async () => {
+    route({})
+    for (const [preset, baseUrl, site] of [
+      ['chatgpt', 'https://api.openai.com/v1', 'platform.openai.com'],
+      ['grok', 'https://api.x.ai/v1', 'console.x.ai'],
+    ] as const) {
+      const r = await testEndpoint(conn({ preset, baseUrl }))
+      expect(r.problem?.kind).toBe('auth')
+      expect(r.problem?.fix).toContain(site)
+    }
+    expect(seen).toHaveLength(0)
+  })
+
+  it('tests ChatGPT with a sensible listed model when no role runs there', async () => {
+    route({
+      models: () => models('whisper-1', 'dall-e-3', 'text-embedding-3-small', 'gpt-4o', 'gpt-5', 'gpt-5-mini'),
+      complete: () => completion('ok'),
+    })
+    const r = await testEndpoint(
+      conn({ preset: 'chatgpt', baseUrl: 'https://api.openai.com/v1', apiKey: 'sk-x', storyModel: '' }),
+    )
+    expect(r.ok).toBe(true)
+    expect(seen.find((s) => s.url.endsWith('/chat/completions'))?.body?.model).toBe('gpt-5-mini')
   })
 
   it('names OLLAMA_HOST when an Ollama PC on the network is unreachable', async () => {
     route({ probe: 'unreachable' })
-    const r = await testConnection(conn({ baseUrl: 'http://192.168.1.20:11434/v1' }))
+    const r = await testEndpoint(conn({ baseUrl: 'http://192.168.1.20:11434/v1' }))
     expect(r.problem?.kind).toBe('unreachable')
     expect(r.problem?.fix).toMatch(/OLLAMA_HOST=0\.0\.0\.0/)
     expect(r.problem?.fix).toMatch(/192\.168\.1\.20/)
@@ -188,30 +234,30 @@ describe('testConnection', () => {
 
   it('names "Serve on local network" when an LM Studio PC is unreachable', async () => {
     route({ probe: 'unreachable' })
-    const r = await testConnection(conn({ preset: 'lmstudio', baseUrl: 'http://192.168.1.20:1234/v1' }))
+    const r = await testEndpoint(conn({ preset: 'lmstudio', baseUrl: 'http://192.168.1.20:1234/v1' }))
     expect(r.problem?.fix).toMatch(/Serve on local network/)
     expect(r.problem?.fix).not.toMatch(/localhost/)
   })
 
   it('keeps the localhost advice for loopback URLs', async () => {
     route({ probe: 'unreachable' })
-    const r = await testConnection(conn({ baseUrl: 'http://127.0.0.1:11434/v1' }))
+    const r = await testEndpoint(conn({ baseUrl: 'http://127.0.0.1:11434/v1' }))
     expect(r.problem?.fix).toMatch(/ollama serve/)
     expect(r.problem?.fix).not.toMatch(/OLLAMA_HOST/)
-    const lan = await testConnection(conn({ preset: 'custom', baseUrl: 'http://10.0.0.5:8080/v1' }))
+    const lan = await testEndpoint(conn({ preset: 'custom', baseUrl: 'http://10.0.0.5:8080/v1' }))
     expect(lan.problem?.fix).toMatch(/same Wi-Fi/)
   })
 
   it('reports CORS when GET works but the POST preflight is blocked', async () => {
     route({ models: () => models('llama3.1'), probe: 'reachable' })
-    const r = await testConnection(conn())
+    const r = await testEndpoint(conn())
     expect(r.steps.slice(0, 2).map((s) => s.ok)).toEqual([true, true])
     expect(r.problem?.kind).toBe('cors')
   })
 
   it('tests with the first listed model when no story model is set', async () => {
     route({ models: () => models('m1', 'm2'), complete: () => completion('ok') })
-    const r = await testConnection(conn({ storyModel: '' }))
+    const r = await testEndpoint(conn({ storyModel: '' }))
     expect(r.ok).toBe(true)
     expect(seen.find((s) => s.url.endsWith('/chat/completions'))?.body?.model).toBe('m1')
     expect(r.steps[1].detail).toMatch(/testing with m1/)
@@ -219,22 +265,22 @@ describe('testConnection', () => {
 
   it('reports an empty model list', async () => {
     route({ models: () => models() })
-    const r = await testConnection(conn())
+    const r = await testEndpoint(conn())
     expect(r.problem?.kind).toBe('model')
     expect(r.problem?.fix).toMatch(/ollama pull/)
   })
 
   it('continues to the completion when /models is missing but a model is set', async () => {
     route({ models: () => json({ error: 'no' }, 404), complete: () => completion('ok') })
-    const r = await testConnection(conn({ preset: 'custom', baseUrl: 'http://x.test/v1', storyModel: 'm' }))
+    const r = await testEndpoint(conn({ preset: 'custom', baseUrl: 'http://x.test/v1', storyModel: 'm' }))
     expect(r.ok).toBe(true)
     expect(r.steps[0].ok).toBe(false)
   })
 
   it('rejects a missing or invalid URL without fetching', async () => {
     route({})
-    expect((await testConnection(conn({ baseUrl: '' }))).problem?.kind).toBe('unreachable')
-    expect((await testConnection(conn({ baseUrl: 'localhost 11434' }))).problem?.kind).toBe('unreachable')
+    expect((await testEndpoint(conn({ baseUrl: '' }))).problem?.kind).toBe('unreachable')
+    expect((await testEndpoint(conn({ baseUrl: 'localhost 11434' }))).problem?.kind).toBe('unreachable')
     expect(seen).toHaveLength(0)
   })
 })
@@ -289,5 +335,59 @@ describe('explainError', () => {
     expect(explainError(new LlmError('cors', 'x'), c).fix).toMatch(/OLLAMA_ORIGINS/)
     expect(explainError(new LlmError('timeout', 'x'), c).message).toMatch(/too long/)
     expect(explainError(new LlmError('http', 'HTTP 500: boom', { status: 500 }), c).kind).toBe('other')
+  })
+})
+
+describe('explainError for hosted providers', () => {
+  const claude = { preset: 'claude' as const, baseUrl: 'https://api.anthropic.com', apiKey: 'sk-ant-x' }
+  const http = (status: number) => new LlmError('http', `HTTP ${status}`, { status })
+
+  it('names where to check each key', () => {
+    expect(explainError(http(401), claude)).toMatchObject({ kind: 'auth', fix: 'Check your Anthropic API key at console.anthropic.com.' })
+    expect(explainError(http(401), { preset: 'chatgpt', baseUrl: 'https://api.openai.com/v1', apiKey: 'k' }).fix).toMatch(/platform\.openai\.com/)
+    expect(explainError(http(401), { preset: 'grok', baseUrl: 'https://api.x.ai/v1', apiKey: 'k' }).fix).toMatch(/console\.x\.ai/)
+    expect(explainError(http(403), claude).fix).toMatch(/console\.anthropic\.com/)
+    expect(explainError(http(401), { ...claude, apiKey: '' }).message).toBe('Claude needs an API key.')
+  })
+
+  it('maps rate limits, unknown models, outages and offline', () => {
+    expect(explainError(http(429), claude)).toMatchObject({ kind: 'rate_limit' })
+    expect(explainError(http(404), claude, 'claude-nope')).toMatchObject({ kind: 'model', message: 'Claude doesn\'t know the model "claude-nope".' })
+    expect(explainError(http(529), claude).message).toMatch(/busy/)
+    const offline = explainError(new LlmError('network', 'x'), claude)
+    expect(offline.kind).toBe('unreachable')
+    expect(offline.fix).toMatch(/internet connection/)
+  })
+
+  it('explains a role error against that role\'s route', () => {
+    const c: ConnectionSettings = structuredClone(DEFAULT_CONNECTION) as ConnectionSettings
+    c.judge = { preset: 'grok', model: 'grok-4-fast' }
+    expect(explainRoleError(http(401), c, 'judge').message).toBe('Grok needs an API key.')
+    expect(explainRoleError(http(404), c, 'story').message).toMatch(/claude-opus-5/)
+  })
+})
+
+describe('testConnection per preset', () => {
+  const settings = (patch: Partial<ConnectionSettings> = {}): ConnectionSettings => ({
+    ...(structuredClone(DEFAULT_CONNECTION) as ConnectionSettings),
+    ...patch,
+  })
+
+  it('stops at the missing Claude key without a request', async () => {
+    route({})
+    const r = await testConnection(settings())
+    expect(r.ok).toBe(false)
+    expect(r.problem).toMatchObject({ kind: 'auth', message: 'Claude needs an API key.' })
+    expect(r.problem?.fix).toMatch(/console\.anthropic\.com/)
+    expect(seen).toHaveLength(0)
+  })
+
+  it('tests the named preset with the models the roles use there', async () => {
+    route({ models: () => models('llama3.1', 'qwen3'), complete: () => completion('ok') })
+    const c = settings({ judge: { preset: 'ollama', model: 'qwen3' } })
+    const r = await testConnection(c, { preset: 'ollama' })
+    expect(r.ok).toBe(true)
+    expect(seen[0].url).toBe('http://localhost:11434/v1/models')
+    expect(seen.find((s) => s.url.endsWith('/chat/completions'))?.body?.model).toBe('qwen3')
   })
 })

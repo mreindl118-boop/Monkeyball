@@ -151,3 +151,14 @@
     transform: none;
   }
 }
+
+/* Provider content-policy note under heat 4 and 5 (Claude or ChatGPT writing the story). */
+.policy {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--blush-soft);
+  color: var(--smoke-text);
+  font-size: 13.5px;
+  line-height: 1.45;
+}

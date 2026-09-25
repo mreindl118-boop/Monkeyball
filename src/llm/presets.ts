@@ -1,55 +1,129 @@
-import type { ConnectionPreset, ConnectionSettings } from '../types'
+import type { ConnectionPreset, ModelProvider } from '../types'
 
 export type KeyPolicy = 'none' | 'required' | 'optional'
 
 export interface Preset {
   id: ConnectionPreset
   label: string
+  /** Wire format: Anthropic's Messages API (official SDK) or OpenAI-compatible chat completions. */
+  provider: ModelProvider
+  /** 'main' presets get their own card; 'other' ones sit under "Other providers". */
+  group: 'main' | 'other'
   /** Default base URL; empty for Custom. */
   baseUrl: string
   key: KeyPolicy
   /** Short help line for the settings screen. */
   help: string
+  /** Where to get a key, shown as a link ("console.anthropic.com"). */
+  keySite?: string
+  keyUrl?: string
+  /** Placeholder for the key field. */
+  keyPlaceholder?: string
+  /** Default models, for presets that have well-known ones. */
+  defaults?: { story: string; judge: string }
 }
 
-/** The four connection presets from docs/SPEC.md, "Model connection". */
+/** Claude's default models (exact ids, no date suffixes). */
+export const CLAUDE_STORY_MODEL = 'claude-opus-5'
+export const CLAUDE_JUDGE_MODEL = 'claude-haiku-4-5'
+
+/** Every connection preset. Order is the order the settings screen shows them in. */
 export const PRESETS: Record<ConnectionPreset, Preset> = {
+  claude: {
+    id: 'claude',
+    label: 'Claude',
+    provider: 'anthropic',
+    group: 'main',
+    baseUrl: 'https://api.anthropic.com',
+    key: 'required',
+    help: "Anthropic's models, with your own API key.",
+    keySite: 'console.anthropic.com',
+    keyUrl: 'https://console.anthropic.com/settings/keys',
+    keyPlaceholder: 'sk-ant-...',
+    defaults: { story: CLAUDE_STORY_MODEL, judge: CLAUDE_JUDGE_MODEL },
+  },
+  chatgpt: {
+    id: 'chatgpt',
+    label: 'ChatGPT',
+    provider: 'openai',
+    group: 'main',
+    baseUrl: 'https://api.openai.com/v1',
+    key: 'required',
+    help: "OpenAI's models, with your own API key.",
+    keySite: 'platform.openai.com',
+    keyUrl: 'https://platform.openai.com/api-keys',
+    keyPlaceholder: 'sk-...',
+  },
+  grok: {
+    id: 'grok',
+    label: 'Grok',
+    provider: 'openai',
+    group: 'main',
+    baseUrl: 'https://api.x.ai/v1',
+    key: 'required',
+    help: "xAI's models, with your own API key.",
+    keySite: 'console.x.ai',
+    keyUrl: 'https://console.x.ai',
+    keyPlaceholder: 'xai-...',
+  },
   ollama: {
     id: 'ollama',
     label: 'Ollama',
+    provider: 'openai',
+    group: 'other',
     baseUrl: 'http://localhost:11434/v1',
     key: 'none',
-    help: 'Runs models on this computer. Set OLLAMA_ORIGINS so the browser can reach it.',
+    help: 'Free models on your own computer, on your Wi-Fi, or on this phone.',
   },
   lmstudio: {
     id: 'lmstudio',
     label: 'LM Studio',
+    provider: 'openai',
+    group: 'other',
     baseUrl: 'http://localhost:1234/v1',
     key: 'none',
-    help: "Start the server in LM Studio and enable CORS in its server settings.",
+    help: 'Models loaded in LM Studio on your computer.',
   },
   openrouter: {
     id: 'openrouter',
     label: 'OpenRouter',
+    provider: 'openai',
+    group: 'other',
     baseUrl: 'https://openrouter.ai/api/v1',
     key: 'required',
-    help: 'Hosted models. Needs an API key from openrouter.ai.',
+    help: 'Hundreds of hosted models behind one key.',
+    keySite: 'openrouter.ai/keys',
+    keyUrl: 'https://openrouter.ai/keys',
+    keyPlaceholder: 'sk-or-...',
   },
   custom: {
     id: 'custom',
     label: 'Custom',
+    provider: 'openai',
+    group: 'other',
     baseUrl: '',
     key: 'optional',
     help: 'Any OpenAI-compatible server. Usually ends in /v1.',
   },
 }
 
-export const PRESET_LIST: readonly Preset[] = [
-  PRESETS.ollama,
-  PRESETS.lmstudio,
-  PRESETS.openrouter,
-  PRESETS.custom,
+export const PRESET_IDS: readonly ConnectionPreset[] = [
+  'claude',
+  'chatgpt',
+  'grok',
+  'ollama',
+  'lmstudio',
+  'openrouter',
+  'custom',
 ]
+
+export const PRESET_LIST: readonly Preset[] = PRESET_IDS.map((id) => PRESETS[id])
+export const MAIN_PRESETS: readonly Preset[] = PRESET_LIST.filter((p) => p.group === 'main')
+export const OTHER_PRESETS: readonly Preset[] = PRESET_LIST.filter((p) => p.group === 'other')
+
+export function isPresetId(v: unknown): v is ConnectionPreset {
+  return typeof v === 'string' && (PRESET_IDS as readonly string[]).includes(v)
+}
 
 export function presetFor(id: ConnectionPreset): Preset {
   return PRESETS[id] ?? PRESETS.custom
@@ -63,13 +137,16 @@ export function normalizeBaseUrl(url: string): string {
 /** Guess the preset from a base URL (used when the user pastes a URL into Custom). */
 export function detectPreset(baseUrl: string): ConnectionPreset {
   const u = normalizeBaseUrl(baseUrl).toLowerCase()
+  if (u.includes('api.anthropic.com')) return 'claude'
+  if (u.includes('api.openai.com')) return 'chatgpt'
+  if (u.includes('api.x.ai')) return 'grok'
   if (u.includes('openrouter.ai')) return 'openrouter'
   if (/:11434(\/|$)/.test(u)) return 'ollama'
   if (/:1234(\/|$)/.test(u)) return 'lmstudio'
   return 'custom'
 }
 
-type ConnLike = Pick<ConnectionSettings, 'preset' | 'baseUrl'>
+type ConnLike = { preset: ConnectionPreset; baseUrl: string }
 
 /** True when the connection talks to Ollama (by preset or by its default port). */
 export function isOllama(conn: ConnLike): boolean {
@@ -82,6 +159,16 @@ export function isLmStudio(conn: ConnLike): boolean {
 
 export function isOpenRouter(conn: ConnLike): boolean {
   return conn.preset === 'openrouter' || detectPreset(conn.baseUrl) === 'openrouter'
+}
+
+/** True when the server is OpenAI's own API (it wants max_completion_tokens, not max_tokens). */
+export function isOpenAiApi(conn: ConnLike): boolean {
+  return detectPreset(conn.baseUrl) === 'chatgpt'
+}
+
+/** True when the server is xAI's API. */
+export function isXai(conn: ConnLike): boolean {
+  return detectPreset(conn.baseUrl) === 'grok'
 }
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '[::1]', '::1'])

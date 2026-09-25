@@ -2,9 +2,18 @@ import 'fake-indexeddb/auto'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CrushDB } from '../db/db'
 import { kvGet, kvSet } from '../db/repo'
-import type { PlayerProfile, Settings } from '../types'
+import type { ConnectionSettings, PlayerProfile, Settings } from '../types'
 import { DEFAULT_SETTINGS, DEFAULT_STYLE_PREFIXES } from './defaults'
-import { createSettingsStore, effectiveJudgeModel, mergeDeep, mergeSettings } from './settings'
+import {
+  createSettingsStore,
+  effectiveJudgeModel,
+  maskApiKeys,
+  mergeDeep,
+  mergeSettings,
+  migrateConnection,
+  withLocalKeys,
+  withoutApiKeys,
+} from './settings'
 
 let counter = 0
 const open: CrushDB[] = []
@@ -37,11 +46,20 @@ describe('defaults', () => {
       hubSetFilter: 'all',
     })
     expect(DEFAULT_SETTINGS.connection).toMatchObject({
-      preset: 'ollama',
-      baseUrl: 'http://localhost:11434/v1',
+      story: { preset: 'claude', model: 'claude-opus-5' },
+      judge: { preset: 'same', model: 'claude-haiku-4-5' },
       storyTemperature: 0.9,
       maxTokens: 600,
-      judgeModel: '',
+      effort: 'low',
+    })
+    expect(DEFAULT_SETTINGS.connection.providers).toMatchObject({
+      claude: { baseUrl: 'https://api.anthropic.com', apiKey: '' },
+      chatgpt: { baseUrl: 'https://api.openai.com/v1', apiKey: '' },
+      grok: { baseUrl: 'https://api.x.ai/v1', apiKey: '' },
+      ollama: { baseUrl: 'http://localhost:11434/v1', apiKey: '' },
+      lmstudio: { baseUrl: 'http://localhost:1234/v1', apiKey: '' },
+      openrouter: { baseUrl: 'https://openrouter.ai/api/v1', apiKey: '' },
+      custom: { baseUrl: '', apiKey: '' },
     })
   })
 
@@ -61,8 +79,8 @@ describe('mergeDeep', () => {
     }
     const s = mergeSettings(stored)
     expect(s.heat).toBe(4)
-    expect(s.connection.baseUrl).toBe('http://pc:1234/v1')
-    expect(s.connection.apiKey).toBe('k')
+    expect(s.connection.providers.lmstudio).toEqual({ baseUrl: 'http://pc:1234/v1', apiKey: 'k' })
+    expect(s.connection.story.preset).toBe('lmstudio')
     expect(s.connection.storyTemperature).toBe(0.9)
     expect(s.image.stylePrefixes.anime).toBe('my anime')
     expect(s.image.stylePrefixes.painterly).toBe(DEFAULT_STYLE_PREFIXES.painterly)
@@ -106,8 +124,8 @@ describe('useSettings store', () => {
     const { settings } = store.getState()
     expect(settings.ageConfirmed).toBe(true)
     expect(settings.heat).toBe(3)
-    expect(settings.connection.storyModel).toBe('qwen')
-    expect(settings.connection.baseUrl).toBe('http://localhost:11434/v1')
+    expect(settings.connection.story).toEqual({ preset: 'ollama', model: 'qwen' })
+    expect(settings.connection.providers.ollama.baseUrl).toBe('http://localhost:11434/v1')
     expect(settings.image.width).toBe(DEFAULT_SETTINGS.image.width)
   })
 
@@ -116,7 +134,8 @@ describe('useSettings store', () => {
     const store = createSettingsStore(d)
     await store.getState().load()
     await store.getState().update({ heat: 5, ageConfirmed: true })
-    await store.getState().updateConnection({ apiKey: 'sk-1', storyModel: 'm' })
+    await store.getState().updateProvider('claude', { apiKey: 'sk-1' })
+    await store.getState().updateConnection({ story: { preset: 'claude', model: 'm' } })
     await store.getState().updateImage({ enabled: true, steps: 40 })
     const p: PlayerProfile = {
       name: 'Ari',
@@ -132,8 +151,9 @@ describe('useSettings store', () => {
     const saved = (await kvGet<Settings>('settings', d))!
     expect(saved.heat).toBe(5)
     expect(saved.ageConfirmed).toBe(true)
-    expect(saved.connection.apiKey).toBe('sk-1')
-    expect(saved.connection.baseUrl).toBe('http://localhost:11434/v1')
+    expect(saved.connection.providers.claude).toEqual({ baseUrl: 'https://api.anthropic.com', apiKey: 'sk-1' })
+    expect(saved.connection.providers.chatgpt.apiKey).toBe('')
+    expect(saved.connection.story).toEqual({ preset: 'claude', model: 'm' })
     expect(saved.image.enabled).toBe(true)
     expect(saved.image.steps).toBe(40)
     expect(await kvGet('profile', d)).toEqual(p)
@@ -159,7 +179,7 @@ describe('useSettings store', () => {
     await store.getState().load()
     vi.spyOn(d.kv, 'put').mockRejectedValue(new Error('QuotaExceededError'))
     await expect(store.getState().update({ ageConfirmed: true })).resolves.toBeUndefined()
-    await expect(store.getState().updateConnection({ storyModel: 'm' })).resolves.toBeUndefined()
+    await expect(store.getState().updateConnection({ story: { preset: 'claude', model: 'm' } })).resolves.toBeUndefined()
     const p: PlayerProfile = {
       name: 'Ari',
       gender: 'woman',
@@ -170,7 +190,7 @@ describe('useSettings store', () => {
     await expect(store.getState().setProfile(p)).resolves.toBeUndefined()
     const st = store.getState()
     expect(st.settings.ageConfirmed).toBe(true)
-    expect(st.settings.connection.storyModel).toBe('m')
+    expect(st.settings.connection.story.model).toBe('m')
     expect(st.profile).toEqual(p)
     expect(st.error).toMatch(/Quota/)
   })
@@ -195,9 +215,97 @@ describe('useSettings store', () => {
 })
 
 describe('effectiveJudgeModel', () => {
-  it('falls back to the story model', () => {
-    const conn = { ...DEFAULT_SETTINGS.connection, storyModel: 'big' }
+  it('falls back to the story model when both roles share a preset', () => {
+    const conn: ConnectionSettings = { ...DEFAULT_SETTINGS.connection, story: { preset: 'ollama', model: 'big' }, judge: { preset: 'same', model: '' } }
     expect(effectiveJudgeModel(conn)).toBe('big')
-    expect(effectiveJudgeModel({ ...conn, judgeModel: 'small' })).toBe('small')
+    expect(effectiveJudgeModel({ ...conn, judge: { preset: 'same', model: 'small' } })).toBe('small')
+    expect(effectiveJudgeModel(DEFAULT_SETTINGS.connection)).toBe('claude-haiku-4-5')
+  })
+})
+
+describe('migrateConnection', () => {
+  it('moves Phase 1 settings over without losing the key or the models', () => {
+    const phase1 = {
+      preset: 'openrouter',
+      baseUrl: 'https://openrouter.ai/api/v1',
+      apiKey: 'sk-or-secret',
+      providers: { ollama: { baseUrl: 'http://192.168.1.20:11434/v1', apiKey: '' }, custom: { baseUrl: 'http://10.0.0.5:8080/v1', apiKey: 'c-key' } },
+      storyModel: 'anthropic/claude-sonnet-4.6',
+      judgeModel: 'openai/gpt-4o-mini',
+      storyTemperature: 1.1,
+      maxTokens: 800,
+    }
+    const c = migrateConnection(phase1)
+    expect(c.story).toEqual({ preset: 'openrouter', model: 'anthropic/claude-sonnet-4.6' })
+    expect(c.judge).toEqual({ preset: 'same', model: 'openai/gpt-4o-mini' })
+    expect(c.providers.openrouter).toEqual({ baseUrl: 'https://openrouter.ai/api/v1', apiKey: 'sk-or-secret' })
+    expect(c.providers.ollama.baseUrl).toBe('http://192.168.1.20:11434/v1')
+    expect(c.providers.custom).toEqual({ baseUrl: 'http://10.0.0.5:8080/v1', apiKey: 'c-key' })
+    expect(c.providers.claude).toEqual({ baseUrl: 'https://api.anthropic.com', apiKey: '' })
+    expect(c).toMatchObject({ storyTemperature: 1.1, maxTokens: 800, effort: 'low' })
+    // No Phase 1 field lingers.
+    expect(Object.keys(c).sort()).toEqual(['effort', 'judge', 'maxTokens', 'providers', 'story', 'storyTemperature'])
+  })
+
+  it('keeps an empty Phase 1 judge as "same as story"', () => {
+    const c = migrateConnection({ preset: 'ollama', baseUrl: 'http://localhost:11434/v1', apiKey: '', storyModel: 'llama3.1', judgeModel: '' })
+    expect(c.story).toEqual({ preset: 'ollama', model: 'llama3.1' })
+    expect(c.judge).toEqual({ preset: 'same', model: '' })
+    expect(effectiveJudgeModel(c)).toBe('llama3.1')
+  })
+
+  it('starts an untouched Phase 1 install on the new Claude defaults', () => {
+    const c = migrateConnection({ preset: 'ollama', baseUrl: 'http://localhost:11434/v1', apiKey: '', storyModel: '', judgeModel: '', storyTemperature: 0.9, maxTokens: 600 })
+    expect(c).toEqual(DEFAULT_SETTINGS.connection)
+  })
+
+  it('reads the current shape and repairs unknown values', () => {
+    const c = migrateConnection({
+      providers: { grok: { baseUrl: '', apiKey: 'xai-1' }, nope: { baseUrl: 'x', apiKey: 'y' } },
+      story: { preset: 'claude', model: 'claude-opus-5' },
+      judge: { preset: 'mystery', model: 'x' },
+      effort: 'extreme',
+    })
+    expect(c.providers.grok).toEqual({ baseUrl: 'https://api.x.ai/v1', apiKey: 'xai-1' })
+    expect((c.providers as Record<string, unknown>).nope).toBeUndefined()
+    expect(c.judge).toEqual({ preset: 'same', model: 'x' })
+    expect(c.effort).toBe('low')
+  })
+})
+
+describe('key helpers', () => {
+  const withKeys = (): ConnectionSettings => {
+    const c = structuredClone(DEFAULT_SETTINGS.connection) as ConnectionSettings
+    c.providers.claude.apiKey = 'sk-ant-secret-key'
+    c.providers.grok.apiKey = 'xai-secret-key'
+    return c
+  }
+
+  it('blanks every key for exports, whatever version is stored', () => {
+    const out = withoutApiKeys(withKeys())
+    expect(Object.values(out.providers).every((p) => p.apiKey === '')).toBe(true)
+    const legacy = withoutApiKeys({ preset: 'openrouter', baseUrl: 'https://openrouter.ai/api/v1', apiKey: 'sk-or-1', storyModel: 'm', judgeModel: '' })
+    expect(JSON.stringify(legacy)).not.toContain('sk-or-1')
+    expect(legacy.story).toEqual({ preset: 'openrouter', model: 'm' })
+  })
+
+  it("gives an import this device's keys, per preset", () => {
+    const imported = withoutApiKeys(withKeys())
+    imported.providers.chatgpt.apiKey = 'sk-from-file'
+    const local = withKeys()
+    const out = withLocalKeys(imported, local)
+    expect(out.providers.claude.apiKey).toBe('sk-ant-secret-key')
+    expect(out.providers.grok.apiKey).toBe('xai-secret-key')
+    expect(out.providers.chatgpt.apiKey).toBe('sk-from-file')
+    // A Phase 1 export (key blanked at the top) keeps the local key for its preset only.
+    const old = withLocalKeys({ preset: 'grok', baseUrl: 'https://api.x.ai/v1', apiKey: '', storyModel: 'grok-4', judgeModel: '' }, local)
+    expect(old.story).toEqual({ preset: 'grok', model: 'grok-4' })
+    expect(old.providers.grok.apiKey).toBe('xai-secret-key')
+  })
+
+  it('masks every key', () => {
+    const out = maskApiKeys(withKeys(), (k) => (k ? 'masked' : ''))
+    expect(out.providers.claude.apiKey).toBe('masked')
+    expect(out.providers.custom.apiKey).toBe('')
   })
 })

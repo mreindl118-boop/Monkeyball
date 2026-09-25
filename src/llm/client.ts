@@ -1,11 +1,29 @@
 // One OpenAI-compatible client: POST {baseUrl}/chat/completions (SSE streaming or plain JSON),
-// GET {baseUrl}/models. Every chat call logs a DebugEntry to useDebug.
+// GET {baseUrl}/models. Used for ChatGPT, Grok, Ollama, LM Studio, OpenRouter and Custom; Claude
+// goes through ./anthropic.ts. Every chat call logs a DebugEntry to useDebug. The rest of the app
+// calls ./index.ts (role-based), which resolves a route and lands here with an Endpoint.
 
 import { useDebug } from '../store/debug'
-import type { ConnectionSettings, DebugEntry } from '../types'
+import type { ConnectionPreset, DebugEntry } from '../types'
 import { extractJson, stripThinking } from './json'
-import { isOpenRouter, normalizeBaseUrl } from './presets'
+import { isOpenAiApi, isOpenRouter, isXai, normalizeBaseUrl } from './presets'
 import { createSseParser, parseSse } from './sse'
+
+/**
+ * One OpenAI-compatible server: its address and key, plus the models the two roles use on it
+ * and the story settings. Built from ConnectionSettings by `endpointFor()` in ./routes.ts.
+ */
+export interface Endpoint {
+  preset: ConnectionPreset
+  baseUrl: string
+  apiKey: string
+  /** The model calls default to (the story model when the story role runs here). */
+  storyModel: string
+  /** The judge model on this server; empty means the story model. */
+  judgeModel: string
+  storyTemperature: number
+  maxTokens: number
+}
 
 export type LlmErrorKind = 'network' | 'http' | 'cors' | 'aborted' | 'parse' | 'timeout'
 
@@ -43,7 +61,7 @@ export interface DebugInfo {
 }
 
 export interface ChatOptions {
-  conn: ConnectionSettings
+  conn: Endpoint
   /** Defaults to conn.storyModel. */
   model?: string
   messages: ChatMessage[]
@@ -75,10 +93,18 @@ export interface JsonChatResult<T> {
   ok: boolean
   /** The last raw reply text. */
   raw: string
+  /** True when the model declined, so `value` is the fallback. */
+  refused?: boolean
 }
 
-/** Judge calls always run at this temperature. */
+/** Judge calls always run at this temperature (where the model accepts one). */
 export const JUDGE_TEMPERATURE = 0.2
+
+/**
+ * Completion cap for OpenAI's and xAI's APIs. Their reasoning models spend completion tokens on
+ * thinking before any text, so a small cap returns nothing; reply length comes from the prompt.
+ */
+export const HOSTED_MIN_TOKENS = 4000
 
 /** The extra user message for the one JSON retry. */
 export const JSON_NUDGE = 'Reply with valid JSON only. No prose, no code fences.'
@@ -86,20 +112,20 @@ export const JSON_NUDGE = 'Reply with valid JSON only. No prose, no code fences.
 export const DEFAULT_TIMEOUT_MS = 180_000
 
 /** The judge model: conn.judgeModel, or the story model when it's empty. */
-export function judgeModelOf(conn: ConnectionSettings): string {
+export function judgeModelOf(conn: Endpoint): string {
   return conn.judgeModel?.trim() || conn.storyModel
 }
 
-export function chatUrl(conn: Pick<ConnectionSettings, 'baseUrl'>): string {
+export function chatUrl(conn: Pick<Endpoint, 'baseUrl'>): string {
   return `${normalizeBaseUrl(conn.baseUrl)}/chat/completions`
 }
 
-export function modelsUrl(conn: Pick<ConnectionSettings, 'baseUrl'>): string {
+export function modelsUrl(conn: Pick<Endpoint, 'baseUrl'>): string {
   return `${normalizeBaseUrl(conn.baseUrl)}/models`
 }
 
 /** Request headers. Authorization only when a key is set; OpenRouter also gets X-Title. */
-export function headersFor(conn: ConnectionSettings, json = true): Record<string, string> {
+export function headersFor(conn: Endpoint, json = true): Record<string, string> {
   const h: Record<string, string> = {}
   if (json) h['Content-Type'] = 'application/json'
   const key = conn.apiKey?.trim()
@@ -109,21 +135,52 @@ export function headersFor(conn: ConnectionSettings, json = true): Record<string
 }
 
 // ---------------------------------------------------------------------------
-// JSON-mode capability cache (in memory), keyed by baseUrl + model.
+// Parameter learning (in memory), keyed by baseUrl + model. When a server turns down an optional
+// parameter with a 400 that names it, the call is retried without it and the choice is remembered.
 
-const jsonModeRejected = new Set<string>()
+/** Optional request parameters a server may reject. */
+export type OptionalParam = 'temperature' | 'response_format' | 'max_tokens' | 'max_completion_tokens'
 
-function jsonModeKey(conn: ConnectionSettings, model: string): string {
+const rejectedParams = new Map<string, Set<OptionalParam>>()
+
+function paramKey(conn: Pick<Endpoint, 'baseUrl'>, model: string): string {
   return `${normalizeBaseUrl(conn.baseUrl)}|${model}`
 }
 
-/** False once this baseUrl+model has rejected response_format; true otherwise. */
-export function jsonModeAllowed(conn: ConnectionSettings, model: string): boolean {
-  return !jsonModeRejected.has(jsonModeKey(conn, model))
+function rejectedFor(conn: Pick<Endpoint, 'baseUrl'>, model: string): Set<OptionalParam> {
+  return rejectedParams.get(paramKey(conn, model)) ?? new Set()
 }
 
+function rememberRejected(conn: Pick<Endpoint, 'baseUrl'>, model: string, param: OptionalParam): void {
+  const key = paramKey(conn, model)
+  const set = rejectedParams.get(key) ?? new Set<OptionalParam>()
+  set.add(param)
+  rejectedParams.set(key, set)
+}
+
+/** False once this baseUrl+model has turned the parameter down; true otherwise. */
+export function paramAllowed(conn: Pick<Endpoint, 'baseUrl'>, model: string, param: OptionalParam): boolean {
+  return !rejectedFor(conn, model).has(param)
+}
+
+/** False once this baseUrl+model has rejected response_format; true otherwise. */
+export function jsonModeAllowed(conn: Pick<Endpoint, 'baseUrl'>, model: string): boolean {
+  return paramAllowed(conn, model, 'response_format')
+}
+
+/** Forget every learned parameter rejection (tests, and after the player changes servers). */
 export function resetJsonModeCache(): void {
-  jsonModeRejected.clear()
+  rejectedParams.clear()
+}
+
+export const resetParamCache = resetJsonModeCache
+
+/** The error object of an OpenAI-style body ({"error": {message, param, code}}), if any. */
+function errorObjectOf(body: string | undefined): { param?: unknown; code?: unknown; message?: unknown } | null {
+  if (!body) return null
+  const parsed = extractJson(body)
+  const e = parsed?.error
+  return e && typeof e === 'object' ? (e as { param?: unknown; code?: unknown; message?: unknown }) : null
 }
 
 /**
@@ -134,11 +191,35 @@ export function resetJsonModeCache(): void {
 export function rejectsJsonMode(err: unknown): boolean {
   if (!(err instanceof LlmError) || err.kind !== 'http') return false
   if (err.status !== 400 && err.status !== 404 && err.status !== 422) return false
-  const parsed = err.body ? extractJson(err.body) : null
-  const e = parsed?.error
-  if (e && typeof e === 'object' && (e as { param?: unknown }).param === 'response_format') return true
+  const e = errorObjectOf(err.body)
+  if (e?.param === 'response_format') return true
   const detail = (err.body ? errorMessageFrom(err.body) : '') || err.message
   return /response_format|json_object|json_schema|json mode/i.test(detail)
+}
+
+const UNSUPPORTED = /unsupported|not supported|does not support|doesn't support|not allowed|not permitted|unrecognized|unknown (parameter|field|argument)|extra (fields|inputs)|invalid (parameter|argument)|only the default/i
+
+/**
+ * Which optional parameter a 400/422 turns down, if it names one we sent: the error's `param`,
+ * or a message that names the parameter and says it isn't supported. Null otherwise.
+ */
+export function rejectedParam(err: unknown, sent: readonly OptionalParam[]): OptionalParam | null {
+  if (!(err instanceof LlmError) || err.kind !== 'http') return null
+  if (sent.includes('response_format') && rejectsJsonMode(err)) return 'response_format'
+  if (err.status !== 400 && err.status !== 422) return null
+  const e = errorObjectOf(err.body)
+  if (typeof e?.param === 'string' && (sent as readonly string[]).includes(e.param)) return e.param as OptionalParam
+  const detail = (err.body ? errorMessageFrom(err.body) : '') || err.message
+  const body = err.body ?? ''
+  if (!UNSUPPORTED.test(detail) && !UNSUPPORTED.test(body)) return null
+  // Name the first parameter the message itself leads with ("'max_tokens' is not supported...").
+  const hits = sent
+    .map((p) => ({ p, at: detail.search(new RegExp(`\\b${p}\\b`)) }))
+    .filter((h) => h.at >= 0)
+    .sort((a, b) => a.at - b.at)
+  if (hits.length) return hits[0].p
+  const inBody = sent.find((p) => new RegExp(`\\b${p}\\b`).test(body))
+  return inBody ?? null
 }
 
 // ---------------------------------------------------------------------------
@@ -228,18 +309,51 @@ async function httpError(res: Response): Promise<LlmError> {
   return new LlmError('http', `HTTP ${res.status}: ${detail}`, { status: res.status, body })
 }
 
+/** The first choice of a completion or chunk object, if any. */
+function firstChoice(obj: Record<string, unknown>): Record<string, unknown> | null {
+  const choices = obj.choices
+  if (!Array.isArray(choices) || choices.length === 0) return null
+  const c = choices[0] as Record<string, unknown> | null
+  return c && typeof c === 'object' ? c : null
+}
+
 /** Content from one parsed completion or chunk object: delta.content, message.content or text. */
 function contentOf(obj: Record<string, unknown>): string {
-  const choices = obj.choices
-  if (!Array.isArray(choices) || choices.length === 0) return ''
-  const c = choices[0] as Record<string, unknown> | null
-  if (!c || typeof c !== 'object') return ''
+  const c = firstChoice(obj)
+  if (!c) return ''
   const delta = c.delta as Record<string, unknown> | undefined
   if (delta && typeof delta.content === 'string') return delta.content
   const message = c.message as Record<string, unknown> | undefined
   if (message && typeof message.content === 'string') return message.content
   if (typeof c.text === 'string') return c.text
   return ''
+}
+
+/** A refusal message (OpenAI's `message.refusal` / `delta.refusal`), if any. */
+function refusalOf(obj: Record<string, unknown>): string {
+  const c = firstChoice(obj)
+  if (!c) return ''
+  for (const key of ['delta', 'message'] as const) {
+    const part = c[key] as Record<string, unknown> | undefined
+    if (part && typeof part.refusal === 'string') return part.refusal
+  }
+  return ''
+}
+
+function finishReasonOf(obj: Record<string, unknown>): string | null {
+  const c = firstChoice(obj)
+  return c && typeof c.finish_reason === 'string' ? c.finish_reason : null
+}
+
+/** A finished completion: the visible text and how it ended. */
+export interface Completion {
+  text: string
+  /** The model declined (OpenAI `message.refusal`, or finish_reason 'content_filter'). */
+  refused: boolean
+  /** The provider's refusal wording, when it sent one. */
+  refusal?: string
+  /** finish_reason from the server ('stop', 'length', 'content_filter'...), when it sent one. */
+  finishReason: string | null
 }
 
 /** An in-body error payload ({"error": ...}) as an LlmError, or null. */
@@ -322,9 +436,11 @@ async function readCompletion(
   deadline: Deadline,
   url: string,
   onDelta?: (delta: string, full: string) => void,
-): Promise<string> {
+): Promise<Completion> {
   const filter = createThinkFilter()
   let full = ''
+  let refusal = ''
+  let finishReason: string | null = null
   const emit = (piece: string) => {
     let text = filter.push(piece)
     if (!full) text = text.replace(/^\s+/, '')
@@ -332,14 +448,23 @@ async function readCompletion(
     full += text
     onDelta?.(text, full)
   }
-  const finish = () => {
+  const finish = (): Completion => {
     let text = filter.flush()
     if (!full) text = text.replace(/^\s+/, '')
     if (text) {
       full += text
       onDelta?.(text, full)
     }
-    return full.trim()
+    const refused = !!refusal.trim() || finishReason === 'content_filter'
+    const out: Completion = { text: full.trim(), refused, finishReason }
+    if (refusal.trim()) out.refusal = refusal.trim()
+    return out
+  }
+  const take = (o: Record<string, unknown>) => {
+    const piece = contentOf(o)
+    if (piece) emit(piece)
+    refusal += refusalOf(o)
+    finishReason = finishReasonOf(o) ?? finishReason
   }
 
   let sawEvent = false
@@ -377,13 +502,12 @@ async function readCompletion(
       if (!o || typeof o !== 'object') continue
       const err = payloadError(o as Record<string, unknown>, res.status)
       if (err) throw err
-      const piece = contentOf(o as Record<string, unknown>)
-      if (piece) emit(piece)
+      take(o as Record<string, unknown>)
     }
     return done
   }
 
-  const handleJsonBody = (raw: string): string => {
+  const handleJsonBody = (raw: string): Completion => {
     const trimmed = raw.trim()
     if (/^(data:|event:|:)/.test(trimmed)) {
       // An event stream labelled as JSON (or buffered by a proxy): parse it as SSE.
@@ -406,7 +530,7 @@ async function readCompletion(
     }
     const err = payloadError(obj as Record<string, unknown>, res.status)
     if (err) throw err
-    emit(contentOf(obj as Record<string, unknown>))
+    take(obj as Record<string, unknown>)
     return finish()
   }
 
@@ -464,14 +588,14 @@ async function readCompletion(
 }
 
 interface RequestArgs {
-  conn: ConnectionSettings
+  conn: Endpoint
   body: Record<string, unknown>
   signal?: AbortSignal
   timeoutMs?: number
   onDelta?: (delta: string, full: string) => void
 }
 
-async function postCompletion(args: RequestArgs): Promise<string> {
+async function postCompletion(args: RequestArgs): Promise<Completion> {
   const url = chatUrl(args.conn)
   const deadline = new Deadline(args.timeoutMs ?? DEFAULT_TIMEOUT_MS, args.signal)
   try {
@@ -494,17 +618,50 @@ async function postCompletion(args: RequestArgs): Promise<string> {
   }
 }
 
-function bodyFor(opts: ChatOptions, stream: boolean, jsonMode: boolean): Record<string, unknown> {
-  const body: Record<string, unknown> = {
-    model: opts.model ?? opts.conn.storyModel,
-    messages: opts.messages,
-    temperature: opts.temperature ?? opts.conn.storyTemperature,
-    stream,
+function modelOf(opts: ChatOptions): string {
+  return opts.model ?? opts.conn.storyModel
+}
+
+/** The completion cap: the caller's, raised to HOSTED_MIN_TOKENS on OpenAI's and xAI's APIs. */
+export function tokenCap(conn: Endpoint, requested?: number): number {
+  const n = requested ?? conn.maxTokens
+  if (!n || n <= 0) return 0
+  return isOpenAiApi(conn) || isXai(conn) ? Math.max(n, HOSTED_MIN_TOKENS) : n
+}
+
+/** The request body, leaving out parameters this server+model has turned down before. */
+function bodyFor(
+  opts: ChatOptions,
+  stream: boolean,
+  jsonMode: boolean,
+): { body: Record<string, unknown>; sent: OptionalParam[] } {
+  const model = modelOf(opts)
+  const rejected = rejectedFor(opts.conn, model)
+  const sent: OptionalParam[] = []
+  const body: Record<string, unknown> = { model, messages: opts.messages, stream }
+  const temperature = opts.temperature ?? opts.conn.storyTemperature
+  if (typeof temperature === 'number' && !rejected.has('temperature')) {
+    body.temperature = temperature
+    sent.push('temperature')
   }
-  const maxTokens = opts.maxTokens ?? opts.conn.maxTokens
-  if (maxTokens && maxTokens > 0) body.max_tokens = maxTokens
-  if (jsonMode) body.response_format = { type: 'json_object' }
-  return body
+  const cap = tokenCap(opts.conn, opts.maxTokens)
+  if (cap > 0) {
+    // OpenAI's API wants max_completion_tokens; everyone else knows max_tokens. Either one a
+    // server turned down is swapped for the other.
+    const order: OptionalParam[] = isOpenAiApi(opts.conn)
+      ? ['max_completion_tokens', 'max_tokens']
+      : ['max_tokens', 'max_completion_tokens']
+    const field = order.find((p) => !rejected.has(p))
+    if (field) {
+      body[field] = cap
+      sent.push(field)
+    }
+  }
+  if (jsonMode && !rejected.has('response_format')) {
+    body.response_format = { type: 'json_object' }
+    sent.push('response_format')
+  }
+  return { body, sent }
 }
 
 function startDebug(opts: ChatOptions, defaultKind: DebugKind): string {
@@ -517,20 +674,24 @@ function startDebug(opts: ChatOptions, defaultKind: DebugKind): string {
   })
 }
 
+/** How an error reads in the debug panel. */
+export function debugErrorText(e: unknown): string {
+  return e instanceof LlmError
+    ? `${e.kind}${e.status ? ` ${e.status}` : ''}: ${e.message}${e.body ? `\n\n${e.body}` : ''}`
+    : e instanceof Error
+      ? e.message
+      : String(e)
+}
+
 function finishDebug(id: string, result: { response?: string; error?: unknown }) {
   const patch: { response?: string; error?: string } = {}
   if (result.response !== undefined) patch.response = result.response
-  if (result.error !== undefined) {
-    const e = result.error
-    patch.error =
-      e instanceof LlmError
-        ? `${e.kind}${e.status ? ` ${e.status}` : ''}: ${e.message}${e.body ? `\n\n${e.body}` : ''}`
-        : e instanceof Error
-          ? e.message
-          : String(e)
-  }
+  if (result.error !== undefined) patch.error = debugErrorText(result.error)
   useDebug.getState().patch(id, patch)
 }
+
+/** Most parameter-learning retries per call (each drops a different parameter). */
+const MAX_PARAM_RETRIES = 3
 
 async function loggedCompletion(
   opts: ChatOptions,
@@ -538,77 +699,93 @@ async function loggedCompletion(
   stream: boolean,
   jsonMode: boolean,
   onDelta?: (delta: string, full: string) => void,
-): Promise<string> {
-  const id = startDebug(opts, defaultKind)
-  try {
-    const text = await postCompletion({
-      conn: opts.conn,
-      body: bodyFor(opts, stream, jsonMode),
-      signal: opts.signal,
-      timeoutMs: opts.timeoutMs,
-      onDelta,
-    })
-    finishDebug(id, { response: text })
-    return text
-  } catch (e) {
-    finishDebug(id, { error: e })
-    throw e
+): Promise<Completion> {
+  const model = modelOf(opts)
+  for (let attempt = 0; ; attempt++) {
+    const { body, sent } = bodyFor(opts, stream, jsonMode)
+    const id = startDebug(opts, defaultKind)
+    try {
+      const out = await postCompletion({
+        conn: opts.conn,
+        body,
+        signal: opts.signal,
+        timeoutMs: opts.timeoutMs,
+        onDelta,
+      })
+      finishDebug(id, {
+        response: out.text,
+        ...(out.refused ? { error: `Refused: ${out.refusal || `finish_reason ${out.finishReason}`}` } : {}),
+      })
+      return out
+    } catch (e) {
+      finishDebug(id, { error: e })
+      // A 400 that names an optional parameter we sent: remember, and try again without it.
+      const param = attempt < MAX_PARAM_RETRIES ? rejectedParam(e, sent) : null
+      if (!param) throw e
+      rememberRejected(opts.conn, model, param)
+    }
   }
 }
 
 // ---------------------------------------------------------------------------
 // Public API
 
-/** Streamed chat completion. Resolves with the full reply text (reasoning blocks removed). */
-export function streamChat(opts: StreamChatOptions): Promise<string> {
+/** Streamed chat completion with its finish reason and refusal flag. */
+export function streamCompletion(opts: StreamChatOptions): Promise<Completion> {
   return loggedCompletion(opts, 'story', true, false, opts.onDelta)
 }
 
-/** Non-streamed chat completion. Resolves with the reply text. */
-export function chat(opts: ChatOptions): Promise<string> {
+/** Non-streamed chat completion with its finish reason and refusal flag. */
+export function chatCompletion(opts: ChatOptions): Promise<Completion> {
   return loggedCompletion(opts, 'story', false, false)
 }
 
-/** A completion that asks for JSON mode when allowed, falling back (and remembering) on rejection. */
-async function jsonCompletion(opts: ChatOptions): Promise<string> {
-  const model = opts.model ?? opts.conn.storyModel
-  if (!jsonModeAllowed(opts.conn, model)) return loggedCompletion(opts, 'judge', false, false)
+/** Streamed chat completion. Resolves with the full reply text (reasoning blocks removed). */
+export async function streamChat(opts: StreamChatOptions): Promise<string> {
+  return (await streamCompletion(opts)).text
+}
+
+/** Non-streamed chat completion. Resolves with the reply text. */
+export async function chat(opts: ChatOptions): Promise<string> {
+  return (await chatCompletion(opts)).text
+}
+
+/** Parse a JSON reply defensively with a caller's coercer; null when it doesn't fit. */
+export function parseJsonWith<T>(raw: string, coerce: (raw: unknown) => T | null): T | null {
+  const parsed = extractJson(raw)
+  if (!parsed) return null
   try {
-    return await loggedCompletion(opts, 'judge', false, true)
-  } catch (e) {
-    if (!rejectsJsonMode(e)) throw e
-    jsonModeRejected.add(jsonModeKey(opts.conn, model))
-    return loggedCompletion(opts, 'judge', false, false)
+    return coerce(parsed)
+  } catch {
+    return null
   }
 }
 
+/** The messages for the one JSON retry: the reply so far as the assistant, then the nudge. */
+export function nudgeMessages(messages: readonly ChatMessage[], previousReply: string): ChatMessage[] {
+  const retry: ChatMessage[] = [...messages]
+  const previous = stripThinking(previousReply).trim()
+  if (previous) retry.push({ role: 'assistant', content: previous.slice(0, 2000) })
+  retry.push({ role: 'user', content: JSON_NUDGE })
+  return retry
+}
+
 /**
- * JSON call: parse defensively, retry once with a "valid JSON only" nudge, then return the
- * fallback with ok:false. Never throws for parse problems; network/HTTP errors still throw.
+ * JSON call: asks for JSON mode where the server allows it, parses defensively, retries once
+ * with a "valid JSON only" nudge, then returns the fallback with ok:false. A refusal returns the
+ * fallback straight away. Never throws for parse problems; network/HTTP errors still throw.
  */
 export async function jsonChat<T>(opts: JsonChatOptions<T>): Promise<JsonChatResult<T>> {
-  const attempt = (raw: string): T | null => {
-    const parsed = extractJson(raw)
-    if (!parsed) return null
-    try {
-      return opts.coerce(parsed)
-    } catch {
-      return null
-    }
-  }
+  const first = await loggedCompletion(opts, 'judge', false, true)
+  if (first.refused) return { value: opts.fallback, ok: false, raw: first.text, refused: true }
+  const v1 = parseJsonWith(first.text, opts.coerce)
+  if (v1 !== null) return { value: v1, ok: true, raw: first.text }
 
-  const first = await jsonCompletion(opts)
-  const v1 = attempt(first)
-  if (v1 !== null) return { value: v1, ok: true, raw: first }
-
-  const retryMessages: ChatMessage[] = [...opts.messages]
-  const previous = stripThinking(first).trim()
-  if (previous) retryMessages.push({ role: 'assistant', content: previous.slice(0, 2000) })
-  retryMessages.push({ role: 'user', content: JSON_NUDGE })
-  const second = await jsonCompletion({ ...opts, messages: retryMessages })
-  const v2 = attempt(second)
-  if (v2 !== null) return { value: v2, ok: true, raw: second }
-  return { value: opts.fallback, ok: false, raw: second }
+  const second = await loggedCompletion({ ...opts, messages: nudgeMessages(opts.messages, first.text) }, 'judge', false, true)
+  if (second.refused) return { value: opts.fallback, ok: false, raw: second.text, refused: true }
+  const v2 = parseJsonWith(second.text, opts.coerce)
+  if (v2 !== null) return { value: v2, ok: true, raw: second.text }
+  return { value: opts.fallback, ok: false, raw: second.text }
 }
 
 /** jsonChat with the judge model and the fixed judge temperature (0.2). */
@@ -623,7 +800,7 @@ export function judgeJson<T>(opts: JsonChatOptions<T>): Promise<JsonChatResult<T
 
 /** Model ids from GET {baseUrl}/models (data[].id; also tolerates models[].name). */
 export async function listModels(
-  conn: ConnectionSettings,
+  conn: Endpoint,
   opts: { signal?: AbortSignal; timeoutMs?: number } = {},
 ): Promise<string[]> {
   const url = modelsUrl(conn)

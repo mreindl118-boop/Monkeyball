@@ -1,5 +1,9 @@
 name: Build crushLAB
 
+# Every push (any branch) and manual runs: lint, test and build the web app, deploy it as the PWA,
+# build a signed Android APK from the same build, and publish it as release build-<run>.
+# Android is the primary target; see docs/ARCHITECTURE.md, "Android first".
+
 on:
   push:
     branches: ['**']
@@ -9,6 +13,9 @@ permissions:
   contents: write
 
 env:
+  # Baked into the web build (import.meta.env.VITE_BUILD_NUMBER, see vite.config.ts). The APK's
+  # in-app update check compares it with the newest build-<n> release, and the Android
+  # versionCode uses the same number, so all three always agree.
   BUILD_NUMBER: ${{ github.run_number }}
 
 jobs:
@@ -60,9 +67,26 @@ jobs:
         uses: actions/deploy-pages@v4
 
   android:
+    # What this job assumes about the project `npx cap add android` generates (Capacitor 8,
+    # @capacitor/cli 8.5, checked against the template and run 24). Each patch below fails the
+    # job if its assumption stops holding, instead of silently shipping an unpatched app.
+    # - android/app/build.gradle is Groovy DSL: defaultConfig { versionCode 1  versionName "1.0" }.
+    #   The version and signing blocks are appended as a second android { } block, which Gradle
+    #   applies after the template's, so they don't depend on its formatting.
+    # - res/values/styles.xml has AppTheme.NoActionBar (the running app, with
+    #   <item name="android:background">@null</item>) and AppTheme.NoActionBarLaunch (parent
+    #   Theme.SplashScreen from androidx core-splashscreen, with
+    #   <item name="android:background">@drawable/splash</item>).
+    # - res/mipmap-anydpi-v26/ic_launcher.xml is the adaptive launcher icon; assets/android/res
+    #   replaces it and the mipmaps (drawn by scripts/make-icons.mjs).
+    # - `cap sync` writes server.cleartext from capacitor.config.ts as
+    #   android:usesCleartextTraffic="true" into capacitor-cordova-android-plugins' manifest, which
+    #   the manifest merger folds into the app's.
+    # - minSdk 24, so the APK carries v2/v3 signatures only (apksigner reads them, keytool can't).
     name: Android APK
     runs-on: ubuntu-latest
     needs: web
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -71,42 +95,92 @@ jobs:
           cache: npm
       - uses: actions/setup-java@v4
         with:
+          # Capacitor 8 (Android Gradle Plugin 8.13) needs JDK 21.
           distribution: temurin
           java-version: 21
       - run: npm ci
-      # Reuse the tested web build (BUILD_NUMBER is already baked in).
+      # Reuse the tested web build: the web job built it with BUILD_NUMBER set (workflow env).
       - uses: actions/download-artifact@v4
         with:
           name: crushlab-web
           path: dist
       - name: Generate Android project
         run: npx cap add android
-      - name: Stamp version from run number
+      - name: Launcher icons and splash icon
+        # Pre-rendered by scripts/make-icons.mjs from assets/icon.svg and assets/icon-foreground.svg:
+        # adaptive icon (velvet background, foreground, monochrome for themed icons), legacy icons,
+        # and the Android 12+ splash icon (crush_splash_icon).
         run: |
-          sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/" android/app/build.gradle
-          sed -i "s/versionName \"1.0\"/versionName \"1.0.${{ github.run_number }}\"/" android/app/build.gradle
-          grep -q "versionCode ${{ github.run_number }}" android/app/build.gradle || { echo "::error::versionCode stamp did not apply"; exit 1; }
-      - name: Velvet window and launch background (no white flash)
+          res=android/app/src/main/res
+          [ -f "$res/mipmap-anydpi-v26/ic_launcher.xml" ] || { echo "::error::the Capacitor template has no mipmap-anydpi-v26/ic_launcher.xml any more"; exit 1; }
+          cp -R assets/android/res/. "$res/"
+          for f in $(cd assets/android/res && find . -type f); do
+            cmp -s "assets/android/res/$f" "$res/$f" || { echo "::error::icon resource $f did not land in $res"; exit 1; }
+          done
+          grep -q '@mipmap/ic_launcher_monochrome' "$res/mipmap-anydpi-v26/ic_launcher.xml"
+          grep -qi '#2A0F1F' "$res/values/ic_launcher_background.xml"
+          echo "Copied $(cd assets/android/res && find . -type f | wc -l) icon resources"
+      - name: Velvet system bars, window and launch screen (no white flash)
+        # The status bar stays visible (this isn't a fullscreen game). Android 15+ draws the app
+        # edge to edge regardless; the SystemBars config in capacitor.config.ts and the CSS
+        # safe-area insets handle that, and these colors cover older versions and the first frames.
         run: |
           f=android/app/src/main/res/values/styles.xml
           sed -i 's#</resources>#    <color name="crushVelvet">\#FF2A0F1F</color>\n</resources>#' "$f"
-          sed -i 's#<item name="android:background">@drawable/splash</item>#<item name="android:background">@color/crushVelvet</item>\n        <item name="windowSplashScreenBackground">@color/crushVelvet</item>#' "$f"
-          sed -i 's#<item name="android:background">@null</item>#<item name="android:background">@null</item>\n        <item name="android:windowBackground">@color/crushVelvet</item>#' "$f"
-          grep -q crushVelvet "$f" || { echo "::error::styles.xml patch did not apply"; exit 1; }
+          sed -i 's#<item name="android:background">@drawable/splash</item>#<item name="android:background">@color/crushVelvet</item>\n        <item name="windowSplashScreenBackground">@color/crushVelvet</item>\n        <item name="windowSplashScreenAnimatedIcon">@drawable/crush_splash_icon</item>#' "$f"
+          sed -i 's#<item name="android:background">@null</item>#<item name="android:background">@null</item>\n        <item name="android:windowBackground">@color/crushVelvet</item>\n        <item name="android:statusBarColor">@color/crushVelvet</item>\n        <item name="android:navigationBarColor">@color/crushVelvet</item>\n        <item name="android:windowLightStatusBar">false</item>#' "$f"
           cat "$f"
+          for want in \
+            '<color name="crushVelvet">#FF2A0F1F</color>' \
+            '"windowSplashScreenBackground">@color/crushVelvet<' \
+            '"windowSplashScreenAnimatedIcon">@drawable/crush_splash_icon<' \
+            '"android:windowBackground">@color/crushVelvet<' \
+            '"android:statusBarColor">@color/crushVelvet<' \
+            '"android:navigationBarColor">@color/crushVelvet<' \
+            '"android:windowLightStatusBar">false<'; do
+            grep -qF "$want" "$f" || { echo "::error::styles.xml patch did not apply: $want"; exit 1; }
+          done
+          if grep -q '@drawable/splash<' "$f"; then echo "::error::the launch theme still uses the template splash"; exit 1; fi
+      - name: Portrait on phones
+        # ARCHITECTURE: the APK is portrait. Android 16 ignores this on tablets and foldables
+        # (targetSdk 36), which is what we want there.
+        run: |
+          f=android/app/src/main/AndroidManifest.xml
+          grep -q 'android:screenOrientation' "$f" || sed -i 's#<activity#<activity android:screenOrientation="portrait"#' "$f"
+          grep -q 'android:screenOrientation="portrait"' "$f" || { echo "::error::orientation patch did not apply"; exit 1; }
       - name: Allow plain-http model servers on the LAN
+        # Also set by server.cleartext in capacitor.config.ts (checked after sync); this keeps the
+        # app manifest explicit.
         run: |
           f=android/app/src/main/AndroidManifest.xml
           grep -q usesCleartextTraffic "$f" || sed -i 's#<application#<application android:usesCleartextTraffic="true"#' "$f"
           grep -q 'usesCleartextTraffic="true"' "$f" || { echo "::error::cleartext patch did not apply"; exit 1; }
       - name: Sync web assets and plugins
         run: npx cap sync android
-      - name: Pin the signing key
+      - name: Check capacitor.config.ts turned cleartext on
+        run: |
+          f=android/capacitor-cordova-android-plugins/src/main/AndroidManifest.xml
+          cat "$f"
+          grep -q 'usesCleartextTraffic="true"' "$f" || { echo "::error::cap sync did not write usesCleartextTraffic; is server.cleartext still true in capacitor.config.ts?"; exit 1; }
+      - name: Stamp the version and pin the signing key
+        # versionCode = run number, so every build upgrades the last one in place.
         # Android only upgrades an app in place if the signature matches the installed one,
         # so every build is signed with the repo's debug keystore.
         run: |
+          version=$(node -p "require('./package.json').version")
+          cat >> android/app/build.gradle <<EOG
+
+          // crushLAB CI: version from the run number (overrides the template's defaultConfig).
+          android {
+              defaultConfig {
+                  versionCode ${{ github.run_number }}
+                  versionName "${version} (build ${{ github.run_number }})"
+              }
+          }
+          EOG
           cat >> android/app/build.gradle <<'EOG'
 
+          // crushLAB CI: sign every build with the pinned key in signing/debug.keystore.
           android {
               signingConfigs {
                   debug {
@@ -123,6 +197,7 @@ jobs:
               }
           }
           EOG
+          tail -n 32 android/app/build.gradle
       - name: Build debug APK
         run: ./gradlew assembleDebug --no-daemon
         working-directory: android
@@ -137,6 +212,21 @@ jobs:
           echo "APK: $FP_APK"
           echo "KEY: $FP_KEY"
           [ -n "$FP_APK" ] && [ "$FP_APK" = "$FP_KEY" ] || { echo "::error::APK signature does not match the pinned keystore"; exit 1; }
+      - name: Verify the APK's package, version and cleartext flag
+        run: |
+          APK=android/app/build/outputs/apk/debug/app-debug.apk
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/aapt2" dump badging "$APK" > badging.txt
+          grep -E "^(package|sdkVersion|targetSdkVersion|application-label|application-icon-[0-9]+|launchable-activity):" badging.txt || true
+          grep -q "^package: name='app.crushlab.game' versionCode='${{ github.run_number }}' " badging.txt \
+            || { echo "::error::expected package app.crushlab.game with versionCode ${{ github.run_number }}"; exit 1; }
+          "$BT/aapt2" dump xmltree --file AndroidManifest.xml "$APK" > manifest.txt
+          cleartext=$(grep -m1 'usesCleartextTraffic' manifest.txt || true)
+          echo "${cleartext:-usesCleartextTraffic missing}"
+          if [ -z "$cleartext" ] || echo "$cleartext" | grep -Eq '=(false|0x0+)\b'; then
+            echo "::error::the merged manifest does not allow cleartext; LAN model servers would be blocked"; exit 1
+          fi
+          ls -l "$APK"
       - name: Name the APK
         # crushlab.apk keeps one stable download link for the newest build:
         # https://github.com/<owner>/<repo>/releases/latest/download/crushlab.apk
@@ -153,27 +243,51 @@ jobs:
   release:
     name: Publish release (APK download link and update feed)
     runs-on: ubuntu-latest
-    needs: android
+    needs: [android]
+    # One publish at a time, so the check below can't race another run's release. (If two more
+    # runs queue up behind a publish, GitHub cancels the older waiting one; the newer one ships.)
+    concurrency:
+      group: release-feed
+      cancel-in-progress: false
     steps:
       - uses: actions/download-artifact@v4
         with:
           name: crushlab-android
           path: .
+      - name: Keep the newest build marked latest
+        # Runs can finish out of order. The in-app update check and the crushlab.apk link both
+        # read the latest release, so an older run must not take that mark from a newer one.
+        id: order
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          current=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName 2>/dev/null || true)
+          n=${current#build-}
+          if [[ "$n" =~ ^[0-9]+$ ]] && (( n > ${{ github.run_number }} )); then
+            echo "::notice::$current is newer; publishing build-${{ github.run_number }} without marking it latest"
+            echo "latest=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "latest=true" >> "$GITHUB_OUTPUT"
+          fi
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
           name: crushLAB build ${{ github.run_number }}
           target_commitish: ${{ github.sha }}
-          make_latest: true
+          make_latest: ${{ steps.order.outputs.latest }}
           body: |
             crushLAB build ${{ github.run_number }} from `${{ github.ref_name }}` (${{ github.sha }}). Adults only (18+).
 
-            - **Android**: download `crushlab.apk` below (the same file as `crushlab-${{ github.run_number }}.apk`) and open
-              it to install or upgrade (allow installs from your browser or file manager when Android asks).
-              Always-newest link: https://github.com/${{ github.repository }}/releases/latest/download/crushlab.apk
-            - **Web app**: https://mreindl118-boop.github.io/Monkeyball/ can be installed from Chrome on Android
-              (menu, then Install app). The web app can use OpenRouter or a model running on the phone; a PC
-              on your Wi-Fi needs the APK.
+            **Android app (APK)**: download `crushlab.apk` below and open it to install crushLAB, or to
+            upgrade it in place (allow installs from your browser or file manager when Android asks).
+            The app checks this release feed for updates. `crushlab-${{ github.run_number }}.apk` is the
+            same file with the build number in its name.
+            Always-newest link: https://github.com/${{ github.repository }}/releases/latest/download/crushlab.apk
+
+            **Web app (PWA)**: https://mreindl118-boop.github.io/Monkeyball/ installs from Chrome on
+            Android (menu, then Install app). It works with OpenRouter or with a model running on the
+            phone itself. A PC on your Wi-Fi (Ollama, LM Studio) needs the APK: the https page can't
+            reach plain-http servers on the LAN.
           files: |
             crushlab-${{ github.run_number }}.apk
             crushlab.apk

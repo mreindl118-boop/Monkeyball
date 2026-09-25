@@ -30,16 +30,16 @@ export default function ConnectionSetup() {
           Connect a model
         </h2>
         <p className={styles.sub}>
-          crushLAB talks to any OpenAI-compatible server: one on your computer, one on your Wi-Fi,
-          or a hosted service. Your characters, saves and settings stay here; only the story calls go
-          to the model you pick.
+          Bring your own Claude, ChatGPT or Grok API key, or run a model yourself with Ollama or LM
+          Studio. Pick a provider, paste its key and test it; both roles start on it. Your characters,
+          saves and settings stay on this device.
         </p>
       </div>
 
       {problem && (
         <Note tone="lipstick" title={problem.message} role="status">
-          {problem.fix} Pick where your model runs and test the connection, or skip this and come
-          back from Settings.
+          {problem.fix} Set up a provider below and test it, or skip this and come back from
+          Settings.
         </Note>
       )}
 

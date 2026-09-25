@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useDebug } from '../store/debug'
-import type { ConnectionSettings } from '../types'
 import {
   chat,
+  chatCompletion,
+  HOSTED_MIN_TOKENS,
   headersFor,
   JSON_NUDGE,
   jsonChat,
@@ -10,13 +11,17 @@ import {
   judgeJson,
   listModels,
   LlmError,
+  paramAllowed,
+  rejectedParam,
   rejectsJsonMode,
   resetJsonModeCache,
   streamChat,
+  streamCompletion,
+  type Endpoint,
 } from './client'
 import { coerceJudge, neutralJudge } from './coerce'
 
-const conn = (patch: Partial<ConnectionSettings> = {}): ConnectionSettings => ({
+const conn = (patch: Partial<Endpoint> = {}): Endpoint => ({
   preset: 'custom',
   baseUrl: 'http://llm.test/v1/',
   apiKey: '',
@@ -289,11 +294,20 @@ describe('jsonChat', () => {
         code: 'unsupported_parameter',
       },
     }
-    mockFetch(jsonResponse(unsupported, 400))
+    mockFetch(jsonResponse(unsupported, 400), jsonResponse(completion('{"delta": 1}')))
     const c = conn()
-    await expect(jsonChat(judgeOpts(c))).rejects.toMatchObject({ kind: 'http', status: 400 })
-    expect(calls).toHaveLength(1)
+    const r = await jsonChat(judgeOpts(c))
+    expect(r.value.delta).toBe(1)
     expect(jsonModeAllowed(c, 'story-m')).toBe(true)
+    // The rejected max_tokens is swapped for max_completion_tokens, JSON mode stays on.
+    expect(calls[1].body).toMatchObject({ max_completion_tokens: 600, response_format: { type: 'json_object' } })
+    expect(calls[1].body.max_tokens).toBeUndefined()
+  })
+
+  it('still throws a 400 that names nothing it can drop', async () => {
+    mockFetch(jsonResponse({ error: { message: 'messages: too long for the context window', type: 'invalid_request_error' } }, 400))
+    await expect(jsonChat(judgeOpts())).rejects.toMatchObject({ kind: 'http', status: 400 })
+    expect(calls).toHaveLength(1)
   })
 
   it('recognises response_format rejections by param or wording only', () => {
@@ -356,5 +370,111 @@ describe('listModels', () => {
   it('throws a parse error for non-API pages', async () => {
     mockFetch(new Response('<html>hi</html>', { status: 200, headers: { 'content-type': 'text/html' } }))
     await expect(listModels(conn())).rejects.toMatchObject({ kind: 'parse' })
+  })
+})
+
+describe('parameter learning', () => {
+  const openai = (message: string, param: string, code = 'unsupported_parameter') => ({
+    error: { message, type: 'invalid_request_error', param, code },
+  })
+
+  it('retries without temperature when a model rejects it, and remembers per baseUrl+model', async () => {
+    mockFetch(
+      jsonResponse(openai("Unsupported value: 'temperature' does not support 0.9 with this model. Only the default (1) value is supported.", 'temperature', 'unsupported_value'), 400),
+      jsonResponse(completion('first')),
+      jsonResponse(completion('second')),
+    )
+    const c = conn({ baseUrl: 'https://api.openai.com/v1', preset: 'chatgpt', storyModel: 'gpt-5' })
+    expect(await chat({ conn: c, messages })).toBe('first')
+    expect(calls[0].body.temperature).toBe(0.9)
+    expect(calls[1].body.temperature).toBeUndefined()
+    expect(paramAllowed(c, 'gpt-5', 'temperature')).toBe(false)
+    expect(paramAllowed(c, 'gpt-5-mini', 'temperature')).toBe(true)
+    expect(await chat({ conn: c, messages })).toBe('second')
+    expect(calls[2].body.temperature).toBeUndefined()
+  })
+
+  it('learns more than one parameter in a single call', async () => {
+    mockFetch(
+      jsonResponse(openai('temperature is not supported', 'temperature'), 400),
+      jsonResponse({ error: "'json_object' is not supported by this model" }, 400),
+      jsonResponse(completion('{"delta": 2}')),
+    )
+    const r = await jsonChat(judgeOpts())
+    expect(r.value.delta).toBe(2)
+    expect(calls).toHaveLength(3)
+    expect(calls[2].body.temperature).toBeUndefined()
+    expect(calls[2].body.response_format).toBeUndefined()
+  })
+
+  it('names the parameter a 400 turns down', () => {
+    const http = (body: unknown, status = 400) => new LlmError('http', 'HTTP 400: x', { status, body: JSON.stringify(body) })
+    const sent = ['temperature', 'max_tokens', 'response_format'] as const
+    expect(rejectedParam(http(openai('bad', 'temperature')), sent)).toBe('temperature')
+    expect(rejectedParam(http({ error: 'Unrecognized request argument supplied: max_tokens' }), sent)).toBe('max_tokens')
+    expect(rejectedParam(http({ error: 'temperature is out of range' }), sent)).toBeNull()
+    expect(rejectedParam(http(openai('bad', 'temperature'), 500), sent)).toBeNull()
+    expect(rejectedParam(http(openai('bad', 'top_p')), sent)).toBeNull()
+    expect(rejectedParam(new LlmError('network', 'x'), sent)).toBeNull()
+  })
+})
+
+describe('hosted OpenAI-compatible APIs', () => {
+  it('sends max_completion_tokens with a generous cap to api.openai.com', async () => {
+    mockFetch(jsonResponse(completion('ok')))
+    await chat({ conn: conn({ preset: 'chatgpt', baseUrl: 'https://api.openai.com/v1' }), messages, maxTokens: 8 })
+    expect(calls[0].body).toMatchObject({ max_completion_tokens: HOSTED_MIN_TOKENS })
+    expect(calls[0].body.max_tokens).toBeUndefined()
+  })
+
+  it('does the same for a Custom preset pointed at api.openai.com', async () => {
+    mockFetch(jsonResponse(completion('ok')))
+    await chat({ conn: conn({ preset: 'custom', baseUrl: 'https://api.openai.com/v1/' }), messages })
+    expect(calls[0].body).toMatchObject({ max_completion_tokens: HOSTED_MIN_TOKENS })
+  })
+
+  it('gives xAI max_tokens with the same floor', async () => {
+    mockFetch(jsonResponse(completion('ok')))
+    await chat({ conn: conn({ preset: 'grok', baseUrl: 'https://api.x.ai/v1' }), messages })
+    expect(calls[0].body).toMatchObject({ max_tokens: HOSTED_MIN_TOKENS })
+  })
+
+  it('keeps the setting for local servers', async () => {
+    mockFetch(jsonResponse(completion('ok')))
+    await chat({ conn: conn(), messages })
+    expect(calls[0].body).toMatchObject({ max_tokens: 600 })
+  })
+})
+
+describe('refusals', () => {
+  it('flags message.refusal', async () => {
+    mockFetch(jsonResponse({ choices: [{ message: { role: 'assistant', content: null, refusal: "I can't help with that." }, finish_reason: 'stop' }] }))
+    const r = await chatCompletion({ conn: conn(), messages })
+    expect(r).toMatchObject({ refused: true, refusal: "I can't help with that.", text: '' })
+  })
+
+  it("flags finish_reason 'content_filter' in a stream and keeps the partial text", async () => {
+    mockFetch(
+      sseResponse([
+        chunk('She leans'),
+        `data: ${JSON.stringify({ choices: [{ index: 0, delta: {}, finish_reason: 'content_filter' }] })}\n\n`,
+        'data: [DONE]\n\n',
+      ]),
+    )
+    const r = await streamCompletion({ conn: conn(), messages })
+    expect(r).toMatchObject({ refused: true, finishReason: 'content_filter', text: 'She leans' })
+    expect(useDebug.getState().lastByKind.story?.error).toMatch(/Refused/)
+  })
+
+  it('returns the fallback for a refused JSON call without the nudge retry', async () => {
+    mockFetch(jsonResponse({ choices: [{ message: { role: 'assistant', content: null, refusal: 'No.' } }] }))
+    const r = await jsonChat(judgeOpts())
+    expect(r).toMatchObject({ ok: false, refused: true, value: neutralJudge() })
+    expect(calls).toHaveLength(1)
+  })
+
+  it("reports finish_reason 'length'", async () => {
+    mockFetch(jsonResponse({ choices: [{ message: { role: 'assistant', content: 'cut sho' }, finish_reason: 'length' }] }))
+    expect(await chatCompletion({ conn: conn(), messages })).toMatchObject({ refused: false, finishReason: 'length', text: 'cut sho' })
   })
 })

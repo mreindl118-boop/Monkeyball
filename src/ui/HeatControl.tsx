@@ -1,5 +1,7 @@
 import { useId, useRef, type KeyboardEvent } from 'react'
 import { HEAT_LEVELS, clampHeat } from '../data/heat'
+import { rolePreset } from '../llm/routes'
+import { useSettings } from '../store/settings'
 import type { HeatLevel } from '../types'
 import { cx } from './cx'
 import styles from './HeatControl.module.css'
@@ -12,7 +14,16 @@ export interface HeatControlProps {
   compact?: boolean
   label?: string
   className?: string
+  /**
+   * Show the provider-policy note at heat 4 and 5. Defaults to whether Claude or ChatGPT writes
+   * the story in the current settings.
+   */
+  policyNote?: boolean
 }
+
+/** Shown under heat 4 and 5 when Claude or ChatGPT writes the story. */
+export const PROVIDER_POLICY_NOTE =
+  "Claude and ChatGPT follow their providers' content policies and usually won't write explicit scenes; expect heat 4-5 to be declined or toned down. Local or OpenRouter models are the way to play at 4-5."
 
 function sentence(s: string): string {
   return s ? s[0].toUpperCase() + s.slice(1) : s
@@ -25,8 +36,11 @@ export function HeatControl({
   compact,
   label = 'Heat',
   className,
+  policyNote,
 }: HeatControlProps) {
   const id = useId()
+  const storyPreset = useSettings((s) => rolePreset(s.settings.connection, 'story'))
+  const showPolicy = (policyNote ?? (storyPreset === 'claude' || storyPreset === 'chatgpt')) && value >= 4
   const refs = useRef<(HTMLButtonElement | null)[]>([])
   const levels = Object.values(HEAT_LEVELS)
   const current = levels.find((h) => h.level === value) ?? levels[0]
@@ -97,6 +111,7 @@ export function HeatControl({
       <p className={styles.description} id={`${id}-desc`} aria-live="polite">
         {sentence(current.description)}
       </p>
+      {showPolicy && <p className={styles.policy}>{PROVIDER_POLICY_NOTE}</p>}
     </div>
   )
 }

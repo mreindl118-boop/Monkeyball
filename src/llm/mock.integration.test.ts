@@ -16,10 +16,12 @@ import {
   type StoryContext,
 } from '../prompts/build'
 import { useDebug } from '../store/debug'
+import { DEFAULT_CONNECTION } from '../store/defaults'
 import type { Character, ConnectionSettings, PlayerProfile, Relationship } from '../types'
-import { jsonChat, jsonModeAllowed, judgeJson, resetJsonModeCache, streamChat } from './client'
+import { jsonChat, jsonModeAllowed, judgeJson, resetJsonModeCache, streamChat, type Endpoint } from './client'
 import { coerceAgreement, coerceJudge, coerceSuggestions, neutralJudge, noAgreementResult } from './coerce'
-import { testConnection } from './diagnose'
+import { testEndpoint } from './diagnose'
+import * as llm from './index'
 
 interface MockServer {
   listen: (port: number, host: string, cb: () => void) => void
@@ -70,7 +72,7 @@ const profile: PlayerProfile = {
   relationshipStyle: 'open',
 }
 
-const conn = (baseUrl: string, patch: Partial<ConnectionSettings> = {}): ConnectionSettings => ({
+const conn = (baseUrl: string, patch: Partial<Endpoint> = {}): Endpoint => ({
   preset: 'custom',
   baseUrl,
   apiKey: '',
@@ -95,7 +97,7 @@ const storyCtx = (p: Partial<StoryContext> = {}): StoryContext => ({
   ...p,
 })
 
-const judgeFor = (c: ConnectionSettings, message: string) =>
+const judgeFor = (c: Endpoint, message: string) =>
   judgeJson({
     conn: c,
     messages: makeJudgeMessages(
@@ -124,7 +126,7 @@ beforeEach(() => {
 describe('client + prompts against the mock server', () => {
   it('passes Test connection', async () => {
     const base = await start()
-    const r = await testConnection(conn(base))
+    const r = await testEndpoint(conn(base))
     expect(r.ok).toBe(true)
     expect(r.models).toEqual(['mock-story', 'mock-judge'])
   })
@@ -232,13 +234,48 @@ describe('client + prompts against the mock server', () => {
 
   it('reports a bad key, and passes with the right one', async () => {
     const base = await start({ requireKey: 'secret' })
-    expect((await testConnection(conn(base))).problem?.kind).toBe('auth')
-    expect((await testConnection(conn(base, { apiKey: 'secret' }))).ok).toBe(true)
+    expect((await testEndpoint(conn(base))).problem?.kind).toBe('auth')
+    expect((await testEndpoint(conn(base, { apiKey: 'secret' }))).ok).toBe(true)
   })
 
   it('reports an unknown model', async () => {
     const base = await start()
-    const r = await testConnection(conn(base, { storyModel: 'gpt-nope' }))
+    const r = await testEndpoint(conn(base, { storyModel: 'gpt-nope' }))
     expect(r.problem?.kind).toBe('model')
+  })
+})
+
+describe('role routing against the mock server', () => {
+  it('runs story, judge and suggestions through the role API', async () => {
+    const base = await start()
+    const settings: ConnectionSettings = structuredClone(DEFAULT_CONNECTION) as ConnectionSettings
+    settings.providers.custom = { baseUrl: base, apiKey: '' }
+    settings.story = { preset: 'custom', model: 'mock-story' }
+    settings.judge = { preset: 'same', model: 'mock-judge' }
+
+    const t = await llm.testConnection(settings, { preset: 'custom' })
+    expect(t.ok).toBe(true)
+
+    const opening = await llm.streamChat({
+      conn: settings,
+      role: 'story',
+      messages: makeStoryMessages(buildStoryPrompt(storyCtx()), []),
+      debug: { characterId: 'nova' },
+    })
+    expect(opening).toMatchObject({ refused: false, route: { preset: 'custom', provider: 'openai', model: 'mock-story' } })
+    expect(opening.text).toContain('excellent taste')
+
+    const j = await llm.jsonChat({
+      conn: settings,
+      role: 'judge',
+      kind: 'judge',
+      messages: makeJudgeMessages(
+        buildJudgePrompt({ character: nova, rel, route: 'romantic', names: {}, others: [], recent: [], message: 'vinyl' }),
+      ),
+      coerce: coerceJudge,
+      fallback: neutralJudge(),
+    })
+    expect(j).toMatchObject({ ok: true, value: { delta: 3 } })
+    expect(useDebug.getState().lastByKind.judge?.messages?.length).toBe(2)
   })
 })
