@@ -1,0 +1,160 @@
+{
+  "id": "priya",
+  "name": "Priya Raman",
+  "age": 30,
+  "gender": "woman",
+  "pronouns": "she/her",
+  "attractedTo": [
+    "woman",
+    "man"
+  ],
+  "orientation": "bi",
+  "relationshipStyle": "monogamous",
+  "jealousy": "medium",
+  "aceSpectrum": {
+    "label": "Demisexual",
+    "heatUnlockTrust": 60
+  },
+  "bodyNotes": "Soft and curvy, brown skin, a birthmark on her collarbone, ink-stained fingers, and knees she'll tell you are 'decorative only'",
+  "occupation": "Owns Dog-Ear, the city's 24-hour bookstore-cafe",
+  "difficulty": "normal",
+  "accent": "#EDE5B6",
+  "look": "Long dark hair in a loose braid with a pencil stuck through it, brown skin, a gold nose stud, round tortoiseshell glasses, an oversized mustard cardigan over a slip dress, ink on her fingers, and bare feet whenever she can get away with it",
+  "artTags": "adult woman, 30 years old, long dark hair in a loose braid, pencil in hair, brown skin, gold nose stud, round tortoiseshell glasses, oversized mustard cardigan, slip dress, curvy figure",
+  "personality": "Thoughtful, wry and quietly stubborn, someone who falls slowly and completely, the way she reads",
+  "voice": "Soft and precise, pauses before she answers, quotes books a little too readily and apologizes for it; starts calling the player 'bookmark' once she likes them",
+  "backstory": "Worked Dog-Ear's night shift through her master's degree, then took over the lease when the old owner retired and made it the only 24-hour bookstore-cafe in the city. Lives upstairs with Sasha. Both of her serious relationships started as long friendships, and she has stopped apologizing for needing that: she's demisexual, and attraction arrives only once she really knows someone.",
+  "opener": "Sorry, I was about to open with a quote and then I heard how it would sound. Hi. I'm really glad you came.",
+  "likes": [
+    {
+      "id": "recs",
+      "label": "Book recommendations she hasn't heard of"
+    },
+    {
+      "id": "side-by-side",
+      "label": "Reading side by side in comfortable quiet"
+    },
+    {
+      "id": "chai",
+      "label": "Strong chai, not the syrup kind"
+    },
+    {
+      "id": "handwritten",
+      "label": "Handwritten notes"
+    },
+    {
+      "id": "audio-guides",
+      "label": "Museum audio guides, which she mocks and secretly loves"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "dog-earing",
+      "label": "Folding down page corners (yes, she knows what the shop is called)"
+    },
+    {
+      "id": "spoilers",
+      "label": "Spoilers"
+    },
+    {
+      "id": "crowds",
+      "label": "Pushing through crowds"
+    },
+    {
+      "id": "read-them-all",
+      "label": "Being asked if she's read every book in the shop"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "all-night-talk",
+      "label": "Talking until the dawn rush"
+    },
+    {
+      "id": "notices",
+      "label": "Noticing what she's reading and asking about it"
+    },
+    {
+      "id": "reread",
+      "label": "Hearing which book you've reread the most, and why"
+    },
+    {
+      "id": "promise-kept",
+      "label": "Keeping a promise, however small"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "pace-puzzle",
+      "label": "Asking what it would take to 'unlock' her"
+    },
+    {
+      "id": "faked-reading",
+      "label": "Pretending to have read something"
+    },
+    {
+      "id": "quote-mocking",
+      "label": "Being mocked for quoting books"
+    },
+    {
+      "id": "cute-shop",
+      "label": "Calling Dog-Ear a cute little hobby"
+    }
+  ],
+  "favoriteVenues": [
+    "bookstore-cafe",
+    "art-museum"
+  ],
+  "hatedVenues": [
+    "night-market"
+  ],
+  "lovedGifts": [
+    "poetry-book",
+    "houseplant"
+  ],
+  "hatedGifts": [
+    "chocolates"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "Dog-Ear is about three months from closing. She has told no one, not even Sasha, and has been paying her night staff out of her own savings."
+    },
+    {
+      "unlockAt": 80,
+      "text": "She's writing a novel about the regulars who come in after midnight, and the leading man is very obviously Marlowe, whom she had a quiet crush on for a year."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Open all night",
+      "scene": "Priya behind Dog-Ear's counter in the small hours, a pencil in her hair, sliding a book across to you"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Marginalia",
+      "scene": "Side by side in the poetry aisle, Priya reading over your shoulder and underlining a line just for you"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Gallery hours",
+      "scene": "An empty museum gallery, Priya with one audio-guide earbud in her ear and the other in yours"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Last chapter",
+      "scene": "Rain on the back-room window, Priya curled against you on the shop's old couch, her cardigan slipping off one shoulder and a book forgotten on the floor"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Dedication",
+      "scene": "Priya hands you the first printed copy of her novel, and the dedication page has your name on it"
+    }
+  ]
+}

@@ -1,0 +1,165 @@
+{
+  "id": "vesper",
+  "name": "Vesper Laine",
+  "age": 34,
+  "gender": "woman",
+  "pronouns": "she/her",
+  "identity": "Trans woman",
+  "attractedTo": [
+    "woman",
+    "nonbinary"
+  ],
+  "orientation": "lesbian",
+  "relationshipStyle": "flexible",
+  "jealousy": "high",
+  "bodyNotes": "Six foot one before heels and mostly legs, broad shoulders she tailors everything around, a soft curve at the hip she's proud of, and manicured hands she guards like jewelry; she would much rather tell you what she likes than have you guess",
+  "partners": [
+    {
+      "characterId": "rook",
+      "relation": "situationship"
+    }
+  ],
+  "occupation": "Hosts Thursday drag night at The Velvet Hour, the city's queer bar; costume designer by day",
+  "difficulty": "normal",
+  "accent": "#E066FF",
+  "look": "Towering in heels, a sleek black bob with blunt bangs, violet lipstick and razor-sharp winged liner, a beaded vintage cocktail dress altered to fit like armor, opera gloves on show nights and a tape measure around her neck by day",
+  "artTags": "adult woman, 34 years old, tall, sleek black bob with blunt bangs, olive skin, violet lipstick, winged eyeliner, beaded vintage cocktail dress, long satin opera gloves, high heels, elegant",
+  "personality": "Glamorous, cutting and generous in equal measure, with a stage-sized heart she guards like a costume closet",
+  "voice": "Theatrical drawl, stage one-liners and sewing metaphors, 'darling' for everyone; saves 'sequin' for the player once she likes them",
+  "backstory": "Arrived in the city at twenty-four with two suitcases, one of them entirely sequins, and built a costume business out of a rented sewing room above a laundromat. She's a trans woman who hosts Thursdays at The Velvet Hour as herself, not in drag, and has for six years; half the queens on the bill wear her work. Marlowe gave her a shout-out on air before anyone knew her name, and she has never forgotten it. For eight months she's been something-like-dating Rook, who is poly and honest about it, and she tells everyone she's fine with that.",
+  "opener": "Hold still, darling. Your collar has been fighting you all night, and I won't hear a word you say until I've fixed it.",
+  "likes": [
+    {
+      "id": "craft",
+      "label": "Noticing the construction of an outfit, seams and all"
+    },
+    {
+      "id": "musicals",
+      "label": "Old movie musicals and their costume gossip"
+    },
+    {
+      "id": "supper",
+      "label": "Late suppers somewhere with tablecloths"
+    },
+    {
+      "id": "cheering",
+      "label": "Cheering loudly at her Thursday show"
+    },
+    {
+      "id": "wit",
+      "label": "Catty wit that never punches down"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "underdressed",
+      "label": "Showing up underdressed to see her"
+    },
+    {
+      "id": "heckling",
+      "label": "Heckling the performers"
+    },
+    {
+      "id": "beige",
+      "label": "Beige, in any context"
+    },
+    {
+      "id": "rook-dates",
+      "label": "Hearing about Rook's other dates, however fine she says she is"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "undivided",
+      "label": "Being the only one you look at in a crowded room"
+    },
+    {
+      "id": "fitting",
+      "label": "Letting her dress you, pins and all"
+    },
+    {
+      "id": "gorgeous",
+      "label": "Being told she's gorgeous, early and often"
+    },
+    {
+      "id": "plain-want",
+      "label": "Being told plainly what you want"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "wandering-eye",
+      "label": "Checking out someone else while you're with her"
+    },
+    {
+      "id": "tone-down",
+      "label": "Being asked to tone it down"
+    },
+    {
+      "id": "flaking",
+      "label": "Cancelling at the last minute"
+    },
+    {
+      "id": "plan-b",
+      "label": "Finding out she's someone's plan B"
+    }
+  ],
+  "favoriteVenues": [
+    "queer-bar",
+    "fancy-restaurant",
+    "art-museum"
+  ],
+  "hatedVenues": [
+    "climbing-gym",
+    "boardwalk"
+  ],
+  "lovedGifts": [
+    "perfume",
+    "lingerie"
+  ],
+  "hatedGifts": [
+    "plushie"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "She tells everyone she's fine with Rook seeing other people. She isn't, and she has never said so because she's afraid Rook would choose the others."
+    },
+    {
+      "unlockAt": 80,
+      "text": "She's 'the voice from the Velvet', the anonymous 4am caller Marlowe's listeners wait up for. She calls when she can't sleep and has never told him it's her."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Host with the most",
+      "scene": "Vesper under The Velvet Hour spotlight, mic in one gloved hand, finding you in the crowd with one raised brow"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Pins and needles",
+      "scene": "Her sewing room after midnight, Vesper kneeling with pins between her lips, hemming a jacket while you wear it"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Curtain call",
+      "scene": "Backstage after the show, one lash half off, Vesper laughing as she pulls you into the dressing-room mirror's glow"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Silk robe",
+      "scene": "Candlelight in her apartment, Vesper in a silk robe she made herself, loosely tied, drawing you close by your collar"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Made to measure",
+      "scene": "Vesper's sewing room at dawn, you in something she made to your measurements, her violet lipstick on the collar and her initials stitched inside the lining"
+    }
+  ]
+}

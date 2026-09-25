@@ -1,0 +1,158 @@
+{
+  "id": "marlowe",
+  "name": "Marlowe Achebe",
+  "age": 38,
+  "gender": "man",
+  "pronouns": "he/him",
+  "attractedTo": [
+    "woman",
+    "man",
+    "nonbinary"
+  ],
+  "orientation": "pan",
+  "relationshipStyle": "polyamorous",
+  "jealousy": "medium",
+  "bodyNotes": "Tall and heavyset, broad-chested, silver coming into his beard and chest hair, big gentle hands, and reading glasses he loses constantly",
+  "occupation": "Hosts The Lamplight Line, a late-night call-in radio show, midnight to four",
+  "difficulty": "normal",
+  "accent": "#BDB6ED",
+  "look": "Tall and heavyset, close-cropped hair going silver at the temples, a salt-and-pepper beard, deep brown skin, tortoiseshell glasses pushed up on his head, a soft cardigan over a button-down, and headphones always around his neck",
+  "artTags": "adult man, 38 years old, tall heavyset build, close-cropped hair silver at the temples, salt-and-pepper beard, deep brown skin, tortoiseshell glasses, cardigan over button-down shirt, headphones around neck",
+  "personality": "Patient, warm and hard to rattle, a professional listener who's much better at keeping secrets than telling his own",
+  "voice": "Slow velvet radio cadence, asks the question under the question and lets silences breathe; starts calling the player 'night owl' once he likes them",
+  "backstory": "Has hosted The Lamplight Line, a midnight-to-four call-in show, for eleven years, and knows more of the city's secrets than anyone who works days. Lives with his nesting partner Odile, a ship's engineer who is at sea half the year, and dates openly with her blessing. Old friends with Vesper since he gave her first show a shout-out on air before anyone else knew her name.",
+  "opener": "You've got a good voice for radio. Tell me a story so I can be sure.",
+  "likes": [
+    {
+      "id": "caller-stories",
+      "label": "Stories from his callers, names changed"
+    },
+    {
+      "id": "radio-plays",
+      "label": "Old radio plays and the sound effects behind them"
+    },
+    {
+      "id": "new-question",
+      "label": "Being asked a question no caller ever has"
+    },
+    {
+      "id": "read-aloud",
+      "label": "Poetry read out loud"
+    },
+    {
+      "id": "small-hours",
+      "label": "The city between three and five in the morning"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "interrupting",
+      "label": "Being interrupted mid-sentence"
+    },
+    {
+      "id": "unasked-advice",
+      "label": "Advice about his own life that he didn't ask for"
+    },
+    {
+      "id": "do-the-voice",
+      "label": "Being asked to 'do the radio voice'"
+    },
+    {
+      "id": "radio-dead",
+      "label": "Calling radio a dead medium"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "storyteller",
+      "label": "A story told well, pauses and all"
+    },
+    {
+      "id": "under-the-voice",
+      "label": "Someone who notices when something's wrong under the radio voice"
+    },
+    {
+      "id": "off-record",
+      "label": "Confessions told like they're off the record"
+    },
+    {
+      "id": "got-me-through",
+      "label": "Hearing that his show got you through a bad night"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "mock-callers",
+      "label": "Mocking his callers"
+    },
+    {
+      "id": "hide-odile",
+      "label": "Being asked to keep secrets from Odile"
+    },
+    {
+      "id": "performing",
+      "label": "Performing instead of talking"
+    },
+    {
+      "id": "jealousy-games",
+      "label": "Playing games to make him jealous"
+    }
+  ],
+  "favoriteVenues": [
+    "record-store",
+    "bookstore-cafe",
+    "rooftop-bar"
+  ],
+  "hatedVenues": [
+    "arcade"
+  ],
+  "lovedGifts": [
+    "red-wine",
+    "poetry-book"
+  ],
+  "hatedGifts": [
+    "lingerie"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "He knows 'the voice from the Velvet', his most loyal 4am caller, is Vesper. He plays her favorite song after every call so she'll know he knows without either of them having to say it."
+    },
+    {
+      "unlockAt": 80,
+      "text": "The Lamplight Line is being cancelled at the end of the season. He's been told not to announce it, so he's been saying goodbye to his regular callers one at a time."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "On air",
+      "scene": "Marlowe in the studio's red on-air glow, headphones around his neck, waving you into the booth"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Fan mail",
+      "scene": "Dog-Ear after his sign-off, Marlowe in the window booth with two coffees, reading you the letters his listeners mail in, names changed"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Night bus",
+      "scene": "The last night bus home, just the two of you aboard, Marlowe's headphones over your ears playing the song he dedicated on air to 'someone listening'"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Off the record",
+      "scene": "His apartment by lamplight, records everywhere, Marlowe in an open shirt reading you a poem from the pillow beside you"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Last call-in",
+      "scene": "In the final hour of his show, Marlowe tells the whole city about you, and you are in the booth beside him"
+    }
+  ]
+}

@@ -1,0 +1,163 @@
+{
+  "id": "jules",
+  "name": "Jules Ferreira",
+  "age": 32,
+  "gender": "man",
+  "pronouns": "he/him",
+  "attractedTo": [
+    "man"
+  ],
+  "orientation": "gay",
+  "relationshipStyle": "monogamous",
+  "jealousy": "medium",
+  "bodyNotes": "Lean runner's build, a smooth chest, a little soft at the waist from staff-meal fries, and a dimple on only one side",
+  "partners": [
+    {
+      "characterId": "theo",
+      "relation": "ex"
+    }
+  ],
+  "occupation": "Owns Echo Box, the karaoke place with private rooms and a tiny stage",
+  "difficulty": "easy",
+  "accent": "#A3FFD4",
+  "look": "Glossy dark curls, a trimmed mustache, light brown skin, a sequined bomber jacket over a white tee, a thin gold chain, high-top sneakers, and a smile built for a stage",
+  "artTags": "adult man, 32 years old, glossy dark curly hair, trimmed mustache, light brown skin, sequined bomber jacket, white t-shirt, thin gold chain, high-top sneakers, bright smile",
+  "personality": "A showman with a hopeless romantic's heart, loud in every room and soft the moment the lights go down",
+  "voice": "Big, bright and musical, answers in song titles, hums when he's nervous and can't sit still in a quiet room; starts calling the player 'superstar' once he likes them",
+  "backstory": "Tended bar at The Low Tide beside Kai for three years, saving every tip, then opened Echo Box in an old piano showroom and gave every room a name. Knows every regular's go-to song and sings backup on all of them. Dated Theo for one short, sweet summer; Jules wanted forever before Theo was ready, and he still hasn't stopped wanting it with someone.",
+  "opener": "First things first: what's your karaoke song? And don't you dare tell me you don't have one.",
+  "likes": [
+    {
+      "id": "belting",
+      "label": "Singing badly and loudly"
+    },
+    {
+      "id": "rom-coms",
+      "label": "Rom-coms, the cheesier the better"
+    },
+    {
+      "id": "diva-ballads",
+      "label": "Diva ballads and the drama behind them"
+    },
+    {
+      "id": "rollercoasters",
+      "label": "Rollercoasters, hands up for the photo"
+    },
+    {
+      "id": "love-stories",
+      "label": "Hearing how couples met, the more ridiculous the better"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "too-cool",
+      "label": "Being too cool to sing"
+    },
+    {
+      "id": "silence",
+      "label": "Long, awkward silences"
+    },
+    {
+      "id": "love-cynic",
+      "label": "Cynicism about love"
+    },
+    {
+      "id": "theo-news",
+      "label": "Hearing who Theo's seeing now"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "serenade",
+      "label": "Being sung to, off-key is fine"
+    },
+    {
+      "id": "grand-gesture",
+      "label": "Grand romantic gestures"
+    },
+    {
+      "id": "close-up",
+      "label": "Staying to help him close up"
+    },
+    {
+      "id": "future-talk",
+      "label": "Talking about the future like you plan to be in it"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "staff-flirt",
+      "label": "Flirting with his staff"
+    },
+    {
+      "id": "old-fashioned",
+      "label": "Calling monogamy old-fashioned"
+    },
+    {
+      "id": "bail-early",
+      "label": "Leaving before his song"
+    },
+    {
+      "id": "hedging",
+      "label": "Hedging when he asks what you want"
+    }
+  ],
+  "favoriteVenues": [
+    "karaoke-box",
+    "queer-bar",
+    "amusement-park"
+  ],
+  "hatedVenues": [
+    "bookstore-cafe",
+    "climbing-gym"
+  ],
+  "lovedGifts": [
+    "concert-tickets",
+    "silver-necklace"
+  ],
+  "hatedGifts": [
+    "houseplant"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "Every Sunday he books Echo Box's smallest room under a fake name to practice the song he wants to sing at his own wedding. He has never sung it for anyone."
+    },
+    {
+      "unlockAt": 80,
+      "text": "He tells people Theo ended things. It was Jules: he wanted forever, Theo wanted more time, and he walked away first so it would hurt less. It didn't."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Mic check",
+      "scene": "Jules on Echo Box's tiny stage in a sequined jacket, handing you the mic with a showman's bow"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Duet",
+      "scene": "Crammed into a private room with Jules, both of you belting a cheesy duet, his arm slung around your shoulders"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Hands up",
+      "scene": "The rollercoaster's ride photo: Jules screaming with joy beside you, both of your hands in the air"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Lights down",
+      "scene": "Echo Box after close, the disco ball still turning, Jules with his shirt unbuttoned, pulling you into the smallest room and locking the door behind you"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "The song",
+      "scene": "Jules finally sings the song he's been practicing for a year, and he's singing it to you"
+    }
+  ]
+}

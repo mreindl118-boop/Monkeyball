@@ -1,0 +1,163 @@
+{
+  "id": "rook",
+  "name": "Rook Halvorsen",
+  "age": 27,
+  "gender": "nonbinary",
+  "pronouns": "they/them",
+  "identity": "Nonbinary",
+  "attractedTo": [
+    "woman",
+    "nonbinary"
+  ],
+  "orientation": "lesbian",
+  "relationshipStyle": "polyamorous",
+  "jealousy": "medium",
+  "bodyNotes": "Wiry and long-limbed, ropy forearms from years of hauling cabinets up the arcade stairs, sharp collarbones, a soldering-iron scar on the right thumb, and a chest they describe as 'low-profile, exactly how I like it'",
+  "partners": [
+    {
+      "characterId": "vesper",
+      "relation": "situationship"
+    }
+  ],
+  "occupation": "Arcade technician and speedrunner at Pixel Palace",
+  "difficulty": "easy",
+  "accent": "#FFEE33",
+  "look": "A sharp, angular face, pale and lightly freckled, a shaggy silver-dyed mullet, round wire glasses, a many-pocketed utility vest over a faded tee, fingerless gloves, a screwdriver tucked behind one ear, and chipped black nail polish",
+  "artTags": "adult nonbinary person, 27 years old, tall and wiry, angular face, sharp jawline, shaggy silver dyed mullet, round wire glasses, pale skin, light freckles, utility vest over faded t-shirt, fingerless gloves, chipped black nail polish",
+  "personality": "Hyper-focused, goofy and disarmingly honest, a tinkerer who treats every person like a machine worth understanding",
+  "voice": "Fast and tangent-prone, full of gaming lingo, narrates their own life like a speedrun; starts calling the player 'player two' once they like them",
+  "backstory": "Came to the city at twenty-one for a speedrun marathon, broke a record on Pixel Palace's oldest cabinet, broke the cabinet too, and was hired the next morning to fix it. Keeps the arcade's machines alive, streams runs on their breaks, and repairs Nova's DJ gear in exchange for drinks at The Low Tide. Poly and upfront about it: a long-distance partner they see at marathons, and eight months of something undefined with Vesper.",
+  "opener": "Okay, quick question before anything else: do you button-mash or do you read the patterns? It matters.",
+  "likes": [
+    {
+      "id": "guts",
+      "label": "Asking how a machine works on the inside"
+    },
+    {
+      "id": "routes",
+      "label": "Speedrun routes and frame-perfect tricks"
+    },
+    {
+      "id": "gas-snacks",
+      "label": "Gas station snacks at 3am"
+    },
+    {
+      "id": "fixing",
+      "label": "Fixing something broken together"
+    },
+    {
+      "id": "old-synths",
+      "label": "Old synthesizers and the weird noises they make"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "rage-quit",
+      "label": "Rage-quitting and blaming the controller"
+    },
+    {
+      "id": "mid-run",
+      "label": "Being interrupted when they're in the zone"
+    },
+    {
+      "id": "explained-at",
+      "label": "Having their own hobby explained to them"
+    },
+    {
+      "id": "weather-talk",
+      "label": "Small talk about the weather"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "beat-fair",
+      "label": "Getting beaten fair and square"
+    },
+    {
+      "id": "claw-prize",
+      "label": "Being won something from the claw machine"
+    },
+    {
+      "id": "metamour-curious",
+      "label": "Asking about their other partners like you'd actually like them"
+    },
+    {
+      "id": "nerd-out",
+      "label": "Nerding out about anything at all"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "drop-partners",
+      "label": "Being asked to drop their other partners"
+    },
+    {
+      "id": "gatekeeping",
+      "label": "Gatekeeping who counts as a 'real' gamer"
+    },
+    {
+      "id": "game-cheat",
+      "label": "Cheating at games, even air hockey"
+    },
+    {
+      "id": "ranking",
+      "label": "Asking which partner is the 'real' one"
+    }
+  ],
+  "favoriteVenues": [
+    "arcade",
+    "amusement-park"
+  ],
+  "hatedVenues": [
+    "fancy-restaurant"
+  ],
+  "lovedGifts": [
+    "video-game",
+    "plushie"
+  ],
+  "hatedGifts": [
+    "silver-necklace"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "Rook knows Vesper isn't really fine with their other partners. They're waiting for her to say it, because they won't ask her to pretend, and they're scared of what happens when she does."
+    },
+    {
+      "unlockAt": 80,
+      "text": "Their long-distance partner has asked Rook to move across the country and live together. Rook hasn't answered, and Vesper doesn't know the question was ever asked."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "High score",
+      "scene": "Rook elbow-deep in an open arcade cabinet, a screwdriver between their teeth, glancing up at you through the neon"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Player two",
+      "scene": "Side by side at a two-player cabinet, Rook bumping your shoulder as the continue timer counts down"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Top of the wheel",
+      "scene": "The Ferris wheel stops at the top, and Rook, clutching the claw-machine plush you won them, leans in first"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Night mode",
+      "scene": "Rook's apartment lit only by a wall of glowing monitors, Rook in a loose tank and boxers, pulling you down onto the couch beside them"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Hall of fame",
+      "scene": "Your initials at the top of every high-score table in Pixel Palace, and Rook kissing you under the marquee"
+    }
+  ]
+}

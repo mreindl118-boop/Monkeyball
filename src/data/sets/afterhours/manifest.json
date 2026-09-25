@@ -1,0 +1,264 @@
+{
+  "id": "afterhours",
+  "name": "Afterhours",
+  "blurb": "The nightlife roster: twelve people who keep the city running after dark, a couple of loud exes, and one open couple who make it look easy. Everyone knows everyone, and everyone talks.",
+  "author": "crushLAB",
+  "heat": 2,
+  "version": "1.0.0",
+  "setting": "After midnight the city belongs to a handful of places and the people who run them. The Low Tide is the dive bar at the centre of it all, where Nova spins the 1am set and Kai pours the drinks and the famous 2am toastie. Up the hill, Halcyon's rooftop bar has the best view and the longest wait list; down on the strip, The Velvet Hour runs drag on Thursdays and an open mic most other nights, and Echo Box rents karaoke rooms by the hour to anyone brave enough. Pixel Palace keeps its old cabinets humming until 3am, Ink & Anchor tattoos until 2, and the night market fills the old rail yard with lanterns and noodle steam. When everything else closes there's Dog-Ear, the 24-hour bookstore-cafe where the whole scene ends up, sooner or later, for coffee and something to read. From midnight to four, every cab radio and hospital break room in the city is tuned to Marlowe's Lamplight Line.",
+  "characters": [
+    "nova",
+    "kai",
+    "vesper",
+    "theo",
+    "dex",
+    "imani",
+    "rook",
+    "sasha",
+    "jules",
+    "marlowe",
+    "priya",
+    "cass"
+  ],
+  "relationships": [
+    {
+      "a": "nova",
+      "b": "kai",
+      "kind": "ex",
+      "note": "Dated for a year; Kai wanted it to be just the two of them, Nova didn't, and it ended loud. They're civil now, mostly."
+    },
+    {
+      "a": "theo",
+      "b": "jules",
+      "kind": "ex",
+      "note": "One short, sweet summer that ended when Jules wanted monogamy sooner than Theo was ready for it."
+    },
+    {
+      "a": "dex",
+      "b": "imani",
+      "kind": "partner",
+      "note": "Together six years and open for the last two; it works because they talk about it constantly."
+    },
+    {
+      "a": "rook",
+      "b": "vesper",
+      "kind": "situationship",
+      "note": "Eight months of something undefined: Rook is poly and says so, and Vesper says she's fine with it."
+    },
+    {
+      "a": "kai",
+      "b": "jules",
+      "kind": "friend",
+      "note": "Coworkers turned friends: they tended The Low Tide's bar side by side for three years, and Kai still closes out every Echo Box after-party with Jules."
+    },
+    {
+      "a": "nova",
+      "b": "imani",
+      "kind": "friend",
+      "note": "Close friends since Nova's guest set on Halcyon's roof; Imani is the first person Nova calls about anything."
+    },
+    {
+      "a": "sasha",
+      "b": "priya",
+      "kind": "roommate",
+      "note": "They share the flat above Dog-Ear; Sasha sleeps days and Priya works late, so they mostly meet over breakfast, which is Sasha's dinner."
+    },
+    {
+      "a": "marlowe",
+      "b": "vesper",
+      "kind": "friend",
+      "note": "Old friends since Marlowe gave Vesper's first show a shout-out on air before anyone knew her name."
+    },
+    {
+      "a": "cass",
+      "b": "theo",
+      "kind": "friend",
+      "note": "Theo tattooed Cass's first piece, and Cass has been workshopping bits from Theo's chair ever since."
+    },
+    {
+      "a": "dex",
+      "b": "kai",
+      "kind": "rival",
+      "note": "A loud, public feud over the city's best late-night food: Dex's noodles against Kai's 2am toastie."
+    },
+    {
+      "a": "rook",
+      "b": "nova",
+      "kind": "friend",
+      "note": "Rook keeps Nova's ageing DJ gear alive in exchange for free drinks at The Low Tide."
+    },
+    {
+      "a": "kai",
+      "b": "imani",
+      "kind": "rival",
+      "note": "Nova's ex and Nova's best friend: politely icy since the breakup, and each thinks the other got Nova wrong."
+    },
+    {
+      "a": "cass",
+      "b": "vesper",
+      "kind": "friend",
+      "note": "Cass plays The Velvet Hour's open mic most weeks and never misses Vesper's Thursdays; she gives him notes on his set whether he wants them or not."
+    },
+    {
+      "a": "sasha",
+      "b": "dex",
+      "kind": "friend",
+      "note": "Sasha stitched Dex's hand after a knife slip, and he has sent noodles to the ER night shift every week since."
+    },
+    {
+      "a": "priya",
+      "b": "marlowe",
+      "kind": "friend",
+      "note": "Marlowe comes into Dog-Ear every night after his sign-off, and Priya has his coffee poured before he's through the door."
+    }
+  ],
+  "rumors": [
+    {
+      "id": "breakup-kai-side",
+      "teller": "jules",
+      "about": [
+        "kai",
+        "nova"
+      ],
+      "text": "Nova was on a date with someone new nine days after she and Kai split. Kai won't say it hurt, so I'm saying it: she broke their heart and didn't even slow down.",
+      "truth": "exaggerated",
+      "actually": "Kai wanted monogamy and Nova didn't, so they broke up. Nova did go on a date nine days later, which was entirely hers to do; it hurt Kai, but nobody cheated and nobody broke a promise."
+    },
+    {
+      "id": "breakup-nova-side",
+      "teller": "imani",
+      "about": [
+        "nova",
+        "kai"
+      ],
+      "text": "Kai spent a year trying to turn Nova into someone who wants one person forever. She tried, bless her. It was never going to take.",
+      "truth": "exaggerated",
+      "actually": "Kai asked for monogamy and Nova tried for a while before admitting it wasn't her; they both said things they regret. Kai never pushed as hard as Imani thinks, and bought a ring Nova never knew about."
+    },
+    {
+      "id": "staff-party",
+      "teller": "cass",
+      "about": [
+        "dex",
+        "imani"
+      ],
+      "text": "You know why Dex and Imani opened up? Imani got caught with a bartender at a staff party. 'Open' is just what you call it afterwards.",
+      "truth": "false",
+      "actually": "Nobody got caught with anyone. Opening up was Dex's idea, and Imani hasn't actually dated anyone else since."
+    },
+    {
+      "id": "open-for-him",
+      "teller": "kai",
+      "about": [
+        "imani",
+        "dex"
+      ],
+      "text": "Dex is out on a date every other week. Imani? Working till close, every night. It's open for him, maybe. I'm just saying.",
+      "truth": "exaggerated",
+      "actually": "Imani really hasn't dated anyone since they opened up, but she isn't unhappy with Dex or the arrangement; she's nervous, and spends those nights alone at the hot spring working up the nerve."
+    },
+    {
+      "id": "basically-married",
+      "teller": "nova",
+      "about": [
+        "rook",
+        "vesper"
+      ],
+      "text": "Rook and Vesper are basically married. Rook only says 'poly' so neither of them has to say it out loud.",
+      "truth": "false",
+      "actually": "Rook really is poly and has a long-distance partner. It's Vesper who wants more than a situationship, and she hasn't said so."
+    },
+    {
+      "id": "someone-is-writing",
+      "teller": "marlowe",
+      "about": [
+        "priya"
+      ],
+      "text": "Somebody at Dog-Ear is writing us all down. I heard one of my own on-air lines read back to me in the poetry aisle, word for word.",
+      "truth": "true",
+      "actually": "Priya is writing a novel about the after-midnight regulars, and its leading man is based on Marlowe."
+    },
+    {
+      "id": "priya-radio-crush",
+      "teller": "sasha",
+      "about": [
+        "priya",
+        "marlowe"
+      ],
+      "text": "Priya records The Lamplight Line every night and plays it back over breakfast. Nobody replays a call-in show. That's a crush.",
+      "truth": "true",
+      "actually": "Priya has had a quiet crush on Marlowe for a year and has written him into her novel as its leading man; she has never said a word to him."
+    },
+    {
+      "id": "who-ended-it",
+      "teller": "theo",
+      "about": [
+        "jules"
+      ],
+      "text": "Jules tells everyone I'm the one who ended it. I wasn't. He was ready for forever and I was still working out next Tuesday, so he left first.",
+      "truth": "true",
+      "actually": "Jules did end it, and tells people Theo did because it's easier than admitting he walked away from someone he loved."
+    },
+    {
+      "id": "till-drawer-ring",
+      "teller": "rook",
+      "about": [
+        "kai"
+      ],
+      "text": "There's a ring box at the back of The Low Tide's till drawer. I saw it while I was fixing the card reader, and Kai moved it so fast they nearly took my hand off.",
+      "truth": "true",
+      "actually": "Kai bought the ring for Nova the week before they broke up and never gave it to her."
+    },
+    {
+      "id": "kai-getting-fired",
+      "teller": "dex",
+      "about": [
+        "kai"
+      ],
+      "text": "Kai's been in The Low Tide's office with the owner every night this week. Either that's a raise or a firing, and my money's on the firing.",
+      "truth": "false",
+      "actually": "The Low Tide's owner is retiring and has offered Kai the bar."
+    },
+    {
+      "id": "cass-and-theo",
+      "teller": "jules",
+      "about": [
+        "cass",
+        "theo"
+      ],
+      "text": "Cass has been in love with Theo for a year. Everyone in the city knows except Theo.",
+      "truth": "exaggerated",
+      "actually": "Cass does have feelings for Theo, but Theo knows; he's been pretending not to notice so he doesn't lose his best friend."
+    },
+    {
+      "id": "lamplight-prime-time",
+      "teller": "vesper",
+      "about": [
+        "marlowe"
+      ],
+      "text": "Marlowe's been so sentimental on air lately. I think the station is finally giving him a proper time slot and he's getting misty about leaving the night.",
+      "truth": "false",
+      "actually": "The Lamplight Line is being cancelled at the end of the season, and Marlowe is quietly saying goodbye to his callers."
+    },
+    {
+      "id": "sasha-got-a-raise",
+      "teller": "priya",
+      "about": [
+        "sasha"
+      ],
+      "text": "Sasha got a raise, so she has been covering more of the rent. Nurses finally getting paid what they're worth, apparently.",
+      "truth": "false",
+      "actually": "Sasha didn't get a raise. She knows Dog-Ear is struggling and is paying extra rent out of her savings."
+    },
+    {
+      "id": "nova-to-berlin",
+      "teller": "rook",
+      "about": [
+        "nova"
+      ],
+      "text": "Nova asked me if her turntables would survive a flight to Berlin. She's leaving. She just hasn't told anyone yet.",
+      "truth": "exaggerated",
+      "actually": "A Berlin club offered Nova a residency and she hasn't answered them; she was only pricing a flight case."
+    }
+  ]
+}

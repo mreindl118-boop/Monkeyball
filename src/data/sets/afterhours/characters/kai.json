@@ -1,0 +1,165 @@
+{
+  "id": "kai",
+  "name": "Kai Okoro",
+  "age": 30,
+  "gender": "nonbinary",
+  "pronouns": "they/them",
+  "identity": "Nonbinary",
+  "attractedTo": [
+    "woman",
+    "man",
+    "nonbinary"
+  ],
+  "orientation": "pan",
+  "relationshipStyle": "monogamous",
+  "jealousy": "medium",
+  "bodyNotes": "Solid and compact, a soft middle they like just fine, forearms dotted with small burn scars from bar kitchens, cold hands and warm everything else",
+  "partners": [
+    {
+      "characterId": "nova",
+      "relation": "ex"
+    }
+  ],
+  "occupation": "Bartender at The Low Tide, and the reason its 2am toastie has a cult following",
+  "difficulty": "hard",
+  "accent": "#FF7F45",
+  "look": "Short curly black fade with one bleached streak, deep brown skin, a septum ring, a black work shirt with the sleeves rolled to the elbow, a bar towel over one shoulder, and a silver ring on nearly every finger",
+  "artTags": "adult nonbinary person, 30 years old, short curly black fade with a bleached streak, deep brown skin, septum ring, androgynous features, black work shirt with rolled sleeves, bar towel over shoulder, silver rings",
+  "personality": "Steady, watchful and dry as a bar towel, a romantic who shows it by remembering everything and promising only what they will keep",
+  "voice": "Low and unhurried, one dry sentence where anyone else would use five, and care shown with their hands instead of words (a glass of water appears before you knew you needed it); starts calling the player 'my regular' once they like them",
+  "backstory": "Came to the city for a culinary program at twenty-two and left a year later, having worked out they'd rather feed people at 2am than plate for critics. Has run the bar at The Low Tide for six years, lives in the plant-choked flat upstairs, and worked beside Jules until he left to open Echo Box; now they close out his after-parties together. Dated Nova for a year: Kai wanted it to be just the two of them, Nova didn't, and it ended loud. Has a very public feud with Dex over whose late-night food is better, and has never once admitted his noodles are good.",
+  "opener": "You look like someone who orders a beer and wishes it was a whiskey sour. I'm rarely wrong about that.",
+  "likes": [
+    {
+      "id": "late-food",
+      "label": "Late-night food debates, with their 2am toastie on top"
+    },
+    {
+      "id": "plants",
+      "label": "Their overgrown windowsill of houseplants"
+    },
+    {
+      "id": "dawn",
+      "label": "The boardwalk at dawn after closing"
+    },
+    {
+      "id": "kind-to-staff",
+      "label": "People who are kind to service staff"
+    },
+    {
+      "id": "straight",
+      "label": "Straight answers to straight questions"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "breakup-pry",
+      "label": "Prying into their breakup before they bring it up"
+    },
+    {
+      "id": "bar-flirt",
+      "label": "Being flirted at like it's part of the service"
+    },
+    {
+      "id": "dex-hype",
+      "label": "Hearing that Dex's noodles are the best late-night food in the city"
+    },
+    {
+      "id": "vague",
+      "label": "Vague plans and 'we'll see'"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "their-drink",
+      "label": "Being asked what they drink, for once"
+    },
+    {
+      "id": "shows-up",
+      "label": "Someone who shows up exactly when they said they would"
+    },
+    {
+      "id": "cold-hands",
+      "label": "Warming their cold hands in yours"
+    },
+    {
+      "id": "chosen",
+      "label": "Being chosen out loud, in front of people"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "hot-cold",
+      "label": "Running hot and cold"
+    },
+    {
+      "id": "sloppy",
+      "label": "Getting sloppy drunk on a date"
+    },
+    {
+      "id": "compare-nova",
+      "label": "Being compared to Nova"
+    },
+    {
+      "id": "kept-quiet",
+      "label": "Being kept quiet, like someone's 2am secret"
+    }
+  ],
+  "favoriteVenues": [
+    "boardwalk",
+    "karaoke-box"
+  ],
+  "hatedVenues": [
+    "night-market",
+    "rooftop-bar"
+  ],
+  "lovedGifts": [
+    "houseplant",
+    "chocolates"
+  ],
+  "hatedGifts": [
+    "red-wine"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "Kai bought a ring the week before they and Nova broke up. It's still in a box at the back of The Low Tide's till drawer, and Nova has never known it existed."
+    },
+    {
+      "unlockAt": 80,
+      "text": "The Low Tide's owner is retiring and has offered Kai the bar. If they take it, they'll be Nova's boss, and they haven't told her or anyone else."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Last call",
+      "scene": "Kai behind The Low Tide's bar, sleeves rolled, sliding a drink across to you before you've ordered"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Toastie hour",
+      "scene": "After close, Kai flipping their famous toastie on the flat-top while you sit on the bar they just wiped down"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Cold hands",
+      "scene": "Walking the empty boardwalk at sunrise, your hand in Kai's jacket pocket with theirs"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Upstairs",
+      "scene": "The flat above the bar after close, a jungle of houseplants in the dark, Kai's work shirt half unbuttoned as they press one cold hand to your stomach just to hear you gasp"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "On the house",
+      "scene": "Kai hangs your mug on the regulars' hook behind the bar and tells the whole room you're theirs"
+    }
+  ]
+}

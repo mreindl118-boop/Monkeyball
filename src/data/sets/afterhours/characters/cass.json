@@ -1,0 +1,157 @@
+{
+  "id": "cass",
+  "name": "Cass Duarte",
+  "age": 29,
+  "gender": "man",
+  "pronouns": "he/him",
+  "attractedTo": [
+    "man",
+    "nonbinary"
+  ],
+  "orientation": "gay",
+  "relationshipStyle": "flexible",
+  "jealousy": "high",
+  "bodyNotes": "Lean and restless, pale and freckled across the shoulders, a permanent five o'clock shadow, a sparrow on his ribs that Theo tattooed, and a torso he calls 'more rib cage than chest'",
+  "occupation": "Stand-up comic; paralegal at a tenant-rights firm by day",
+  "difficulty": "normal",
+  "accent": "#EC79A7",
+  "look": "Messy copper hair, a permanent five o'clock shadow, freckles everywhere, a crooked grin, a thrifted corduroy blazer over a faded graphic tee, dark jeans, scuffed boots, and a pen behind one ear from the day job",
+  "artTags": "adult man, 29 years old, messy copper hair, five o'clock shadow, freckles, pale skin, crooked grin, laugh lines, thrifted corduroy blazer over graphic t-shirt, dark jeans, scuffed boots, lean wiry build",
+  "personality": "Quick, anxious and very funny, using a joke as a door and a shield in about equal measure",
+  "voice": "Rapid-fire bits, self-deprecating callbacks, says 'okay, but seriously' right before the true thing; starts calling the player 'heckler' once he likes them",
+  "backstory": "Came to the city for a law degree, quit after one semester, kept the paralegal job he took to pay for it, and started doing open mics to stay sane. Works tenant-rights cases by day and tells jokes at The Velvet Hour and Echo Box by night, filling a notebook a month with half-written bits. Got his first tattoo from Theo the night after his first set that didn't bomb, and they've been best friends ever since.",
+  "opener": "Full disclosure: if tonight goes badly, it's going in my set. If it goes well, it's also going in my set, but kinder.",
+  "likes": [
+    {
+      "id": "real-laugh",
+      "label": "A real laugh, not a polite one"
+    },
+    {
+      "id": "callbacks",
+      "label": "Callbacks to jokes from earlier"
+    },
+    {
+      "id": "carnival-games",
+      "label": "Carnival games he can actually win"
+    },
+    {
+      "id": "landlord-loses",
+      "label": "Tenant-rights stories where the landlord loses"
+    },
+    {
+      "id": "drag-night",
+      "label": "Thursday drag night at The Velvet Hour"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "say-funny",
+      "label": "Being told to 'say something funny'"
+    },
+    {
+      "id": "explain-joke",
+      "label": "Having his joke explained back to him"
+    },
+    {
+      "id": "earnest-poetry",
+      "label": "Earnest poetry"
+    },
+    {
+      "id": "whispering",
+      "label": "Places where everyone whispers"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "good-heckle",
+      "label": "A heckle so good he wants to steal it for his set"
+    },
+    {
+      "id": "past-the-bit",
+      "label": "Being seen through the bit, gently"
+    },
+    {
+      "id": "front-row",
+      "label": "Showing up to his set, front row"
+    },
+    {
+      "id": "reassurance",
+      "label": "Reassurance he didn't have to ask for"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "funny-friend",
+      "label": "Being treated like the funny friend instead of the date"
+    },
+    {
+      "id": "theo-flirt",
+      "label": "Flirting with Theo, especially in front of him"
+    },
+    {
+      "id": "real-job",
+      "label": "Being told comedy isn't a real job"
+    },
+    {
+      "id": "bit-thief",
+      "label": "Stealing his material"
+    }
+  ],
+  "favoriteVenues": [
+    "queer-bar",
+    "boardwalk"
+  ],
+  "hatedVenues": [
+    "record-store",
+    "art-museum"
+  ],
+  "lovedGifts": [
+    "plushie",
+    "sketchbook"
+  ],
+  "hatedGifts": [
+    "poetry-book"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "His firm offered him a senior paralegal job that would end his comedy nights. He's leaning toward yes, because he's scared he isn't funny enough to keep saying no."
+    },
+    {
+      "unlockAt": 80,
+      "text": "He's been in love with Theo since the night Theo gave him his first tattoo. He has never said it, because Theo introduces him as his best friend like it's a title Cass earned."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Open mic",
+      "scene": "Cass under a cheap spotlight at The Velvet Hour, mid-joke, catching your eye in the second row"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Winning streak",
+      "scene": "Cass at the boardwalk ring toss, triumphant, handing you a giant plush he definitely overspent to win"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Second piece",
+      "scene": "Cass in Theo's chair at Ink & Anchor for his second tattoo, gripping your hand and out of jokes while Theo works"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Heckler",
+      "scene": "Cass's tiny flat at 3am, the threadbare comedy-club tee half off, his notebook of half-written bits kicked to the floor, Cass laughing into your neck because you finally landed a better line than him"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Front row",
+      "scene": "Cass's first headline set, the one he nearly quit comedy before, and when it ends he walks straight past the applause to the front-row seat he saved for you"
+    }
+  ]
+}

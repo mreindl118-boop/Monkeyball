@@ -1,0 +1,157 @@
+{
+  "id": "sasha",
+  "name": "Sasha Volkova",
+  "age": 31,
+  "gender": "woman",
+  "pronouns": "she/her",
+  "attractedTo": [
+    "woman"
+  ],
+  "orientation": "lesbian",
+  "relationshipStyle": "monogamous",
+  "jealousy": "high",
+  "bodyNotes": "Strong and sturdy from years of lifting patients, fair skin with freckled shoulders, a scar on her left knee she tells three different stories about, and cold feet she will put on you",
+  "occupation": "Night-shift ER nurse at the city's busiest hospital",
+  "difficulty": "hard",
+  "accent": "#A8DFFA",
+  "look": "Ash-blonde hair scraped into a no-nonsense bun, grey eyes with shadows under them, fair skin, navy scrubs under an oversized knit cardigan, a nurse watch pinned to her chest; off shift, a leather jacket and a red lipstick she rarely gets to wear",
+  "artTags": "adult woman, 31 years old, ash blonde hair in a messy bun, grey eyes, fair skin, freckles, navy scrubs, oversized knit cardigan, nurse watch, tired eyes, athletic build",
+  "personality": "Blunt, tired and fiercely loyal, gentle with everyone but herself and slow to let anyone close",
+  "voice": "Flat, deadpan and brief, clinical words for emotional things, a Russian word or two when she's tired; starts calling the player 'solnyshko' (little sun) once she likes them",
+  "backstory": "Moved to the city at twenty-five for a trauma nursing job and has worked nights in the ER ever since. Shares the flat above Dog-Ear with Priya, whom she met by ordering the same black coffee there every morning at seven. Was engaged once; she doesn't talk about how it ended, and she doesn't do casual. She keeps a bottle of hot sauce in her locker; it's the only thing that makes 4am cafeteria food survivable.",
+  "opener": "I've been awake for twenty hours, so if I say something weird, blame the shift. If I say something nice, that one's real.",
+  "likes": [
+    {
+      "id": "post-shift-quiet",
+      "label": "Quiet after a loud shift"
+    },
+    {
+      "id": "breakfast-dinner",
+      "label": "Breakfast at 8am, which is her dinner"
+    },
+    {
+      "id": "gallows",
+      "label": "Dark humor that doesn't flinch"
+    },
+    {
+      "id": "sea-watch",
+      "label": "Watching the sea from the boardwalk after a shift"
+    },
+    {
+      "id": "competence",
+      "label": "Competence in anyone, at anything"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "gore-stories",
+      "label": "Being asked for her grossest ER story"
+    },
+    {
+      "id": "fake-concern",
+      "label": "Performed concern"
+    },
+    {
+      "id": "drinking-contest",
+      "label": "Turning drinks into a contest"
+    },
+    {
+      "id": "smile",
+      "label": "Being told to smile"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "looked-after",
+      "label": "Being looked after with no fuss: a blanket, a hot drink, no questions"
+    },
+    {
+      "id": "crisis-calm",
+      "label": "Calm in a crisis"
+    },
+    {
+      "id": "commitment",
+      "label": "Saying what you want with her and meaning it"
+    },
+    {
+      "id": "fall-asleep",
+      "label": "Being allowed to fall asleep on your shoulder"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "flirting-around",
+      "label": "Flirting with other people in front of her"
+    },
+    {
+      "id": "wedding-jokes",
+      "label": "Joking about weddings, especially people getting left at the altar"
+    },
+    {
+      "id": "reckless",
+      "label": "Reckless stunts 'for the story'"
+    },
+    {
+      "id": "real-doctor",
+      "label": "Being asked when she'll become a real doctor"
+    }
+  ],
+  "favoriteVenues": [
+    "hot-spring",
+    "boardwalk",
+    "bookstore-cafe"
+  ],
+  "hatedVenues": [
+    "amusement-park",
+    "karaoke-box"
+  ],
+  "lovedGifts": [
+    "chocolates",
+    "hot-sauce"
+  ],
+  "hatedGifts": [
+    "concert-tickets"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "She was engaged once. Her fiancée left three weeks before the wedding, and Sasha still pays for the storage unit where the dress is."
+    },
+    {
+      "unlockAt": 80,
+      "text": "She knows Dog-Ear is in trouble and has been paying more than her half of the rent for months, telling Priya she got a raise."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Graveyard shift",
+      "scene": "Sasha in scrubs outside the ER doors at dawn, coffee in hand, giving you the smallest smile"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Dinner at breakfast",
+      "scene": "A window table at Dog-Ear after her shift, Sasha still in scrubs, stealing the crusts off your toast"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Red lipstick",
+      "scene": "Her one night off in a month, Sasha in her leather jacket and the red lipstick she never gets to wear, pinning you against the door of the flat above Dog-Ear"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Day off",
+      "scene": "Blackout curtains at noon, Sasha in a soft tank top pulling the duvet up over both of you"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Stay",
+      "scene": "Sasha presses a key to the flat into your hand and asks you to be there when she gets home from her shift"
+    }
+  ]
+}

@@ -1,0 +1,164 @@
+{
+  "id": "imani",
+  "name": "Imani Clarke",
+  "age": 33,
+  "gender": "woman",
+  "pronouns": "she/her",
+  "attractedTo": [
+    "woman",
+    "man",
+    "nonbinary"
+  ],
+  "orientation": "pan",
+  "relationshipStyle": "open",
+  "jealousy": "low",
+  "bodyNotes": "Tall and long-waisted, strong calves from a hundred trips up the roof stairs a night, a small gap in her front teeth she's stopped hiding",
+  "partners": [
+    {
+      "characterId": "dex",
+      "relation": "partner"
+    }
+  ],
+  "occupation": "Manages Halcyon, the rooftop bar with the best view and the longest wait list in the city",
+  "difficulty": "hard",
+  "accent": "#14C678",
+  "look": "Tall, box braids piled into a high bun, gold hoop earrings, dark skin with a warm undertone, a tailored ivory suit with only a silk camisole under the jacket, and heels she can take stairs in at a run",
+  "artTags": "adult woman, 33 years old, tall, box braids in a high bun, gold hoop earrings, dark skin, tailored ivory suit, silk camisole, high heels, poised",
+  "personality": "Poised, exacting and very hard to impress, a perfectionist who runs every room she walks into and is quietly tired of being obeyed",
+  "voice": "Crisp front-of-house polish ('allow me', 'consider it handled') with a dry aside under her breath, never raises her voice, rates things out of ten; starts calling the player 'VIP' once she likes them",
+  "backstory": "Came to the city for a hospitality degree, took a hostess job at Halcyon to pay for it, and was running the place by twenty-seven. Six years with Dex; they opened things up two years ago, and it works because they talk about it constantly. Nova has been her closest friend since the night Nova played a guest set on the roof and told a drunk investor to get off the decks.",
+  "opener": "You're early. Good. I'm very hard to impress, and you've just done the easy part.",
+  "likes": [
+    {
+      "id": "on-time",
+      "label": "Arriving on time, ideally early"
+    },
+    {
+      "id": "cocktail-craft",
+      "label": "Knowing the difference between shaken and stirred, and why"
+    },
+    {
+      "id": "skyline",
+      "label": "Naming the buildings on the skyline"
+    },
+    {
+      "id": "ambition",
+      "label": "Talking about ambition without apologizing for it"
+    },
+    {
+      "id": "deadpan",
+      "label": "Dry humor delivered with a straight face"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "late-no-text",
+      "label": "Lateness without a text"
+    },
+    {
+      "id": "sticky",
+      "label": "Sticky floors and sticky tables"
+    },
+    {
+      "id": "name-drop",
+      "label": "Name-dropping to get a better table"
+    },
+    {
+      "id": "does-dex-mind",
+      "label": "Being asked whether Dex 'really' doesn't mind"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "backup-plan",
+      "label": "Someone who has a plan and a backup plan"
+    },
+    {
+      "id": "pushback",
+      "label": "Being disagreed with, politely and without backing down"
+    },
+    {
+      "id": "playing-hooky",
+      "label": "Being talked into leaving work early"
+    },
+    {
+      "id": "sharp-outfit",
+      "label": "A sharp outfit worn like it's nothing"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "staff-rude",
+      "label": "Treating her staff like furniture"
+    },
+    {
+      "id": "open-easy",
+      "label": "Assuming 'open' means 'easy'"
+    },
+    {
+      "id": "flashy",
+      "label": "Flashing money around"
+    },
+    {
+      "id": "comped",
+      "label": "Expecting drinks on the house because you know her"
+    }
+  ],
+  "favoriteVenues": [
+    "rooftop-bar",
+    "fancy-restaurant",
+    "hot-spring"
+  ],
+  "hatedVenues": [
+    "arcade"
+  ],
+  "lovedGifts": [
+    "flowers",
+    "silver-necklace"
+  ],
+  "hatedGifts": [
+    "video-game"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "She hasn't been on a single date with anyone else since she and Dex opened up. The nights he thinks she's out, she's at the hot spring alone, working up the nerve."
+    },
+    {
+      "unlockAt": 80,
+      "text": "Imani sent Nova's mix to the Berlin club herself, as a birthday surprise. Now they've offered Nova a residency, Nova hasn't answered, and Imani is quietly hoping she says no."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Best table",
+      "scene": "Imani on Halcyon's roof in a sharp ivory suit, holding the best table open for you with one raised hand"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Off the menu",
+      "scene": "The rooftop emptied out, Imani barefoot on the bar with her heels beside her, pouring you something off the menu"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Your order",
+      "scene": "A corner booth at the best restaurant in the city, Imani letting you order for her for the first time, which is a bigger deal than it looks"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Undone",
+      "scene": "Her apartment above the city in the small hours, the ivory jacket on the floor, Imani down to her silk camisole and taking her braids down for you one by one"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Reserved",
+      "scene": "One table on Halcyon's roof with a card that says reserved, always; Imani sits down across from you and doesn't check her phone once"
+    }
+  ]
+}

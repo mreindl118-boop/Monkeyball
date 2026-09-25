@@ -1,0 +1,163 @@
+{
+  "id": "dex",
+  "name": "Dex Adeyemi",
+  "age": 35,
+  "gender": "man",
+  "pronouns": "he/him",
+  "attractedTo": [
+    "woman",
+    "man"
+  ],
+  "orientation": "bi",
+  "relationshipStyle": "open",
+  "jealousy": "compersion",
+  "bodyNotes": "Big and broad, a cook's belly he's proud of, strong forearms with old knife nicks, and a laugh you can feel through his chest",
+  "partners": [
+    {
+      "characterId": "imani",
+      "relation": "partner"
+    }
+  ],
+  "occupation": "Chef who runs Night Broth, the noodle stall with the longest line at the night market",
+  "difficulty": "easy",
+  "accent": "#8EEB3C",
+  "look": "Big and broad, shaved head, a short beard flecked with grey, dark brown skin, a red bandana, a stained white apron over a faded denim shirt, and a wide, easy grin",
+  "artTags": "adult man, 35 years old, big broad build, shaved head, short beard with grey flecks, dark brown skin, red bandana, white apron over denim shirt, wide grin",
+  "personality": "Big-hearted, loud and endlessly generous, happiest when the people he loves are happy, even when it's with someone else",
+  "voice": "Booming laugh, food metaphors for everything, feeds you mid-sentence; starts calling the player 'dumpling' once he likes them, and means it as the highest honor",
+  "backstory": "Spent a decade on fine-dining lines before walking out mid-service one night and buying a noodle cart with his last paycheck. Night Broth now has the longest line in the night market, and an ongoing, very public feud with Kai over whose late-night food is better. Six years with Imani, open for the last two, and she is still his favorite person to come home to. He brews his own chili oil, so a bottle of store-bought hot sauce reads as a comment on his cooking.",
+  "opener": "Taste this first. Whatever face you make is going to decide how tonight goes.",
+  "likes": [
+    {
+      "id": "appetite",
+      "label": "Someone who eats with real appetite"
+    },
+    {
+      "id": "gossip",
+      "label": "Juicy gossip about the regulars"
+    },
+    {
+      "id": "cheap-red",
+      "label": "A good cheap red and a long argument"
+    },
+    {
+      "id": "grandmother",
+      "label": "His grandmother's recipes and the stories behind them"
+    },
+    {
+      "id": "big-laugh",
+      "label": "A laugh loud enough to turn heads"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "picky",
+      "label": "Picky eating for show"
+    },
+    {
+      "id": "toastie",
+      "label": "Anyone who says Kai's toastie beats his noodles"
+    },
+    {
+      "id": "cold-photos",
+      "label": "Photographing food until it goes cold"
+    },
+    {
+      "id": "to-the-cent",
+      "label": "Splitting the bill to the cent"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "feed-him",
+      "label": "Someone who cooks for him for a change"
+    },
+    {
+      "id": "open-book",
+      "label": "Hearing about who else you're seeing, happily"
+    },
+    {
+      "id": "leap",
+      "label": "Someone who leaps first and plans later"
+    },
+    {
+      "id": "spice",
+      "label": "Taking his spiciest bowl without flinching"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "sneaking",
+      "label": "Sneaking around, even when there's nothing to hide"
+    },
+    {
+      "id": "snapping",
+      "label": "Snapping at a server"
+    },
+    {
+      "id": "imani-jab",
+      "label": "Jokes about Imani meant to make him jealous"
+    },
+    {
+      "id": "waste",
+      "label": "Wasting food"
+    }
+  ],
+  "favoriteVenues": [
+    "night-market",
+    "amusement-park",
+    "hot-spring"
+  ],
+  "hatedVenues": [
+    "art-museum"
+  ],
+  "lovedGifts": [
+    "red-wine",
+    "concert-tickets"
+  ],
+  "hatedGifts": [
+    "hot-sauce"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "Opening the relationship was his idea, not Imani's. He'd watched her light up around other people and realized he loved seeing it; everyone assumes it was her call, and he has never corrected them."
+    },
+    {
+      "unlockAt": 80,
+      "text": "He wrote the anonymous review that made Kai's 2am toastie famous. The feud is real; so is the fact that he thinks it's the best thing he's eaten in years."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Order up",
+      "scene": "Dex at his noodle stall in a cloud of steam, ladle raised, grinning at you through the lanterns"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Staff meal",
+      "scene": "Perched on crates behind the stall, sharing one enormous bowl with Dex while the market packs up around you"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Soak",
+      "scene": "The hot spring at night, steam everywhere, Dex with his arms spread along the rocks and his laugh echoing off the water"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Brunch service",
+      "scene": "His kitchen at noon, Dex in an apron and not much else, feeding you something off the spoon"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Your name on the menu",
+      "scene": "Dex chalks a new bowl onto the stall board, names it after you, and serves you the very first one"
+    }
+  ]
+}

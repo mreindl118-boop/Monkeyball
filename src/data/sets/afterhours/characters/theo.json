@@ -1,0 +1,163 @@
+{
+  "id": "theo",
+  "name": "Theo Marchetti",
+  "age": 29,
+  "gender": "man",
+  "pronouns": "he/him",
+  "identity": "Trans man",
+  "attractedTo": [
+    "man",
+    "nonbinary"
+  ],
+  "orientation": "gay",
+  "relationshipStyle": "flexible",
+  "jealousy": "low",
+  "bodyNotes": "Compact and solid, broad through the chest, top-surgery scars he framed with a pair of tattooed swallows years ago, dark body hair, forearms covered in flash he drew himself, and a beard he's vain about",
+  "partners": [
+    {
+      "characterId": "jules",
+      "relation": "ex"
+    }
+  ],
+  "occupation": "Tattoo artist at Ink & Anchor, the only shop in the city open till 2am",
+  "difficulty": "normal",
+  "accent": "#6699FF",
+  "look": "Dark buzz cut, a neatly kept black beard, warm olive skin, both arms sleeved in bold traditional sailor flash, a white tank under an open work shirt, black jeans, and a silver anchor stud in one ear",
+  "artTags": "adult man, 29 years old, dark buzz cut, neat black beard, olive skin, traditional sailor tattoo sleeves, white tank top, open work shirt, black jeans, silver anchor stud earring, stocky build",
+  "personality": "Cocky, playful and a shameless flirt, who'll commit to ink in a heartbeat and to people much more slowly",
+  "voice": "Gravelly and easy, teases in dares ('bet you'd sit for a neck piece') and sizes people up like flash ('clean lines, bold choices'); starts calling the player 'sailor' once he likes them",
+  "backstory": "A trans man who designed the swallows that frame his top-surgery scars and talked Ink & Anchor's owner into tattooing them; halfway through, she offered him an apprenticeship. He was twenty-three; now he runs the late shift until 2am and has a waitlist. Dated Jules for one short, sweet summer that ended when Jules wanted monogamy sooner than Theo was ready for it. Tattooed Cass's first piece the night after Cass's first set that didn't bomb, and they've been best friends ever since.",
+  "opener": "Most people who sit across from me this late want something permanent. What are you after?",
+  "likes": [
+    {
+      "id": "flash",
+      "label": "Old-school flash: anchors, swallows, roses and bold black lines"
+    },
+    {
+      "id": "market-walk",
+      "label": "Walking the night market after he locks up at 2am"
+    },
+    {
+      "id": "bouldering",
+      "label": "Bouldering, and bragging about his grip"
+    },
+    {
+      "id": "beard",
+      "label": "Compliments on his beard, which he's vain about"
+    },
+    {
+      "id": "ink-stories",
+      "label": "The story behind someone's tattoos, or why they don't have any"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "does-it-hurt",
+      "label": "Being asked whether tattoos hurt"
+    },
+    {
+      "id": "no-singing",
+      "label": "Being dragged up to sing"
+    },
+    {
+      "id": "haggling",
+      "label": "Haggling over the price of art"
+    },
+    {
+      "id": "strong-scent",
+      "label": "Strong perfume or cologne"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "eye-contact",
+      "label": "Holding eye contact without flinching"
+    },
+    {
+      "id": "his-pick",
+      "label": "Letting him choose for you"
+    },
+    {
+      "id": "hands",
+      "label": "Noticing his hands and forearms"
+    },
+    {
+      "id": "easy-silence",
+      "label": "Being comfortable in a long silence"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "jealous-scene",
+      "label": "Jealous scenes over who else he flirts with"
+    },
+    {
+      "id": "matching-ink",
+      "label": "Asking for a matching tattoo way too soon"
+    },
+    {
+      "id": "jules-trash",
+      "label": "Trash-talking Jules to get on his good side"
+    },
+    {
+      "id": "just-a-tattoo",
+      "label": "Calling his work 'just a tattoo'"
+    }
+  ],
+  "favoriteVenues": [
+    "night-market",
+    "climbing-gym"
+  ],
+  "hatedVenues": [
+    "karaoke-box"
+  ],
+  "lovedGifts": [
+    "sketchbook",
+    "hot-sauce"
+  ],
+  "hatedGifts": [
+    "perfume"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "He still has the flash he drew for a matching tattoo with Jules, the summer they were together. He never showed it to him."
+    },
+    {
+      "unlockAt": 80,
+      "text": "He knows Cass has been in love with him for a year and has been pretending not to notice, because he can't work out how to answer without losing his best friend."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Flash sheet",
+      "scene": "Theo at his station at Ink & Anchor, sleeves pushed up, sketching something he won't show you yet"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "After two",
+      "scene": "The night market after he locks up, Theo's arm slung across your shoulders under the lanterns, sketching you on a napkin while you wait for noodles"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "The climb",
+      "scene": "Chalk on both your hands at the bouldering wall, Theo spotting you, close enough that you can hear him laugh"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Freehand",
+      "scene": "The locked studio after hours, Theo shirtless in the work-lamp glow, drawing a slow design on your skin with a pen"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Permanent",
+      "scene": "Theo inks the flash he drew the night you met onto his own forearm, then holds it up for you to see"
+    }
+  ]
+}
