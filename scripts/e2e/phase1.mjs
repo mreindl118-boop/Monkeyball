@@ -125,22 +125,22 @@ async function firstLaunch(browser, app, mock, viewport, { cors } = {}) {
     }
     await page.getByRole('heading', { name: 'Connect a model' }).waitFor()
     // The failed check says what went wrong.
-    await page.getByRole('status').filter({ hasText: /Pick where your model runs/ }).waitFor()
+    await page.getByRole('status').filter({ hasText: /Set up a provider below/ }).waitFor()
   }, page)
 
   await step(at('point the connection at the mock and test it'), async () => {
-    await page
-      .getByRole('radiogroup', { name: 'Where your model runs' })
-      .getByRole('radio', { name: /^Custom/ })
-      .click()
-    await page.getByLabel('Base URL').fill(mock.baseUrl)
-    await page.getByRole('button', { name: 'Test connection' }).click()
+    // Claude is the default provider; the mock is an OpenAI-compatible server under Other providers.
+    await page.getByRole('button', { name: /^Other providers/ }).click()
+    await page.getByRole('button', { name: /^Custom/ }).click()
+    await page.locator('#setup-custom-baseurl').fill(mock.baseUrl)
+    await page.getByRole('button', { name: 'Test connection to Custom' }).click()
     await page.getByText('The server answered and 2 models are available.').waitFor({ timeout: 20_000 })
-    const story = page.getByLabel('Story model')
+    // Claude has no key, so both roles moved to the tested provider.
+    const story = page.getByRole('group', { name: 'Story model' }).getByLabel('Model')
     const options = await story.locator('option').allInnerTexts()
     checkIncludes(options.join('\n'), ['mock-story', 'mock-judge'], 'story model list')
     await story.selectOption('mock-story')
-    await page.getByLabel('Judge model').selectOption('mock-judge')
+    await page.getByRole('group', { name: 'Judge model' }).getByLabel('Model').selectOption('mock-judge')
     check((await story.inputValue()) === 'mock-story', 'story model not selected')
     await checkDesign(page, at('connection setup'))
     await shot('03-connection-setup', { fullPage: true })
@@ -229,16 +229,16 @@ async function firstLaunch(browser, app, mock, viewport, { cors } = {}) {
       await waitForHash(page, '#/hub')
       await page.getByRole('button', { name: 'Settings', exact: true }).first().click()
       await waitForHash(page, '#/settings')
-      const url = page.locator('#settings-conn-baseurl')
+      const url = page.locator('#settings-conn-custom-baseurl')
       await url.fill(cors.baseUrl)
-      await page.getByRole('button', { name: 'Test connection' }).click()
+      await page.getByRole('button', { name: 'Test connection to Custom' }).click()
       const alert = page.getByRole('alert').filter({ hasText: 'blocks requests from this page (CORS)' })
       await alert.waitFor({ timeout: 20_000 })
       await alert.scrollIntoViewIfNeeded()
       await shot('07-connection-cors')
       // Put the working server back.
       await url.fill(mock.baseUrl)
-      await page.getByRole('button', { name: 'Test connection' }).click()
+      await page.getByRole('button', { name: 'Test connection to Custom' }).click()
       await page.getByText('The server answered and 2 models are available.').waitFor({ timeout: 20_000 })
     }, page)
   }

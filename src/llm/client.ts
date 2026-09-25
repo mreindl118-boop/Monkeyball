@@ -3,6 +3,7 @@
 // goes through ./anthropic.ts. Every chat call logs a DebugEntry to useDebug. The rest of the app
 // calls ./index.ts (role-based), which resolves a route and lands here with an Endpoint.
 
+import { canUseNativeHttp, isFetchBlocked, NativeHttpError, request as nativeRequest, type HttpResult } from '../platform/http'
 import { useDebug } from '../store/debug'
 import type { ConnectionPreset, DebugEntry } from '../types'
 import { extractJson, stripThinking } from './json'
@@ -32,6 +33,11 @@ export class LlmError extends Error {
   kind: LlmErrorKind
   status?: number
   body?: string
+  /**
+   * 'native' when the request went through the Android app's native HTTP fallback (so a
+   * failure here is not about CORS: the fallback has none).
+   */
+  via?: 'native'
 
   constructor(kind: LlmErrorKind, message: string, opts: { status?: number; body?: string; cause?: unknown } = {}) {
     super(message, opts.cause !== undefined ? { cause: opts.cause } : undefined)
@@ -234,6 +240,11 @@ class Deadline {
   private readonly outer?: AbortSignal
   private readonly onOuterAbort = () => this.controller.abort()
 
+  /** The time allowed (0 = none). */
+  get timeoutMs(): number {
+    return this.ms
+  }
+
   constructor(ms: number, outer?: AbortSignal) {
     this.ms = ms
     this.outer = outer
@@ -275,6 +286,73 @@ class Deadline {
     }
     const msg = err instanceof Error ? err.message : String(err)
     return new LlmError('network', `Couldn't reach the model server at ${url} (${msg}).`, { cause: err })
+  }
+}
+
+// The transport seam. Requests go through the WebView's fetch. In the Android app, when fetch
+// throws a TypeError (the server sends no CORS headers, or the WebView won't reach a LAN address),
+// the request is retried once through native HTTP (src/platform/http.ts). Native HTTP can't
+// stream, so a streaming request asks for a plain JSON answer on that retry and the text arrives
+// in one piece (readCompletion already handles non-streamed bodies). On the web nothing changes.
+
+interface SendInit {
+  method: 'GET' | 'POST'
+  headers: Record<string, string>
+  body?: string
+}
+
+/** Status codes whose Response must not carry a body. */
+const NULL_BODY_STATUS = new Set([101, 103, 204, 205, 304])
+
+/** A fetch Response built from a native answer (only the content type matters downstream). */
+function responseFrom(out: HttpResult, url: string): Response {
+  const headers = new Headers()
+  const type = out.headers['content-type']
+  if (type && !/[\r\n]/.test(type)) headers.set('content-type', type)
+  try {
+    return new Response(NULL_BODY_STATUS.has(out.status) ? null : out.text, { status: out.status, headers })
+  } catch (e) {
+    const err = new LlmError('network', `The model server at ${url} sent an answer the app can't read (status ${out.status}).`, {
+      cause: e,
+    })
+    err.via = 'native'
+    throw err
+  }
+}
+
+/** The native retry: same request, no CORS, one piece. Errors come back as LlmError (via: native). */
+async function viaNative(url: string, init: SendInit, deadline: Deadline): Promise<Response> {
+  let out: HttpResult
+  try {
+    out = await nativeRequest(url, {
+      method: init.method,
+      headers: init.headers,
+      body: init.body,
+      signal: deadline.signal,
+      timeoutMs: deadline.timeoutMs,
+    })
+  } catch (e) {
+    const err =
+      e instanceof NativeHttpError && e.timedOut
+        ? new LlmError('timeout', `The model server at ${url} took too long to answer.`, { cause: e })
+        : deadline.wrap(e, url)
+    err.via = 'native'
+    throw err
+  }
+  deadline.bump()
+  return responseFrom(out, url)
+}
+
+/**
+ * fetch, then (Android app only) one native retry when the WebView blocked the request.
+ * `nativeBody` replaces the body for that retry. Errors come back as LlmError.
+ */
+async function send(url: string, init: SendInit, deadline: Deadline, nativeBody?: string): Promise<Response> {
+  try {
+    return await fetch(url, { ...init, signal: deadline.signal })
+  } catch (e) {
+    if (!isFetchBlocked(e) || deadline.signal.aborted || !canUseNativeHttp()) throw deadline.wrap(e, url)
+    return viaNative(url, nativeBody === undefined ? init : { ...init, body: nativeBody }, deadline)
   }
 }
 
@@ -599,17 +677,14 @@ async function postCompletion(args: RequestArgs): Promise<Completion> {
   const url = chatUrl(args.conn)
   const deadline = new Deadline(args.timeoutMs ?? DEFAULT_TIMEOUT_MS, args.signal)
   try {
-    let res: Response
-    try {
-      res = await fetch(url, {
-        method: 'POST',
-        headers: headersFor(args.conn),
-        body: JSON.stringify(args.body),
-        signal: deadline.signal,
-      })
-    } catch (e) {
-      throw deadline.wrap(e, url)
-    }
+    // Native HTTP can't stream: its retry asks for the whole answer at once.
+    const nativeBody = args.body.stream === true ? JSON.stringify({ ...args.body, stream: false }) : undefined
+    const res = await send(
+      url,
+      { method: 'POST', headers: headersFor(args.conn), body: JSON.stringify(args.body) },
+      deadline,
+      nativeBody,
+    )
     deadline.bump()
     if (!res.ok) throw await httpError(res)
     return await readCompletion(res, deadline, url, args.onDelta)
@@ -806,12 +881,7 @@ export async function listModels(
   const url = modelsUrl(conn)
   const deadline = new Deadline(opts.timeoutMs ?? 15_000, opts.signal)
   try {
-    let res: Response
-    try {
-      res = await fetch(url, { method: 'GET', headers: headersFor(conn, false), signal: deadline.signal })
-    } catch (e) {
-      throw deadline.wrap(e, url)
-    }
+    const res = await send(url, { method: 'GET', headers: headersFor(conn, false) }, deadline)
     if (!res.ok) throw await httpError(res)
     let text: string
     try {

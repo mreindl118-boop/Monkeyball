@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { getAllRelationships } from '../../db/repo'
 import { useDebug } from '../../store/debug'
 import { useNav } from '../../store/nav'
-import { useSettings } from '../../store/settings'
+import { maskApiKeys, useSettings } from '../../store/settings'
 import type { DebugEntry, Relationship, Settings } from '../../types'
 import { APP_VERSION } from '../../ui/appVersion'
 import { Button } from '../../ui/Button'
@@ -30,7 +30,7 @@ const KIND_LABELS: Record<DebugEntry['kind'], string> = {
 const timeFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' })
 
 function maskedSettings(s: Settings): Settings {
-  return { ...s, connection: { ...s.connection, apiKey: maskKey(s.connection.apiKey) } }
+  return { ...s, connection: maskApiKeys(s.connection, maskKey) }
 }
 
 function json(v: unknown): string {

@@ -66,8 +66,8 @@ function sampleDate(characterId: string, startedAt: number): DateRecord {
 async function seed(d: CrushDB) {
   const settings: Settings = defaultSettings()
   settings.ageConfirmed = true
-  settings.connection.apiKey = 'sk-secret'
-  settings.connection.storyModel = 'llama3.1'
+  settings.connection.providers.claude.apiKey = 'sk-secret'
+  settings.connection.story = { preset: 'ollama', model: 'llama3.1' }
   await kvSet('settings', settings, d)
   await kvSet('profile', profile, d)
   await putRelationship({ ...defaultRelationship('nova'), affection: 42, trust: 17 }, d)
@@ -125,16 +125,16 @@ describe('export and import', () => {
     const d = freshDb()
     await seed(d)
     const stored = (await kvGet<Settings>('settings', d))!
-    stored.connection.providers = { openrouter: { baseUrl: 'https://openrouter.ai/api/v1', apiKey: 'sk-or-kept' } }
+    stored.connection.providers.openrouter = { baseUrl: 'https://openrouter.ai/api/v1', apiKey: 'sk-or-kept' }
     await kvSet('settings', stored, d)
     const text = await (await exportSave({}, d)).text()
     expect(text).not.toContain('sk-secret')
     expect(text).not.toContain('sk-or-kept')
     const plain = parseSave(text)
     const s = plain.kv.find((r) => r.key === 'settings')!.value as Settings
-    expect(s.connection.apiKey).toBe('')
-    expect(s.connection.providers?.openrouter).toEqual({ baseUrl: 'https://openrouter.ai/api/v1', apiKey: '' })
-    expect(s.connection.storyModel).toBe('llama3.1')
+    expect(Object.values(s.connection.providers).every((p) => p.apiKey === '')).toBe(true)
+    expect(s.connection.providers.openrouter).toEqual({ baseUrl: 'https://openrouter.ai/api/v1', apiKey: '' })
+    expect(s.connection.story).toEqual({ preset: 'ollama', model: 'llama3.1' })
     expect(plain.relationships).toHaveLength(1)
     expect(plain.dates).toHaveLength(1)
   })
@@ -146,7 +146,7 @@ describe('export and import', () => {
 
     const target = freshDb()
     const local = defaultSettings()
-    local.connection.apiKey = 'sk-local'
+    local.connection.providers.claude.apiKey = 'sk-local'
     await kvSet('settings', local, target)
     await putRelationship(defaultRelationship('kai'), target)
     await putDate(sampleDate('kai', 5), target)
@@ -157,7 +157,7 @@ describe('export and import', () => {
     expect(await kvGet('profile', target)).toEqual(profile)
     const s = (await kvGet<Settings>('settings', target))!
     expect(s.ageConfirmed).toBe(true)
-    expect(s.connection.apiKey).toBe('sk-local')
+    expect(s.connection.providers.claude.apiKey).toBe('sk-local')
     const dates = await listDates(undefined, target)
     expect(dates).toHaveLength(1)
     expect(dates[0].characterIds).toEqual(['nova'])
@@ -167,20 +167,22 @@ describe('export and import', () => {
     const source = freshDb()
     await seed(source)
     const srcSettings = (await kvGet<Settings>('settings', source))!
-    srcSettings.connection = { ...srcSettings.connection, preset: 'custom', baseUrl: 'http://192.168.1.9:8080/v1' }
+    srcSettings.connection.providers.custom = { baseUrl: 'http://192.168.1.9:8080/v1', apiKey: '' }
+    srcSettings.connection.story = { preset: 'custom', model: 'm' }
     await kvSet('settings', srcSettings, source)
     const file = await exportSave({}, source)
 
     const target = freshDb()
     const local = defaultSettings()
-    local.connection = { ...local.connection, preset: 'openrouter', baseUrl: 'https://openrouter.ai/api/v1', apiKey: 'sk-or-local' }
+    local.connection.providers.openrouter = { baseUrl: 'https://openrouter.ai/api/v1', apiKey: 'sk-or-local' }
+    local.connection.story = { preset: 'openrouter', model: 'x' }
     await kvSet('settings', local, target)
 
     await importSave(file, target)
     const s = (await kvGet<Settings>('settings', target))!
-    expect(s.connection.preset).toBe('custom')
-    expect(s.connection.apiKey).toBe('')
-    expect(s.connection.providers?.openrouter).toEqual({ baseUrl: 'https://openrouter.ai/api/v1', apiKey: 'sk-or-local' })
+    expect(s.connection.story.preset).toBe('custom')
+    expect(s.connection.providers.custom).toEqual({ baseUrl: 'http://192.168.1.9:8080/v1', apiKey: '' })
+    expect(s.connection.providers.openrouter).toEqual({ baseUrl: 'https://openrouter.ai/api/v1', apiKey: 'sk-or-local' })
   })
 
   it('round-trips images as base64 when asked', async () => {
