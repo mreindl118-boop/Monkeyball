@@ -2,12 +2,15 @@ import { useEffect, useMemo, useState } from 'react'
 import { getAllRelationships } from '../../db/repo'
 import { useDebug } from '../../store/debug'
 import { useNav } from '../../store/nav'
+import { parseDebugRolls, readDebugRolls, writeDebugRolls, type DebugRolls } from '../../store/rolls'
 import { maskApiKeys, useSettings } from '../../store/settings'
 import type { DebugEntry, Relationship, Settings } from '../../types'
 import { APP_VERSION } from '../../ui/appVersion'
 import { Button } from '../../ui/Button'
 import { Chip } from '../../ui/Chip'
 import { CodeBlock } from '../../ui/CodeBlock'
+import { Field } from '../../ui/Field'
+import { TextInput } from '../../ui/Inputs'
 import { Note } from '../../ui/Panel'
 import { Tabs } from '../../ui/Tabs'
 import { TopBar } from '../../ui/TopBar'
@@ -138,6 +141,39 @@ function RawTab() {
   )
 }
 
+function rollsText(r: DebugRolls): string {
+  switch (r.kind) {
+    case 'succeed':
+      return 'Every roll succeeds: word always gets around, rekindles and offers always happen.'
+    case 'fail':
+      return 'Every roll fails: no gossip spreads, nobody rekindles or brings up what you are.'
+    case 'seed':
+      return `Seeded with ${r.seed}: the same rolls every time the app starts.`
+    default:
+      return 'Random, as in the app.'
+  }
+}
+
+/**
+ * Dev builds only: pin the game's random rolls (src/store/rolls.ts) so a run repeats. Blank is
+ * random; "succeed", "fail" or a number (a seed).
+ */
+function RollsField() {
+  const [text, setText] = useState(() => {
+    const r = readDebugRolls()
+    return r.kind === 'seed' ? String(r.seed) : r.kind === 'random' ? '' : r.kind
+  })
+  const change = (v: string) => {
+    setText(v)
+    writeDebugRolls(v)
+  }
+  return (
+    <Field label="Random rolls" htmlFor="debug-rolls" hint={`Dev builds only. Blank, succeed, fail or a seed number. ${rollsText(parseDebugRolls(text))}`}>
+      <TextInput value={text} onChange={change} placeholder="Random" autoComplete="off" spellCheck={false} />
+    </Field>
+  )
+}
+
 function StateTab() {
   const settings = useSettings((s) => s.settings)
   const profile = useSettings((s) => s.profile)
@@ -175,6 +211,7 @@ function StateTab() {
           Refresh
         </Button>
       </div>
+      {import.meta.env.DEV && <RollsField />}
       <CodeBlock title="Settings" text={json(maskedSettings(settings))} />
       <CodeBlock title="Player profile" text={profile ? json(profile) : ''} empty="No profile yet." />
       {error ? (

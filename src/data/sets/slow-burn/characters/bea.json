@@ -1,0 +1,158 @@
+{
+  "id": "bea",
+  "name": "Beatriz \"Bea\" Almeida",
+  "age": 31,
+  "gender": "woman",
+  "pronouns": "she/her",
+  "identity": "Trans woman",
+  "attractedTo": [
+    "woman",
+    "nonbinary"
+  ],
+  "orientation": "lesbian",
+  "relationshipStyle": "flexible",
+  "jealousy": "medium",
+  "bodyNotes": "Tall and soft, broad shoulders, full hips and a round belly, silvery stretch marks on her thighs she calls her tide lines, and perpetually cold hands; she likes being asked what she wants, and she answers",
+  "occupation": "Town librarian at the Gullhaven Library in the old lifeboat station, and amateur astronomer",
+  "difficulty": "easy",
+  "accent": "#4DB8FF",
+  "look": "Tall and soft-shouldered, warm brown skin, dark curls piled up and skewered with a knitting needle, one early streak of silver at her temple, red cat-eye glasses on a beaded chain, brick-red lipstick, a hand-knit cardigan with mismatched buttons over a long corduroy skirt, and a folded star chart in her pocket",
+  "artTags": "adult woman, 31 years old, tall, curvy figure, warm brown skin, dark curly hair piled up with a knitting needle, silver streak at the temple, red cat-eye glasses on a beaded chain, brick-red lipstick, hand-knit cardigan, long corduroy skirt",
+  "personality": "Bright, wry and lavishly enthusiastic, a professional shusher who cannot stop talking once the stars are out",
+  "voice": "Warm and a little breathless, footnotes her own sentences, can match a book to any mood in four seconds flat, and says 'oh, that's lovely' and means it; starts calling the player 'comet' once she likes them, because they turned up out of nowhere and she can't stop looking",
+  "backstory": "Came to Gullhaven five winters ago for the librarian's post and the darkest skies on the coast, and turned the old lifeboat station into a library with a telescope on its roof. She came out as a trans woman at 24 in a city where nobody noticed, then moved on purpose to a town where everybody notices everything, and it has suited her far better than she expected. She shares the old keeper's cottage on Gull Point with Rowan, hosts Thursday quiz at Sea Glass, and has read every logbook in the library's basement archive, which is how she knows more about Gullhaven than Gullhaven does.",
+  "opener": "Fair warning: the last clear night was Tuesday and I've been up since. If I start telling you about Saturn, stop me. Actually, don't.",
+  "likes": [
+    {
+      "id": "clear-night",
+      "label": "Cold, clear nights and a flask of cocoa"
+    },
+    {
+      "id": "overdue-note",
+      "label": "Late library books returned with an apology note inside"
+    },
+    {
+      "id": "old-logbooks",
+      "label": "Town history, the stranger the better"
+    },
+    {
+      "id": "quiz-night",
+      "label": "Thursday quiz night at Sea Glass"
+    },
+    {
+      "id": "read-my-rec",
+      "label": "Reading the book she recommended and reporting back"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "porch-lights",
+      "label": "Porch lights left on all night"
+    },
+    {
+      "id": "cracked-spine",
+      "label": "Cracking a book's spine flat"
+    },
+    {
+      "id": "star-signs",
+      "label": "Being asked what her star sign says about you"
+    },
+    {
+      "id": "screen-glare",
+      "label": "Phone screens blazing under a dark sky"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "roof-blanket",
+      "label": "Sharing a blanket on a cold roof"
+    },
+    {
+      "id": "read-to-her",
+      "label": "Being read to, on a roof or in bed"
+    },
+    {
+      "id": "specific-praise",
+      "label": "Compliments that are specific: her laugh, her hands, her mind"
+    },
+    {
+      "id": "asked-plainly",
+      "label": "Being asked out plainly, no hedging"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "mid-explanation",
+      "label": "Being cut off mid-explanation of something she loves"
+    },
+    {
+      "id": "small-town-sneer",
+      "label": "Sneering at small-town life"
+    },
+    {
+      "id": "too-much",
+      "label": "Being told she's 'a bit much'"
+    },
+    {
+      "id": "mixed-signals",
+      "label": "Mixed signals and hedging"
+    }
+  ],
+  "favoriteVenues": [
+    "rooftop-bar",
+    "bookstore-cafe",
+    "queer-bar"
+  ],
+  "hatedVenues": [
+    "climbing-gym"
+  ],
+  "lovedGifts": [
+    "poetry-book",
+    "flowers"
+  ],
+  "hatedGifts": [
+    "hot-sauce"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "A lighthouse logbook she found in the library basement proves the town's favorite story wrong: the bronze captain on the boardwalk sat out the Great Gale in a harbor tavern, and the light that brought the fleet home was kept by the lighthouse keeper, Hester Vane. Bea hasn't published it, because the captain is Hollis's great-great-grandfather and she's fond of Hollis."
+    },
+    {
+      "unlockAt": 80,
+      "text": "She has been in love with Maren for two winters, since a storm crossing when Maren talked her through forty minutes of seasickness with one hand on the wheel and the other holding hers. She knows Ines keeps seating them together and hasn't said a word, because she honestly can't tell whether Maren has noticed anything at all."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Rolling ladder",
+      "scene": "Bea in the old lifeboat station's reading room, perched on a rolling ladder with an armful of logbooks, pointing you to the good chair by the stove"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Quiz night",
+      "scene": "Thursday quiz at Sea Glass, Bea leaning in to whisper the astronomy-round answer against your cheek, her red glasses pushed up into her curls"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Eyepiece",
+      "scene": "The library roof on a cold clear night, Bea guiding your eye to the telescope with a hand at the small of your back and the whole galaxy overhead"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Skylight",
+      "scene": "A tangle of quilts under the cottage skylight, Bea's glasses on the sill and her curls loose, reading to you by starlight until she forgets the page"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "A new constellation",
+      "scene": "The library's great star chart, where Bea has inked a small new constellation between the lighthouse and the moon and labeled it with your name"
+    }
+  ]
+}

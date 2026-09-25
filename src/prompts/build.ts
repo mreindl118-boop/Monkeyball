@@ -205,17 +205,28 @@ const TRAIT_LIST: Record<TraitType, 'likes' | 'dislikes' | 'turnOns' | 'turnOffs
   turnOff: 'turnOffs',
 }
 
+/** Traits every character has without the card listing them, by type (e.g. misgendering). */
+export type ExtraTraits = Readonly<Partial<Record<TraitType, readonly Trait[]>>>
+
+/** A card's trait list with the extra traits after it (the card wins on a shared id). */
+export function withExtraTraits(list: readonly Trait[] | undefined, extra: readonly Trait[] | undefined): Trait[] {
+  const card = [...(list ?? [])]
+  for (const t of extra ?? []) if (!card.some((c) => c.id === t.id)) card.push(t)
+  return card
+}
+
 /**
  * {hitsLine}: "It touched a turn-on: Slow dancing in an empty room." per known hit, or
- * "It hit nothing in particular." Unknown ids are ignored. Jealousy and breach add a sentence.
+ * "It hit nothing in particular." Unknown ids are ignored (optional `extra` traits count as known).
+ * Jealousy and breach add a sentence.
  */
-export function hitsLine(character: Character, judge: JudgeResult): string {
+export function hitsLine(character: Character, judge: JudgeResult, extra?: ExtraTraits): string {
   const parts: string[] = []
   const seen = new Set<string>()
   for (const hit of judge.hits ?? []) {
     const listName = TRAIT_LIST[hit.type]
     if (!listName) continue
-    const trait = character[listName]?.find((t) => t.id === hit.id)
+    const trait = character[listName]?.find((t) => t.id === hit.id) ?? extra?.[hit.type]?.find((t) => t.id === hit.id)
     const key = `${hit.type}:${hit.id}`
     if (!trait || seen.has(key)) continue
     seen.add(key)
@@ -364,6 +375,10 @@ export interface StoryContext {
   knownOthersIds?: string[]
   /** Manifest relationships for this character (partners/exes with notes). */
   relations?: RelationLine[]
+  /** Optional: the whole {knownOthers} value (e.g. names marked where they break the agreement). */
+  knownOthersText?: string
+  /** Optional: traits every character has (the LANDED line names a hit on one). */
+  extraTraits?: ExtraTraits
 }
 
 const LANDED_HEADER = "HOW THE PLAYER'S LAST MESSAGE LANDED"
@@ -434,7 +449,7 @@ export function storyValues(ctx: StoryContext): FillValues {
     trust: Math.round(rel.trust),
     route: ctx.route,
     agreement: agreementText(rel.agreement),
-    knownOthers: namesList(knownOthers, ctx.names, `nobody, as far as ${c.name} knows`),
+    knownOthers: str(ctx.knownOthersText) || namesList(knownOthers, ctx.names, `nobody, as far as ${c.name} knows`),
     memory: memory.length
       ? memory.join(' ')
       : ctx.firstDate
@@ -452,7 +467,7 @@ export function storyValues(ctx: StoryContext): FillValues {
   }
   if (ctx.judge) {
     values.mood = noPeriod(ctx.judge.mood) || 'neutral'
-    values.hitsLine = hitsLine(c, ctx.judge)
+    values.hitsLine = hitsLine(c, ctx.judge, ctx.extraTraits)
   }
   return values
 }
@@ -479,6 +494,10 @@ export interface JudgeContext {
   opinion?: string
   /** Secrets the player has shared with this character. */
   sharedSecrets?: string[]
+  /** Optional: the whole {sharedSecrets} value (wins over sharedSecrets when set). */
+  sharedSecretsText?: string
+  /** Optional: traits every character has, listed after the card's (e.g. misgendering). */
+  extraTraits?: ExtraTraits
   /** Turns before the new message; the last 4 are used. */
   recent: TurnLike[]
   /** The player's new message. */
@@ -547,16 +566,16 @@ export function judgeValues(ctx: JudgeContext): FillValues {
     attractedTo: describeAttractions(c.attractedTo) || 'nobody listed',
     relationshipStyle: c.relationshipStyle,
     jealousy: c.jealousy,
-    'likes as "id: label"': traitPairs(c.likes),
-    dislikes: traitPairs(c.dislikes),
-    turnOns: traitPairs(c.turnOns),
-    turnOffs: traitPairs(c.turnOffs),
+    'likes as "id: label"': traitPairs(withExtraTraits(c.likes, ctx.extraTraits?.like)),
+    dislikes: traitPairs(withExtraTraits(c.dislikes, ctx.extraTraits?.dislike)),
+    turnOns: traitPairs(withExtraTraits(c.turnOns, ctx.extraTraits?.turnOn)),
+    turnOffs: traitPairs(withExtraTraits(c.turnOffs, ctx.extraTraits?.turnOff)),
     route: ctx.route,
     agreement: noPeriod(agreementText(rel.agreement)),
     others: namesList(ctx.others, ctx.names, 'nobody'),
     knownOthers: namesList(knownOthers, ctx.names, 'nobody'),
     opinion: oneLine(ctx.opinion ?? defaultOpinion(c, rel, ctx.names, ctx.knownOthersIds)),
-    sharedSecrets: shared.length ? shared.join('; ') : 'none',
+    sharedSecrets: oneLine(ctx.sharedSecretsText ?? '') || (shared.length ? shared.join('; ') : 'none'),
     'last 4 turns': recent ? `\n${recent}` : 'none yet',
     message: oneLine(ctx.message),
   }

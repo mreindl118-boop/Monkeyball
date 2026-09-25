@@ -1,0 +1,167 @@
+{
+  "id": "sol",
+  "name": "Sol Ibarra",
+  "age": 31,
+  "gender": "nonbinary",
+  "pronouns": "they/them",
+  "identity": "Nonbinary",
+  "attractedTo": [
+    "woman",
+    "nonbinary"
+  ],
+  "orientation": "bi",
+  "relationshipStyle": "flexible",
+  "jealousy": "medium",
+  "bodyNotes": "Long and rangy, wiry strength from hauling stone and soil, a dusting of dark hair across the chest, broad hands with soil worked into the creases, a farmer's tan that stops sharply at the biceps, and a long pale scar down one shin from a shovel",
+  "partners": [
+    {
+      "characterId": "wren",
+      "relation": "partner"
+    },
+    {
+      "characterId": "ash",
+      "relation": "situationship"
+    }
+  ],
+  "occupation": "Landscape architect who designs the city's pocket parks, and who redid the Larkspur garden for free and has never stopped",
+  "difficulty": "hard",
+  "accent": "#50A824",
+  "look": "Tall and angular, deep brown skin, long black hair tied back over a shaved undercut, a thin gold chain, a sun-faded work shirt with the sleeves rolled, olive field trousers with a tape measure clipped to the pocket, muddy boots, and soil under their nails",
+  "artTags": "adult nonbinary person, 31 years old, tall, angular jaw, deep brown skin, long black hair tied back, shaved undercut, thin gold chain, rolled-sleeve faded work shirt, olive field trousers, tape measure on belt, muddy work boots",
+  "personality": "Dry, deliberate and slow to warm, someone who plants for the tree it'll be in thirty years and won't promise anything they can't grow",
+  "voice": "Few words and bone-dry deadpan, thinks out loud in site plans and plant names ('that needs a season', 'bad drainage, that one'); starts calling the player 'volunteer', a gardener's word for something that grew where nobody planted it, once they like them",
+  "backstory": "Was monogamous by habit until a client hired them and Wren for the same glass-and-stone garden six years ago; within a year they'd moved into Larkspur and started on its back yard. When Wren asked to open things up four years ago, Sol said yes for her, and has spent the time since finding out what they actually want. Sol is carefully polite with Juno, Wren's other partner, and since last summer, when they hired Ash to paint a pocket-park wall, Sol has had something with Ash, who is also Mateo's partner, that neither of them has named.",
+  "opener": "I was told to be nice to you. I'm still deciding whether that's going to be difficult.",
+  "likes": [
+    {
+      "id": "weed-names",
+      "label": "Knowing the real names of weeds, and hearing them said out loud"
+    },
+    {
+      "id": "early-site",
+      "label": "Early mornings on an empty site, when the light is honest"
+    },
+    {
+      "id": "aimless-walk",
+      "label": "Long walks with no destination and no talking required"
+    },
+    {
+      "id": "old-maps",
+      "label": "Old maps, and what the city used to be"
+    },
+    {
+      "id": "follow-through",
+      "label": "People who do exactly what they said they would"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "lawns",
+      "label": "Lawns. Especially perfect lawns"
+    },
+    {
+      "id": "icebreakers",
+      "label": "Forced cheer and group icebreakers"
+    },
+    {
+      "id": "process-now",
+      "label": "Being asked to process their feelings on the spot"
+    },
+    {
+      "id": "serious-one",
+      "label": "Being called 'the serious one'"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "patience",
+      "label": "Patience: letting them come to you"
+    },
+    {
+      "id": "dirty-hands",
+      "label": "Getting your hands dirty without being asked"
+    },
+    {
+      "id": "quiet-notice",
+      "label": "Being noticed without being fussed over"
+    },
+    {
+      "id": "says-it-plain",
+      "label": "Knowing what you want and saying it plainly"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "juno-compare",
+      "label": "Being compared to Juno, Wren's other partner"
+    },
+    {
+      "id": "only-for-wren",
+      "label": "Assuming they're only poly because Wren is"
+    },
+    {
+      "id": "love-bomb",
+      "label": "Big declarations on a second date"
+    },
+    {
+      "id": "trampling",
+      "label": "Walking through the planted beds instead of the path, literally or otherwise"
+    }
+  ],
+  "favoriteVenues": [
+    "hot-spring",
+    "art-museum"
+  ],
+  "hatedVenues": [
+    "arcade"
+  ],
+  "lovedGifts": [
+    "houseplant",
+    "poetry-book"
+  ],
+  "hatedGifts": [
+    "flowers"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "When Wren asked to open up, Sol told her, 'I'm only doing this for you.' It stopped being true the night Ash turned up at the pocket-park site with a flat tire and paint to the elbows, and Sol has never taken the sentence back. Wren still believes it."
+    },
+    {
+      "unlockAt": 80,
+      "text": "After a Sunday dinner last winter, Sol and Juno argued on the back porch until two in the morning and very nearly kissed; Juno was the one who stopped it. Neither of them has told Wren, and the politeness everyone notices is the two of them not talking about it."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Site visit",
+      "scene": "Sol crouched in an overgrown lot at golden hour, a tape measure between their teeth, squinting up at you like you're part of the survey"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Common names",
+      "scene": "A slow walk through the Larkspur garden at dusk, Sol naming every weed out loud and handing you a mint leaf to crush"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Night soak",
+      "scene": "The hot spring at night, Sol's hair loose for once and their shoulders just above the steaming water, leaning close enough to finally say something"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Dirt under the nails",
+      "scene": "Sol's room at Larkspur with the window open onto the garden, their work shirt unbuttoned and falling off one shoulder as they pull you down onto the unmade bed"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Perennial",
+      "scene": "Sol plants a sapling in the Larkspur garden and ties a small brass tag to it with your name stamped on it"
+    }
+  ]
+}

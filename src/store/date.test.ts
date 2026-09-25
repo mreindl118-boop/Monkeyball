@@ -422,11 +422,13 @@ describe('useDate: settings that change mid-date', () => {
 })
 
 describe('useDate: the judge knows who else the player dates', () => {
-  it('fills {others} with the characters the player has been out with', async () => {
+  it('fills {others} with the people the player is seeing (a date, 20 affection, a romantic route)', async () => {
     const { store, game, fake } = setup()
     await game.getState().load()
-    await game.getState().saveRel({ ...newRelationship('kai'), dates: 2 })
+    await game.getState().saveRel({ ...newRelationship('kai'), dates: 2, affection: 30 })
     await game.getState().saveRel({ ...newRelationship('imani'), dates: 0 })
+    // Out once and it went nowhere: not someone the player is seeing (Phase 4).
+    await game.getState().saveRel({ ...newRelationship('jules'), dates: 1, affection: 5 })
     const judges: string[] = []
     const judge = fake.llm.judge
     fake.llm.judge = (a) => {
@@ -434,7 +436,7 @@ describe('useDate: the judge knows who else the player dates', () => {
       return judge(a)
     }
     await started(store, 'arcade')
-    expect(store.getState().session?.world.others).toEqual(['kai'])
+    expect(store.getState().session?.world.others).toEqual(['jules', 'kai'])
     await store.getState().send('Hi')
     expect(judges.at(-1)).toContain('People the player is seeing: Kai Okoro.')
   })

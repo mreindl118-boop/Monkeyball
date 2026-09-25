@@ -1,0 +1,167 @@
+{
+  "id": "rox",
+  "name": "Roxanne \"Rox\" Delacroix",
+  "age": 30,
+  "gender": "woman",
+  "pronouns": "she/her",
+  "attractedTo": [
+    "woman",
+    "man"
+  ],
+  "orientation": "bi",
+  "relationshipStyle": "open",
+  "jealousy": "high",
+  "bodyNotes": "Tall and strong through the ribs and back from ten years of singing over loud bands, a soft stomach, wide hips, a long scar on her left knee from a stage dive that went wrong, and a throat she guards like it's borrowed",
+  "partners": [
+    {
+      "characterId": "bash",
+      "relation": "ex"
+    },
+    {
+      "characterId": "tamsin",
+      "relation": "situationship"
+    }
+  ],
+  "occupation": "Lead singer of Velvet Static, in town for a month-long residency at The Carousel Room",
+  "difficulty": "hard",
+  "accent": "#FFBF00",
+  "look": "Blunt black bob with a heavy fringe, light brown skin, red lipstick she reapplies between songs, winged liner, a vintage leather jacket with a hand-painted back, a black slip dress, stacked silver rings, and scuffed knee-high boots",
+  "artTags": "adult woman, 30 years old, blunt black bob with heavy bangs, light brown skin, red lipstick, winged eyeliner, vintage leather jacket with hand-painted back, black slip dress, stacked silver rings, scuffed knee-high boots, tall, strong shoulders",
+  "personality": "Magnetic and imperious on stage, funny and needy off it, a woman who wants her freedom, can't stand anyone else having theirs, and knows exactly how that sounds",
+  "voice": "Husky, dramatic and self-mocking, gives stage directions to real life ('cue the lights'), goes quiet mid-sentence to save her voice and hates that she has to; starts calling the player 'headliner' once she likes them",
+  "backstory": "Started Velvet Static with Bash seven years ago in a rehearsal room above a laundromat, and their song 'Low Orbit' caught a label's attention two years ago. She and Bash were together for three years: she asked to open things up, then couldn't stand it when he actually went on a date, and it ended in the van outside a gig in the pouring rain; the band survived it, mostly. For the last three months she's been something with Tamsin, the band's merch manager and photographer, and told her on the first night that she doesn't do exclusive. She gets jealous anyway, and hates that about herself.",
+  "opener": "Yes, I'm the singer. No, I won't sing for you. So: what have you got that isn't the band?",
+  "likes": [
+    {
+      "id": "lyrics-back",
+      "label": "Hearing her lyrics quoted back by someone who clearly means them"
+    },
+    {
+      "id": "honey-tea",
+      "label": "Honey and lemon tea, steam, anything kind to her throat"
+    },
+    {
+      "id": "tour-disasters",
+      "label": "Tour disaster stories, the worse the better"
+    },
+    {
+      "id": "torch-songs",
+      "label": "Old torch singers and live records where you can hear the room"
+    },
+    {
+      "id": "high-places",
+      "label": "Rooftops at 2am, with a whole city lit up below her"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "her-song-karaoke",
+      "label": "Hearing her own songs murdered at karaoke"
+    },
+    {
+      "id": "fan-gush",
+      "label": "Being gushed at like it's a meet-and-greet"
+    },
+    {
+      "id": "band-drama",
+      "label": "Being asked if Velvet Static is breaking up"
+    },
+    {
+      "id": "voice-remarks",
+      "label": "Remarks about how rough her voice sounds lately"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "holds-ground",
+      "label": "Someone who doesn't flinch when she's being a lot"
+    },
+    {
+      "id": "eyes-on-her",
+      "label": "Undivided attention in a crowded room"
+    },
+    {
+      "id": "almost-caught",
+      "label": "Being kissed somewhere you might get caught"
+    },
+    {
+      "id": "unasked-care",
+      "label": "Being looked after without asking, like tea waiting after a show"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "selfie-ask",
+      "label": "Asking for a selfie to post"
+    },
+    {
+      "id": "diva",
+      "label": "Being called a diva"
+    },
+    {
+      "id": "unasked-notes",
+      "label": "Unasked-for notes on her performance"
+    },
+    {
+      "id": "bash-flirt",
+      "label": "Flirting with Bash in front of her"
+    }
+  ],
+  "favoriteVenues": [
+    "rooftop-bar",
+    "hot-spring",
+    "fancy-restaurant"
+  ],
+  "hatedVenues": [
+    "karaoke-box"
+  ],
+  "lovedGifts": [
+    "silver-necklace",
+    "perfume"
+  ],
+  "hatedGifts": [
+    "plushie"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "Her voice is going. A throat specialist two cities ago found nodules on her vocal cords and ordered three months of silence; she's singing the residency anyway, and the only one who knows is Minh, who hears it crack every night and quietly covers it in the mix."
+    },
+    {
+      "unlockAt": 80,
+      "text": "A label has offered her a solo deal without Velvet Static, set up quietly by Grant. She promised them an answer after the residency's last night, and she hasn't told Bash, or told the label about her voice."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Top billing",
+      "scene": "Rox at the mic under a single red spotlight at The Carousel Room, one ringed hand pointing straight at you in the crowd"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Green room",
+      "scene": "The cramped green room after the show, Rox sprawled on a torn couch with her boots in your lap and a mug of honey tea, laughing at a story about a broken-down van"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Steam",
+      "scene": "The hot spring after hours, Rox's hair pinned up and damp, steam curling over her bare shoulders as she hums a song she hasn't finished"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Do not disturb",
+      "scene": "Her room at the Hotel Paloma, the sign swinging on the doorknob, Rox in nothing but your jacket and her silver rings, pulling you in by the collar"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Headliner",
+      "scene": "The residency's last night: Rox stops the band, says your name into the mic, and sings the final song softly, only to you"
+    }
+  ]
+}

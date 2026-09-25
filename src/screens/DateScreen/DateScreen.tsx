@@ -7,6 +7,7 @@
 // back button asks before ending the date.
 
 import {
+  Fragment,
   useEffect,
   useId,
   useLayoutEffect,
@@ -20,7 +21,7 @@ import { Portrait } from '../../art/Portrait'
 import { portraitAccent } from '../../art/Portrait.model'
 import { HEAT_LEVELS } from '../../data/heat'
 import { VENUES, venueById } from '../../data/venues'
-import { canQueueSend, canRetry, dateGainUsed, routeOf, type DateSession } from '../../engine/dateFlow'
+import { canOpenDtr, canQueueSend, canRetry, dateGainUsed, dtrOpen, routeOf, type DateSession } from '../../engine/dateFlow'
 import { applyDifficulty } from '../../engine/math'
 import { affectionCap, stageFor } from '../../engine/stages'
 import { tap } from '../../platform/haptics'
@@ -28,7 +29,7 @@ import { pushOverlay } from '../../platform/overlays'
 import { useDate, type InterruptedDate } from '../../store/date'
 import { useNav } from '../../store/nav'
 import { useSettings } from '../../store/settings'
-import type { DateTurn, Route } from '../../types'
+import type { AgreementType, DateTurn, Route } from '../../types'
 import { Backdrop } from '../../ui/Backdrop'
 import { Button } from '../../ui/Button'
 import { ConfirmDialog } from '../../ui/ConfirmDialog'
@@ -58,6 +59,9 @@ import {
   visibleTurns,
 } from './dateModel'
 import styles from './DateScreen.module.css'
+import { DtrOffer, DtrOpen, DtrResult, DtrSheet } from './Dtr'
+import type { DtrChoiceType } from './dtrModel'
+import { endingTitle } from '../Ending/useEnding'
 import { StoryText } from './StoryText'
 
 export default function DateScreen() {
@@ -167,12 +171,15 @@ function StatusStrip({
   hints,
   route,
   onHeat,
+  dtr,
 }: {
   session: DateSession
   hints: boolean
   route: Route
   /** Opens the heat sheet. */
   onHeat: () => void
+  /** Define the relationship: whether it can open now, and how to open it. */
+  dtr: { can: boolean; talking: boolean; onOpen: () => void }
 }) {
   const [open, setOpen] = useState(false)
   const panelId = useId()
@@ -237,13 +244,19 @@ function StatusStrip({
             </Button>
           </div>
           {!hints && <p className={styles.caption}>Turn on Hints in Settings to see how each message landed.</p>}
-          {dtrVisible(rel.affection) && (
+          {dtrVisible(rel.affection) && session.record.kind !== 'epilogue' && (
             <div className={styles.dtr}>
-              <Button variant="secondary" disabled aria-describedby={dtrNote}>
+              <Button variant="brass" disabled={!dtr.can} aria-describedby={dtrNote} onClick={dtr.onOpen}>
                 Define the relationship
               </Button>
               <p className={styles.caption} id={dtrNote}>
-                Arrives in the next update.
+                {dtr.talking
+                  ? 'The talk is open. Close it when you have said your piece.'
+                  : session.record.dtr
+                    ? 'You talked about what you are on this date.'
+                    : dtr.can
+                      ? 'Ask what you are: exclusive, open, poly or keep it casual.'
+                      : 'On your turn, with a turn left to talk.'}
               </p>
             </div>
           )}
@@ -312,6 +325,8 @@ function DateView({ session }: { session: DateSession }) {
   const heat = useSettings((s) => s.settings.heat)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [heatOpen, setHeatOpen] = useState(false)
+  const [dtrSheet, setDtrSheet] = useState(false)
+  const offerDismissed = useDate((s) => s.dtrOfferDismissed)
   const inputId = useId()
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -339,8 +354,40 @@ function DateView({ session }: { session: DateSession }) {
   const streaming = status === 'replying' ? session.streaming : ''
   const thinking = !streaming && (status === 'judging' || status === 'replying' || status === 'opening')
   const chips = status === 'awaiting-player' && !running ? suggestionChips(session.suggestions, route) : []
-  const status1 = statusText(status, character.name)
+  const status1 = running === 'dtr' ? `${first} is thinking about what you are` : statusText(status, character.name)
   const style = { '--accent': portraitAccent(character.accent) } as CSSProperties
+
+  // Define the relationship: the character's offer, the open talk, the way in, and the outcome.
+  const talking = dtrOpen(session) && !over
+  const dtrCan = !locked && !talking && (running === null || status === 'suggesting') && canOpenDtr(session)
+  // Their offer waits for the player's turn (the opening beat comes first).
+  const offer: AgreementType | null = session.dtrOffer && !offerDismissed && dtrCan ? session.dtrOffer : null
+  const dtrResult = session.record.dtr?.closedAt != null && session.record.dtr.result ? session.record.dtr : null
+  // The outcome sits after the talk's last turn (or at the end when no turn was flagged).
+  let lastDtrTurn = -1
+  turns.forEach((t, i) => {
+    if (t.dtr) lastDtrTurn = i
+  })
+  const resultAfter = dtrResult ? (lastDtrTurn >= 0 ? lastDtrTurn : turns.length - 1) : -2
+  const epilogue = session.record.kind === 'epilogue'
+  const endingName = epilogue ? endingTitle(session.ending?.type ?? session.record.endingType) : ''
+
+  const askDtr = (type: DtrChoiceType) => {
+    setDtrSheet(false)
+    stick.current = true
+    void useDate
+      .getState()
+      .openDtr(type)
+      .then((ok) => {
+        if (!ok) toast("That can't start right now. Try again on your turn.", 'info')
+        else inputRef.current?.focus({ preventScroll: true })
+      })
+  }
+
+  const closeTalk = () => {
+    stick.current = true
+    void useDate.getState().closeDtr()
+  }
 
   // Back on the screen after stepping away: pick up a reply that was stopped. Leaving stops the
   // call in flight (the date stays open); the stop waits a tick so a remount (React's strict mode
@@ -472,14 +519,23 @@ function DateView({ session }: { session: DateSession }) {
         <header className={styles.top}>
           <div className={styles.where}>
             <p className={styles.venueName}>{venue.name}</p>
-            <p className={styles.turn}>{turnLabel(session.record, over || session.leaving)}</p>
+            <p className={styles.turn}>
+              {turnLabel(session.record, over || session.leaving)}
+              {epilogue && <span className={styles.epilogueTag}>{endingName ? `Epilogue, ${endingName.charAt(0).toLowerCase()}${endingName.slice(1)}` : 'Epilogue'}</span>}
+            </p>
           </div>
           <Button variant="ghost" className={styles.endButton} disabled={over} onClick={() => setConfirmOpen(true)}>
             End date
           </Button>
         </header>
 
-        <StatusStrip session={session} hints={hints} route={route} onHeat={() => setHeatOpen(true)} />
+        <StatusStrip
+          session={session}
+          hints={hints}
+          route={route}
+          onHeat={() => setHeatOpen(true)}
+          dtr={{ can: dtrCan, talking, onOpen: () => setDtrSheet(true) }}
+        />
 
         <div className={styles.stageArea} aria-hidden="true">
           <Portrait character={character} size="small" className={styles.portrait} />
@@ -492,13 +548,16 @@ function DateView({ session }: { session: DateSession }) {
 
           <div className={styles.transcript} ref={scrollRef} onScroll={onScroll}>
             {turns.map((t, i) => (
-              <Turn
-                key={i}
-                turn={t}
-                retry={i === lastError && retryable ? retry : undefined}
-                onHeat={i === lastRefused && !over ? () => setHeatOpen(true) : undefined}
-              />
+              <Fragment key={i}>
+                <Turn
+                  turn={t}
+                  retry={i === lastError && retryable ? retry : undefined}
+                  onHeat={i === lastRefused && !over ? () => setHeatOpen(true) : undefined}
+                />
+                {i === resultAfter && dtrResult && <DtrResult name={character.name} dtr={dtrResult} current={session.rel.agreement?.type ?? 'none'} />}
+              </Fragment>
             ))}
+            {resultAfter === -1 && dtrResult && <DtrResult name={character.name} dtr={dtrResult} current={session.rel.agreement?.type ?? 'none'} />}
             {streaming && (
               <div className={styles.line}>
                 <StoryText text={streaming} streaming />
@@ -545,6 +604,28 @@ function DateView({ session }: { session: DateSession }) {
             </div>
           ) : (
             <>
+              {offer ? (
+                <DtrOffer
+                  name={character.name}
+                  offer={offer}
+                  onTalk={() => setDtrSheet(true)}
+                  onLater={() => useDate.getState().dismissDtrOffer()}
+                />
+              ) : talking && session.record.dtr ? (
+                <DtrOpen
+                  name={character.name}
+                  dtr={session.record.dtr}
+                  closing={running === 'dtr'}
+                  disabled={locked || (running !== null && running !== 'dtr' && status !== 'suggesting')}
+                  onClose={closeTalk}
+                />
+              ) : dtrCan ? (
+                <div className={styles.dtrEntry}>
+                  <Button variant="brass" size="small" onClick={() => setDtrSheet(true)}>
+                    Define the relationship
+                  </Button>
+                </div>
+              ) : null}
               {chips.length > 0 && (
                 <div className={styles.chips} role="group" aria-label="Things you could say">
                   {chips.map((c) => (
@@ -612,10 +693,23 @@ function DateView({ session }: { session: DateSession }) {
         <HeatControl value={heat} onChange={(h) => void useSettings.getState().update({ heat: h })} />
       </Sheet>
 
+      <DtrSheet
+        open={dtrSheet}
+        name={character.name}
+        offer={offer}
+        current={session.rel.agreement?.type ?? 'none'}
+        onAsk={askDtr}
+        onClose={() => setDtrSheet(false)}
+      />
+
       <ConfirmDialog
         open={confirmOpen}
         title="End the date?"
-        message={`${first} will remember how it went, and the recap shows what changed.`}
+        message={
+          talking
+            ? `${first} will remember how it went and answer what you asked about what you are. The recap shows what changed.`
+            : `${first} will remember how it went, and the recap shows what changed.`
+        }
         confirmLabel="End date"
         cancelLabel="Keep going"
         onConfirm={endDate}

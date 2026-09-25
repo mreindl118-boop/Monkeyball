@@ -1,0 +1,209 @@
+{
+  "id": "slow-burn",
+  "name": "Slow Burn",
+  "blurb": "Gullhaven in the off-season: a coastal town after the tourists leave, six people who take their time, and one long winter that will decide who stays. Friendship first, storms on the bay, and the last ferry at half past six.",
+  "author": "crushLAB",
+  "heat": 1,
+  "version": "1.0.0",
+  "setting": "Gullhaven sits at the end of the coast road where the bay narrows, and once the tourists leave in October it belongs again to the few hundred people who stay. The Kittiwake, Maren's old blue-and-white ferry, crosses to the mainland four times a day in winter, at 7:10, 11:40, 3:15 and 6:30, and anyone who misses the 6:30 is staying the night; when the harbormaster runs up the red flag for a storm she doesn't sail at all, and the whole town gets an unplanned day off. On the boardwalk the pier rides are shut for the season except the Ferris wheel, which turns on Sunday afternoons, the Galleon arcade opens at weekends with half its cabinets under dust sheets, and the bronze captain still stares out to sea with his lantern raised. The Tidewater diner opens at five for the fishing boats; the Saturday harbor market fills the quay with smoked fish, oysters, knitwear and lantern-lit stalls until well after dark; Spindrift, the one bookstore-cafe, has the only good coffee in town and a cat asleep in the poetry section; and up the hill, Hotwell House has steamed over its spring for almost a century. The Grapnel does karaoke in its back room on Fridays, Sea Glass, the town's one queer bar, runs quiz night on Thursdays, the Customs House museum keeps its seascapes and ship models warm for whoever wanders in, Slack Water Records has the secondhand crates, the old net loft has a bouldering wall, and the Cormorant Hotel keeps its dining room and its empty roof terrace open all winter out of stubbornness. Out on Gull Point the dark lighthouse watches over the tide station and the old keeper's cottage, the library lives in the old lifeboat station with a telescope on its roof, Grey's Boatyard smells of cedar and varnish, and a developer from the mainland keeps making offers on the waterfront. Winter means storms off the bay, early dark, cold clear skies thick with stars, and Winter Lantern Night in December, when everyone floats a paper lantern into the harbor for someone they miss; it also means the question nobody asks out loud, which is who won't be here when the tourists come back.",
+  "characters": [
+    "maren",
+    "hollis",
+    "ines",
+    "rowan",
+    "cyrus",
+    "bea"
+  ],
+  "relationships": [
+    {
+      "a": "maren",
+      "b": "ines",
+      "kind": "ex",
+      "note": "Together three years until Ines took a kitchen job on the mainland; they've been friends since she came home, and they still do the Sunday crossword together at The Tidewater's counter, in pen."
+    },
+    {
+      "a": "hollis",
+      "b": "cyrus",
+      "kind": "ex",
+      "note": "Together for two years a long time ago, until Cyrus left for the city; since he came home to run the baths they have been carefully, painfully polite."
+    },
+    {
+      "a": "maren",
+      "b": "hollis",
+      "kind": "friend",
+      "note": "Hollis has done every refit the Kittiwake has needed for twelve years, and Maren brings him coffee on the slipway most mornings before the first sailing."
+    },
+    {
+      "a": "bea",
+      "b": "rowan",
+      "kind": "housemate",
+      "note": "They share the old keeper's cottage on Gull Point: Bea has the roof for her telescope, Rowan has the kitchen for their sample jars, and they take turns making terrible soup on storm nights."
+    },
+    {
+      "a": "maren",
+      "b": "rowan",
+      "kind": "friend",
+      "note": "Every Tuesday Maren slows the Kittiwake at the mid-bay buoy so Rowan can drop their sampling bottles, and neither of them has ever mentioned that it isn't on the timetable."
+    },
+    {
+      "a": "ines",
+      "b": "hollis",
+      "kind": "friend",
+      "note": "Hollis has eaten breakfast on the same stool at The Tidewater at six every morning for twenty years, and Ines has his eggs on before he's through the door."
+    },
+    {
+      "a": "ines",
+      "b": "bea",
+      "kind": "friend",
+      "note": "Bea runs the library's winter book club from The Tidewater's back booth on Tuesdays, and Ines feeds everyone who actually finished the book."
+    },
+    {
+      "a": "cyrus",
+      "b": "rowan",
+      "kind": "friend",
+      "note": "Rowan thaws out at Hotwell House after every winter dive and pays in tide charts and sea-creature facts, which Cyrus pretends to find tiresome."
+    },
+    {
+      "a": "ines",
+      "b": "cyrus",
+      "kind": "rival",
+      "note": "They have co-chaired Winter Lantern Night for three years and argued about every lantern, every stall and whose soup gets served first."
+    },
+    {
+      "a": "bea",
+      "b": "hollis",
+      "kind": "friend",
+      "note": "Bea has spent two years trying to get the Grey family's boatyard ledgers into the library archive, and Hollis keeps promising them 'next winter'."
+    },
+    {
+      "a": "maren",
+      "b": "bea",
+      "kind": "friend",
+      "note": "Bea rides the Kittiwake's Friday afternoon crossing there and back just to watch the sky from the stern rail, and Maren always saves her the sheltered side."
+    },
+    {
+      "a": "cyrus",
+      "b": "bea",
+      "kind": "friend",
+      "note": "Bea is helping Cyrus write a history of Hotwell House for its hundredth year, and he has made her promise to leave out his grandmother's feuds."
+    },
+    {
+      "a": "hollis",
+      "b": "rowan",
+      "kind": "friend",
+      "note": "Hollis built Rowan's sampling skiff and still refuses to let them paint it anything but white."
+    },
+    {
+      "a": "maren",
+      "b": "cyrus",
+      "kind": "neighbor",
+      "note": "Maren's cottage sits at the foot of Hotwell Lane, and on storm mornings Cyrus sends a flask of barley tea down to the ferry that she never admits to drinking."
+    }
+  ],
+  "rumors": [
+    {
+      "id": "maren-interviewing",
+      "teller": "cyrus",
+      "about": [
+        "maren"
+      ],
+      "text": "Maren went over to the mainland in her good jacket last week and came back with a face like a squall. She's interviewing, I'd put money on it. Gullhaven is about to lose its captain.",
+      "truth": "exaggerated",
+      "actually": "Maren isn't interviewing anywhere. The ferry authority called her in to say the Kittiwake is being retired after this winter and to offer her a berth on a mainland line; she hasn't decided, and she hasn't told anyone."
+    },
+    {
+      "id": "bronze-captain",
+      "teller": "ines",
+      "about": [
+        "hollis"
+      ],
+      "text": "You know the bronze captain on the boardwalk? Hollis's great-great-grandfather. Brought the whole herring fleet home through the Great Gale with one lantern. Hollis hates it when you bring it up, which is exactly why I do.",
+      "truth": "false",
+      "actually": "A lighthouse logbook Bea found in the library basement shows Captain Grey sat out the gale in a harbor tavern; the light that brought the fleet home was kept by the lighthouse keeper, Hester Vane."
+    },
+    {
+      "id": "cyrus-at-the-yard",
+      "teller": "rowan",
+      "about": [
+        "cyrus",
+        "hollis"
+      ],
+      "text": "Twice this month I've walked past the boatyard at five for the tide readings and seen Cyrus's car parked behind Hollis's shed. Old flames, very slow burn. Honestly? I'm delighted for them.",
+      "truth": "exaggerated",
+      "actually": "Hollis and Cyrus aren't back together, and Hollis doesn't know Cyrus has been there. Cyrus still has a key and lets himself into the back shed at night to sit with the dinghy Hollis started the winter he left."
+    },
+    {
+      "id": "rowan-ship",
+      "teller": "maren",
+      "about": [
+        "rowan"
+      ],
+      "text": "Rowan asked me for April's timetable. Last sailing of each day. People only ask that when they've got a ship to catch.",
+      "truth": "true",
+      "actually": "The tide station loses its funding in April and Rowan has been offered a year on a research ship in the far south. They haven't decided whether to go, and they've told only Bea."
+    },
+    {
+      "id": "sunday-crossword",
+      "teller": "hollis",
+      "about": [
+        "maren",
+        "ines"
+      ],
+      "text": "Four years apart and they still do the Sunday crossword at the counter, one pen between them. Anyone who thinks that's over hasn't watched them fight over seven down.",
+      "truth": "exaggerated",
+      "actually": "Maren and Ines love each other the way old friends do, and neither wants to get back together. Lately Ines leaves the crossword half done on purpose, so that Bea will finish it with Maren."
+    },
+    {
+      "id": "boiler-smoke",
+      "teller": "ines",
+      "about": [
+        "cyrus"
+      ],
+      "text": "Cyrus's boiler chimney is smoking when I open up at five, every morning now. You don't heat a hot spring. Something's wrong up that hill, and he'll bite my head off if I ask.",
+      "truth": "true",
+      "actually": "The spring has been cooling for three years, and Cyrus fires the old boiler under the big pool after closing so nobody notices. Rowan has the temperature readings to prove it."
+    },
+    {
+      "id": "cyrus-selling",
+      "teller": "hollis",
+      "about": [
+        "cyrus"
+      ],
+      "text": "That developer from the mainland came round the yard again asking what I'd take, and said Cyrus is 'already in talks' about the baths. If he's selling his family's house to that lot, I'd rather hear it from him.",
+      "truth": "false",
+      "actually": "Cyrus has turned the developer down twice; she said it to soften Hollis up. The spring is cooling, though, and Cyrus is more tempted than he would ever admit."
+    },
+    {
+      "id": "long-way-round",
+      "teller": "cyrus",
+      "about": [
+        "maren",
+        "bea"
+      ],
+      "text": "Maren takes the Friday afternoon boat the long way round the point now, twenty minutes extra, just so Bea gets the sunset off the stern rail. That isn't a timetable, that's a courtship.",
+      "truth": "exaggerated",
+      "actually": "Maren takes the long way on Fridays because Bea asked once and the water is calmer there. She's very fond of Bea and hasn't noticed that Bea is in love with her."
+    },
+    {
+      "id": "ines-came-back",
+      "teller": "bea",
+      "about": [
+        "ines",
+        "maren"
+      ],
+      "text": "Ines came back from the mainland after one year because she couldn't live without Maren. It's practically in the town records, and I should know, I keep them.",
+      "truth": "exaggerated",
+      "actually": "Ines came back for Gullhaven, her mother and the chance to buy The Tidewater as much as for Maren, and by the time she was home they had agreed to be friends. She has never told Maren she left out of fear, not boredom."
+    },
+    {
+      "id": "tarp-in-the-shed",
+      "teller": "maren",
+      "about": [
+        "hollis"
+      ],
+      "text": "Hollis has a boat under a tarp in his back shed that he won't let anyone near, me included. It's been there as long as I've been captain. I'd say it's for someone, but Hollis doesn't say.",
+      "truth": "true",
+      "actually": "The dinghy isn't a commission. Hollis started it the winter Cyrus left and has added one plank every winter since, and he has never shown it to anyone."
+    }
+  ]
+}

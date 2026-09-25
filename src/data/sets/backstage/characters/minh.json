@@ -1,0 +1,163 @@
+{
+  "id": "minh",
+  "name": "Minh Tran",
+  "age": 33,
+  "gender": "nonbinary",
+  "pronouns": "they/them",
+  "identity": "Nonbinary",
+  "attractedTo": [
+    "woman",
+    "man",
+    "nonbinary"
+  ],
+  "orientation": "pan",
+  "relationshipStyle": "flexible",
+  "jealousy": "medium",
+  "aceSpectrum": {
+    "label": "Asexual, panromantic",
+    "heatCap": 2
+  },
+  "bodyNotes": "Lean and wiry, long fingers with a fader callus on the right index, a pale scar through one eyebrow, and waveform tattoos inside both wrists; affectionate on their own terms, and they'll tell you exactly what those are",
+  "occupation": "Front-of-house sound engineer for Velvet Static; runs the desk at The Carousel Room for the residency",
+  "difficulty": "normal",
+  "accent": "#1AFFFF",
+  "look": "Black hair in a low knot over a shaved undercut, light tan skin, sharp cheekbones, faint laugh lines, rectangular black-framed glasses, a black work shirt with a crew pass on a lanyard, a roll of gaffer tape worn on one wrist like a bracelet, and studio headphones always around their neck",
+  "artTags": "adult nonbinary person, 33 years old, black hair in a low knot, shaved undercut, light tan skin, sharp cheekbones, laugh lines, rectangular black-framed glasses, androgynous features, black work shirt, crew lanyard, gaffer tape roll on wrist, studio headphones around neck",
+  "personality": "Dry, exact and unshockable, the calmest person in any crisis and the one who notices everything, with a romantic streak they keep off the record",
+  "voice": "Quiet and precise, talks in sound terms ('you're running a bit hot tonight'), deadpan right up until they laugh, which is sudden and loud; starts calling the player 'signal' once they like them, as in the thing worth hearing through the noise",
+  "backstory": "Learned to mix at 19 in a community radio station's basement and has run front of house for touring bands ever since, the last three tours for Velvet Static; they can tell what's wrong with a room by clapping once. They're asexual and panromantic: they fall in love properly and often, want the hand-holding and the 4am talks, have no interest in the rest, and will explain that exactly once. After shows they end up in The Low Tide's DJ booth with Nova, trading mixing tricks, and their room at the Hotel Paloma shares a wall with half the band, which is why they know far more than they say.",
+  "opener": "Sorry, I have to clap once in every new room. Occupational habit. Good room. Let's see about the company.",
+  "likes": [
+    {
+      "id": "room-sound",
+      "label": "Rooms with good acoustics, and talking about why"
+    },
+    {
+      "id": "field-recordings",
+      "label": "Field recordings: rain on a tin roof, night trains, a city at 4am"
+    },
+    {
+      "id": "load-out-quiet",
+      "label": "The quiet hour after load-out, when the empty building hums"
+    },
+    {
+      "id": "mix-credits",
+      "label": "People who read the credits and know who mixed the record"
+    },
+    {
+      "id": "hand-holding",
+      "label": "Holding hands, a lot, in public"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "too-loud",
+      "label": "Places so loud you have to shout to be heard"
+    },
+    {
+      "id": "crew-invisible",
+      "label": "Being treated like furniture because they're crew"
+    },
+    {
+      "id": "phone-speaker",
+      "label": "Music played through a phone speaker"
+    },
+    {
+      "id": "gossip-fishing",
+      "label": "Fishing for band gossip through them"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "real-listening",
+      "label": "Being really listened to, the way they listen"
+    },
+    {
+      "id": "courted",
+      "label": "Being courted slowly and on purpose"
+    },
+    {
+      "id": "shared-headphones",
+      "label": "Sharing one pair of headphones, heads close"
+    },
+    {
+      "id": "stays-warm",
+      "label": "Hearing 'not that' and staying exactly as warm"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "wait-it-out",
+      "label": "Acting like their asexuality is something to wait out"
+    },
+    {
+      "id": "backseat-mixing",
+      "label": "Telling them how to mix"
+    },
+    {
+      "id": "band-access",
+      "label": "Using them to get closer to the band"
+    },
+    {
+      "id": "drink-on-desk",
+      "label": "Putting a drink anywhere near the mixing desk"
+    }
+  ],
+  "favoriteVenues": [
+    "record-store",
+    "art-museum",
+    "bookstore-cafe"
+  ],
+  "hatedVenues": [
+    "amusement-park"
+  ],
+  "lovedGifts": [
+    "rare-vinyl",
+    "chocolates"
+  ],
+  "hatedGifts": [
+    "concert-tickets"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "They've been multitracking every show of the residency off the desk without telling anyone, because they're sure this is Velvet Static's last month and someone should keep it. The recordings also prove what they've been hiding for Rox: her voice cracks on the high note in 'Low Orbit' every night now."
+    },
+    {
+      "unlockAt": 80,
+      "text": "They've been in love with Bash for three tours: romantic all the way down, with no interest in the rest. Bash would say yes to almost anything, which is exactly why Minh has never asked."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Front of house",
+      "scene": "Minh at the mixing desk in the middle of the crowd, headphones on, one hand on a fader, glancing up to catch your eye"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Listening booth",
+      "scene": "A record store listening booth, Minh sharing one pair of headphones with you, heads close, eyes closed at the good part"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Field recording",
+      "scene": "An empty street after the rain, Minh holding a handheld recorder out to catch the dripping gutters, their other hand laced with yours"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Room tone",
+      "scene": "Minh's hotel room at four in the morning, the two of you fully dressed and tangled together on the bed, one earbud each, their fingers laced through yours"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Final mix",
+      "scene": "Minh presses play on a track they mixed just for you: the city at night, your laugh, and their own voice saying they love you"
+    }
+  ]
+}

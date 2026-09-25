@@ -1,0 +1,168 @@
+{
+  "id": "wren",
+  "name": "Wren Achterberg",
+  "age": 29,
+  "gender": "woman",
+  "pronouns": "she/her",
+  "identity": "Trans woman",
+  "attractedTo": [
+    "woman",
+    "man",
+    "nonbinary"
+  ],
+  "orientation": "pan",
+  "relationshipStyle": "polyamorous",
+  "jealousy": "compersion",
+  "bodyNotes": "Tall and strong through the arms and shoulders from years of turning a blowpipe, a soft round belly and wide hips, small pale burn scars scattered up both forearms, calloused palms, and a long back she loves having traced",
+  "partners": [
+    {
+      "characterId": "sol",
+      "relation": "partner"
+    },
+    {
+      "characterId": "juno",
+      "relation": "partner"
+    }
+  ],
+  "occupation": "Glassblower with a hot shop in the Larkspur house's garage; sells at the night market and makes the lamps in half the bars in town",
+  "difficulty": "normal",
+  "accent": "#DB8400",
+  "look": "Tall and broad-shouldered, with a thick copper-red braid pinned up off her neck, fair skin flushed from the furnace, a gold septum ring, safety glasses pushed up on her head, small burn scars up both forearms, a sleeveless linen work dress under a leather apron, and wooden clogs",
+  "artTags": "adult woman, 29 years old, tall, broad shoulders, strong forearms, thick copper-red braid pinned up, fair skin, flushed cheeks, gold septum ring, safety glasses pushed up on head, small burn scars on forearms, sleeveless linen work dress, leather apron, wooden clogs",
+  "personality": "Warm, unflappable and generous to a fault, she handles love the way she handles molten glass: keep it moving, keep it warm, never grip too hard",
+  "voice": "Slow and low, laughs from the belly, talks with her hands and in hot-shop terms ('let it cool slow', 'that one's got a bubble in it'); starts calling the player 'spark' once she likes them",
+  "backstory": "Her great-aunt left her the tall, creaky house on Larkspur Street, and Wren turned the garage into a hot shop and the spare rooms into a home for the people she loves. She's been with Sol for six years, and asking to open things up four years ago was the scariest conversation of her life. Three years ago Juno knocked a vase off her table at a studio sale and insisted on paying for it; Wren insisted on dinner instead, and they've been together ever since.",
+  "opener": "Sorry, occupational habit: I always look at someone's hands first. Yours are good. Hi, I'm Wren.",
+  "likes": [
+    {
+      "id": "handmade",
+      "label": "Anything handmade, especially if it came out a little wrong"
+    },
+    {
+      "id": "sunday-chaos",
+      "label": "Sunday dinner at Larkspur, the louder the better"
+    },
+    {
+      "id": "your-others",
+      "label": "Happy, detailed stories about your other partners"
+    },
+    {
+      "id": "cold-plunge",
+      "label": "Jumping into cold water after a long day at the furnace"
+    },
+    {
+      "id": "glass-talk",
+      "label": "Real questions about how glass is made"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "rushed",
+      "label": "Being rushed: glass and people both crack"
+    },
+    {
+      "id": "look-dont-touch",
+      "label": "Precious rooms where nothing is allowed to be touched"
+    },
+    {
+      "id": "scorekeeping",
+      "label": "Keeping score between partners"
+    },
+    {
+      "id": "table-phones",
+      "label": "Phones out at the dinner table"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "still-hands",
+      "label": "Steady hands: someone who can hold a thing still while she works"
+    },
+    {
+      "id": "kind-truth",
+      "label": "The truth, told kindly"
+    },
+    {
+      "id": "metamour-friend",
+      "label": "Making your own friendship with Sol and Juno, not just through her"
+    },
+    {
+      "id": "watch-her-work",
+      "label": "Being watched, admiringly, while she works the furnace"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "pick-one",
+      "label": "Being asked to choose between Sol and Juno"
+    },
+    {
+      "id": "secretly-jealous",
+      "label": "Insisting she must secretly be jealous"
+    },
+    {
+      "id": "grabby",
+      "label": "Grabbing things, or people, without asking"
+    },
+    {
+      "id": "house-party",
+      "label": "Treating Larkspur like a party house instead of a home"
+    }
+  ],
+  "favoriteVenues": [
+    "night-market",
+    "boardwalk"
+  ],
+  "hatedVenues": [
+    "fancy-restaurant"
+  ],
+  "lovedGifts": [
+    "flowers",
+    "hot-sauce"
+  ],
+  "hatedGifts": [
+    "perfume"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "The attic at Larkspur isn't storage. Wren has kept it empty for a year hoping Juno will move in, and has turned away two people who wanted the room. Juno has said no twice, gently, and Wren keeps not quite hearing it."
+    },
+    {
+      "unlockAt": 80,
+      "text": "Wren has never been jealous a day in her life, but she has felt guilty for four years: she's sure Sol opened up only for her. She has quietly wondered whether she should end things with Juno to make it fair, and has no idea Sol stopped needing that a long time ago."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Gather",
+      "scene": "Wren at the furnace mouth in the Larkspur garage, braid pinned up, turning a glowing gather on the end of her pipe and grinning at you over her safety glasses"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Night stall",
+      "scene": "Wren's lantern-lit stall at the night market, holding a glass bowl up to the light so its colors spill across your face"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Salt and sparks",
+      "scene": "The boardwalk after dark, Wren's braid finally loose, her arm around your waist as she kisses you against the railing"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Annealing",
+      "scene": "The banked hot shop in the amber glow of the cooling kiln, Wren perched on the workbench with her apron off and a slip strap sliding from one shoulder, pulling you in by the collar"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Your color",
+      "scene": "Wren sets a new glass on the Larkspur mantel beside one for each of her people, your color swirled all the way through it"
+    }
+  ]
+}

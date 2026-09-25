@@ -9,12 +9,12 @@ import { portraitAccent } from '../../art/Portrait.model'
 import { giftById } from '../../data/gifts'
 import { venueById } from '../../data/venues'
 import { getDate } from '../../db/repo'
-import { agreementText } from '../../prompts/build'
 import { success } from '../../platform/haptics'
 import { useDate } from '../../store/date'
+import { useGame } from '../../store/game'
 import { useNav } from '../../store/nav'
 import { useRoster } from '../../store/roster'
-import type { Character, DateRecord } from '../../types'
+import type { Character, DateRecord, NewsItem } from '../../types'
 import { Backdrop } from '../../ui/Backdrop'
 import { Button } from '../../ui/Button'
 import { cx } from '../../ui/cx'
@@ -23,11 +23,22 @@ import { Meter } from '../../ui/Meter'
 import { Note, Panel } from '../../ui/Panel'
 import { TopBar } from '../../ui/TopBar'
 import { firstName, signed } from '../DateScreen/dateModel'
+import { dtrOutcome } from '../DateScreen/dtrModel'
+import { possessive } from '../Ending/endingModel'
+import { endingTitle } from '../Ending/useEnding'
 import { useRosterAndGame } from '../Hub/useRosterGame'
+import { RUMOR_WARNING } from '../Profile/profileModel'
 import styles from './Recap.module.css'
 import {
+  agreementChange,
+  betrayalHit,
+  betrayalLine,
+  betrayalVoice,
   changeBadge,
+  dateNews,
   direction,
+  gossipLines,
+  hitBadge,
   giftReactionLine,
   leftDamageText,
   memoryQuote,
@@ -38,6 +49,7 @@ import {
   recapTiers,
   recapTraits,
   revealedLines,
+  rumorLines,
   stageChangeText,
   venuePhrase,
   venueReactionLine,
@@ -141,6 +153,25 @@ function RecapView({ record, recap, character }: { record: DateRecord; recap: Ch
 
   const where = venue ? venuePhrase(venue.id, venue.name) : record.venueId
 
+  // Phase 4: what the date did to the relationship and what it set off elsewhere.
+  const entries = useRoster((s) => s.entries)
+  const sets = useRoster((s) => s.sets)
+  const news = useGame((s) => s.game.news)
+  const names = useMemo(() => {
+    const out: Record<string, string> = {}
+    for (const e of Object.values(entries)) out[e.character.id] = e.character.name.trim() || e.character.id
+    return out
+  }, [entries])
+  const agreement = agreementChange(recap.agreementBefore, recap.agreementAfter, first)
+  const talk = recap.dtr?.result ? dtrOutcome(name, recap.dtr.requested, recap.dtr.result, recap.agreementBefore ?? undefined) : null
+  const hit = betrayalHit(recap.betrayals)
+  const gossip = gossipLines(recap.gossip)
+  const heard = rumorLines(recap.rumors, sets.flatMap((x) => x.rumors ?? []), names)
+  const world: NewsItem[] = record.recap?.world?.news ?? dateNews(record, news)
+  const elsewhere = (record.recap?.world?.betrayals ?? []).filter((b) => b.characterId !== character.id)
+  const epilogue = record.kind === 'epilogue'
+  const ending = epilogue ? endingTitle(record.endingType) : ''
+
   return (
     <main className={`screen ${styles.root}`} style={style}>
       <TopBar title="How it went" />
@@ -154,10 +185,19 @@ function RecapView({ record, recap, character }: { record: DateRecord; recap: Ch
               <span className="name">{name}</span>
             </h2>
             <p className={styles.heroWhere}>{venue?.id === 'home' ? 'A night in' : `At ${where}`}</p>
-            <p className={styles.heroOutcome}>{outcomeText(record.outcome, first)}</p>
+            <p className={styles.heroOutcome}>
+              {epilogue && ending ? `The epilogue: ${ending}.` : outcomeText(record.outcome, first)}
+            </p>
           </div>
         </div>
       </section>
+
+      {epilogue && ending && (
+        <Panel title="Your ending" tone="brass" className={styles.section}>
+          <p className={styles.endingTitle}>{ending}</p>
+          <p className={styles.plain}>It's recorded with {first}. Their profile keeps it, and it can play again.</p>
+        </Panel>
+      )}
 
       {left && (
         <Note tone="lipstick" title="What it cost">
@@ -167,9 +207,22 @@ function RecapView({ record, recap, character }: { record: DateRecord; recap: Ch
 
       <Panel title="Where you stand" className={styles.section}>
         <div className={styles.meters}>
-          <MeterChange kind="affection" label="Affection" before={recap.affectionBefore} after={recap.affectionAfter} />
-          <MeterChange kind="trust" label="Trust" before={recap.trustBefore} after={recap.trustAfter} />
+          <MeterChange kind="affection" label="Affection" before={recap.affectionBefore} after={recap.affectionAfter} hit={hit.affection} />
+          <MeterChange kind="trust" label="Trust" before={recap.trustBefore} after={recap.trustAfter} hit={hit.trust} />
         </div>
+        {recap.betrayals.length > 0 && (
+          <div className={styles.betrayals} role="note">
+            <p className={styles.betrayalTitle}>It came out</p>
+            <ul className={styles.plainList}>
+              {recap.betrayals.map((b, i) => (
+                <li key={`${b.at}-${i}`}>
+                  {betrayalLine(b, first, names)} Affection {signed(b.affectionDelta)}, trust {signed(b.trustDelta)}.
+                  {betrayalVoice(b) && <q className={styles.betrayalVoice}>{betrayalVoice(b)}</q>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <div className={styles.stage}>
           <LipstickStamps stage={stage} size="large" />
           <p className={cx(styles.stageText, recap.stageAfter !== recap.stageBefore && styles.stageMoved)}>
@@ -239,24 +292,68 @@ function RecapView({ record, recap, character }: { record: DateRecord; recap: Ch
         </Panel>
       )}
 
-      {recap.agreementAfter && (
-        <Panel title="What you are now" tone="brass" className={styles.section}>
+      {(agreement || talk) && (
+        <Panel
+          title={agreement ? (agreement.made ? 'What you are now' : 'Your agreement ended') : 'What you talked about'}
+          tone="brass"
+          className={styles.section}
+        >
           <p className={styles.plain}>
-            {recap.agreementAfter.type === 'none'
-              ? 'You no longer have an agreement.'
-              : `You agreed on ${agreementText(recap.agreementAfter)}.`}
+            {talk && <span className={styles.talkTitle}>{talk.title}. </span>}
+            {/* Accepted or countered: the change says where you landed; declined: nothing changed. */}
+            {agreement ? agreement.line : talk?.line}
           </p>
+          {(agreement?.terms || talk?.terms) && (
+            <blockquote className={styles.terms}>
+              <p>{agreement?.terms || talk?.terms}</p>
+              <footer className={styles.quoteBy}>In {possessive(first)} words</footer>
+            </blockquote>
+          )}
         </Panel>
       )}
 
-      {recap.betrayals.length > 0 && (
-        <Panel title="It came out" className={styles.section}>
+      {gossip.length > 0 && (
+        <Panel title={`What ${first} told you`} description="Friends talk. What they share shows up on the other profiles too." className={styles.section}>
           <ul className={styles.plainList}>
-            {recap.betrayals.map((b, i) => (
-              <li key={`${b.at}-${i}`}>
-                {b.note} Affection {signed(b.affectionDelta)}, trust {signed(b.trustDelta)}.
+            {gossip.map((g) => (
+              <li key={g}>{g}</li>
+            ))}
+          </ul>
+        </Panel>
+      )}
+
+      {heard.length > 0 && (
+        <Panel title={heard.length === 1 ? 'A rumor' : 'Rumors'} tone="brass" className={styles.section}>
+          <ul className={styles.secrets}>
+            {heard.map((r) => (
+              <li key={r.key} className={styles.rumor}>
+                <p>{r.text}</p>
+                {r.teller && <p className={styles.quoteBy}>{r.teller} told you</p>}
               </li>
             ))}
+          </ul>
+          <p className={styles.caption}>{RUMOR_WARNING}</p>
+        </Panel>
+      )}
+
+      {(world.length > 0 || elsewhere.length > 0) && (
+        <Panel title="Word got around" description="What this date set off elsewhere." className={styles.section}>
+          <ul className={styles.plainList}>
+            {world.map((n) => (
+              <li key={n.id} className={cx(n.kind === 'rekindle' && styles.brassLine, n.kind === 'betrayal' && styles.lipstickLine)}>
+                {n.text}
+              </li>
+            ))}
+            {elsewhere
+              .filter((b) => !world.some((n) => n.kind === 'betrayal' && n.characterIds.includes(b.characterId)))
+              .map((b, i) => {
+                const who = firstName(names[b.characterId] ?? b.characterId)
+                return (
+                  <li key={`${b.characterId}-${i}`} className={styles.lipstickLine}>
+                    {betrayalLine(b.event, who, names)} Affection {signed(b.event.affectionDelta)}, trust {signed(b.event.trustDelta)}.
+                  </li>
+                )
+              })}
           </ul>
         </Panel>
       )}
@@ -280,14 +377,31 @@ function RecapView({ record, recap, character }: { record: DateRecord; recap: Ch
   )
 }
 
-function MeterChange({ kind, label, before, after }: { kind: 'affection' | 'trust'; label: string; before: number; after: number }) {
+function MeterChange({
+  kind,
+  label,
+  before,
+  after,
+  hit = 0,
+}: {
+  kind: 'affection' | 'trust'
+  label: string
+  before: number
+  after: number
+  /** A betrayal's share of the change (negative), shown as a lipstick hit on the meter. */
+  hit?: number
+}) {
   const dir = direction(before, after)
+  const badge = hitBadge(hit)
   return (
-    <div className={styles.meterChange}>
+    <div className={cx(styles.meterChange, badge && styles.hitMeter)}>
       <Meter kind={kind} value={after} label={label} />
       <p className={styles.change}>
         <span>{meterChange(label, before, after)}</span>
-        <span className={cx(styles.badge, styles[dir], styles[kind])}>{changeBadge(before, after)}</span>
+        <span className={styles.badges}>
+          {badge && <span className={cx(styles.badge, styles.hit)}>{badge}</span>}
+          <span className={cx(styles.badge, styles[dir], styles[kind])}>{changeBadge(before, after)}</span>
+        </span>
       </p>
     </div>
   )

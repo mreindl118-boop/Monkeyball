@@ -1,0 +1,237 @@
+{
+  "id": "polycule",
+  "name": "The Polycule",
+  "blurb": "Two couples, two people who orbit them, one creaky shared house and a group chat that never sleeps. You're the newcomer at Larkspur, and everyone has an opinion about where you'll sit at Sunday dinner.",
+  "author": "crushLAB",
+  "heat": 3,
+  "version": "1.0.0",
+  "setting": "The Larkspur house is a tall, creaky place on Larkspur Street with a wraparound porch, a porch swing and a crooked weathervane, left to Wren by her great-aunt and slowly filled with people she loves. Wren's glass furnace roars in the garage, Sol's garden has swallowed the back yard (lawns are not permitted), Mateo's three-legged greyhound Parsnip patrols the kitchen alongside Van, the cat Ash once carried into Mateo's clinic, Felix's running shoes are lined up by the door at six every morning, and the attic room has stood empty for a year. Wren, Sol, Mateo and Felix live there; Juno keeps her own flat downtown by the courthouse and Ash rents a room across the river, but both have keys and a chair at the long table. The house runs on larkspur logistics, the group chat where every overnight guest has to be posted by six in the evening, and on the rules taped inside the pantry door: the chore wheel Ash painted on an old pizza board, the shared calendar Felix keeps color-coded by person, knock before opening the garage when the furnace is lit, Wednesday check-in over takeout with a glass talking stick, and no new partners at Sunday dinner without a heads-up. Sunday dinner is the one fixed point of the week: Mateo cooks, the table seats ten at a squeeze, and whoever's newest gets the chair with the wobbly leg.",
+  "characters": [
+    "wren",
+    "sol",
+    "mateo",
+    "felix",
+    "juno",
+    "ash"
+  ],
+  "relationships": [
+    {
+      "a": "wren",
+      "b": "sol",
+      "kind": "partner",
+      "note": "Together six years and nesting partners at Larkspur; Wren asked to open things up four years ago, and Sol said yes."
+    },
+    {
+      "a": "mateo",
+      "b": "felix",
+      "kind": "partner",
+      "note": "Together seven years; they moved into Larkspur three years ago, and Felix wrote the house rules the week Mateo started seeing Ash."
+    },
+    {
+      "a": "wren",
+      "b": "juno",
+      "kind": "partner",
+      "note": "Together three years, since Juno knocked a vase off Wren's table at a studio sale; Juno is solo poly and keeps her own flat downtown."
+    },
+    {
+      "a": "mateo",
+      "b": "ash",
+      "kind": "partner",
+      "note": "Together two years, since Ash carried an injured cat into Mateo's clinic at closing time."
+    },
+    {
+      "a": "sol",
+      "b": "ash",
+      "kind": "situationship",
+      "note": "Something undefined since last summer, when Sol hired Ash to paint a pocket-park wall; neither of them has reached for a label."
+    },
+    {
+      "a": "wren",
+      "b": "mateo",
+      "kind": "housemate",
+      "note": "Wren blows the glasses and Mateo fills them: between them they are Sunday dinner, and they're the two calmest people in the house in a crisis."
+    },
+    {
+      "a": "wren",
+      "b": "felix",
+      "kind": "housemate",
+      "note": "Wren owns the house and Felix runs it; she ignores the calendar affectionately, and he quietly fixes it after her."
+    },
+    {
+      "a": "sol",
+      "b": "mateo",
+      "kind": "housemate",
+      "note": "Metamours through Ash who share the kitchen at six every morning, one heading out to a site and one just home from the night shift; Mateo always leaves a coffee out for Sol, and neither of them has ever mentioned it."
+    },
+    {
+      "a": "sol",
+      "b": "felix",
+      "kind": "housemate",
+      "note": "The house's two planners: Sol plans in decades and Felix in fifteen-minute blocks, and they bicker over the garden's watering schedule."
+    },
+    {
+      "a": "sol",
+      "b": "juno",
+      "kind": "rival",
+      "note": "Metamours through Wren with a frost between them that nobody can explain: painfully polite at Sunday dinner, and the house has decided they just don't click."
+    },
+    {
+      "a": "felix",
+      "b": "ash",
+      "kind": "friend",
+      "note": "Metamours through Mateo; Ash has spent two years trying to win Felix over one terrible pun at a time, and is closer than they think."
+    },
+    {
+      "a": "juno",
+      "b": "ash",
+      "kind": "friend",
+      "note": "The two who don't live at Larkspur: they share the porch steps after Sunday dinner and a running joke about being the out-of-towners."
+    },
+    {
+      "a": "juno",
+      "b": "mateo",
+      "kind": "friend",
+      "note": "Mateo feeds Juno after every lost trial, no questions asked, and she has never once let him buy a drink."
+    },
+    {
+      "a": "wren",
+      "b": "ash",
+      "kind": "friend",
+      "note": "Ash painted the chore wheel and Wren blew the glass talking stick; they're the house's two loudest cheerleaders for whoever's dating whoever."
+    },
+    {
+      "a": "juno",
+      "b": "felix",
+      "kind": "friend",
+      "note": "Juno reads the house rules the way Felix wrote them, like a contract, and is the only one who has noticed him enforcing them less and less."
+    }
+  ],
+  "rumors": [
+    {
+      "id": "felix-halfway-out",
+      "teller": "juno",
+      "about": [
+        "felix",
+        "mateo"
+      ],
+      "text": "Felix is miserable in that house. I read witnesses for a living, and that man looks at the chore wheel like it's a sentence. Give it six months and he's gone, and he's taking Mateo with him.",
+      "truth": "exaggerated",
+      "actually": "Felix is unhappy with the house rules he wrote, not with the house or anyone in it: he has a draft proposal to scrap half of them and is afraid to show Mateo. He isn't planning to leave, and he doesn't know Mateo has a job offer out of town."
+    },
+    {
+      "id": "felix-wanted-a-veto",
+      "teller": "sol",
+      "about": [
+        "felix",
+        "ash"
+      ],
+      "text": "The rules were written to keep Ash in line. Felix wanted a veto; the calendar is what he settled for.",
+      "truth": "false",
+      "actually": "Nobody in the house has a veto and nobody ever asked for one. Felix wrote the rules out of his own nerves the week Mateo started seeing Ash, and he likes Ash far more than he lets on."
+    },
+    {
+      "id": "only-poly-for-wren",
+      "teller": "felix",
+      "about": [
+        "sol",
+        "wren"
+      ],
+      "text": "Everyone knows Sol's only poly because Wren is; they've said as much. Give it a year and they'll ask her to close things, and she'll say yes, because she'd do anything for them.",
+      "truth": "exaggerated",
+      "actually": "Sol did tell Wren 'I'm only doing this for you' when they opened up, but it stopped being true once Sol fell for Ash, and Sol has no plans to ask Wren to close anything. It's Wren who has quietly wondered about giving something up."
+    },
+    {
+      "id": "polite-cold-war",
+      "teller": "wren",
+      "about": [
+        "sol",
+        "juno"
+      ],
+      "text": "Sol and Juno are so polite to each other it hurts. I keep seating them side by side at Sunday dinner, but I think they just don't click.",
+      "truth": "false",
+      "actually": "They click far too well: after a Sunday dinner last winter they argued on the back porch until two in the morning and nearly kissed. Juno stopped it, and the politeness is both of them not talking about it."
+    },
+    {
+      "id": "attic-for-the-new-one",
+      "teller": "mateo",
+      "about": [
+        "wren"
+      ],
+      "text": "Wren's kept the attic cleared out for months. Don't tell her I said so, but I think she's hoping you'll move in.",
+      "truth": "false",
+      "actually": "The attic has been empty for a year and it's for Juno, who has said no twice; Wren hasn't thought of offering it to anyone else, though Ash needs a room more than anyone in the house knows."
+    },
+    {
+      "id": "attic-for-juno",
+      "teller": "juno",
+      "about": [
+        "wren"
+      ],
+      "text": "Wren's kept that attic empty for a year and turned away two people who wanted it. She thinks I don't know it's for me.",
+      "truth": "true",
+      "actually": "True. Wren has asked Juno to move in twice and Juno has said no twice, blaming her lease; the real reason is Sol."
+    },
+    {
+      "id": "depot-at-dawn",
+      "teller": "felix",
+      "about": [
+        "ash"
+      ],
+      "text": "I run past the courier depot at six. Ash's bike has been chained outside it four mornings this week with a sleeping bag strapped to the rack. Nobody starts that early.",
+      "truth": "true",
+      "actually": "The rent on Ash's room doubled in the spring and they've been sleeping at the depot some nights. They haven't told Mateo, because he'd pay without blinking."
+    },
+    {
+      "id": "mentor-calls",
+      "teller": "ash",
+      "about": [
+        "mateo"
+      ],
+      "text": "Mateo's old mentor keeps calling, and he takes it on the porch with the door shut. I think she's sick and he doesn't want to worry us.",
+      "truth": "false",
+      "actually": "His mentor is fine and retiring, and has offered Mateo her rural practice two hours out of the city. He wants it, and hasn't told Felix or Ash."
+    },
+    {
+      "id": "wren-never-jealous",
+      "teller": "sol",
+      "about": [
+        "wren"
+      ],
+      "text": "Wren doesn't do jealousy. At all. You could date her girlfriend in front of her and she'd bake you a cake about it.",
+      "truth": "exaggerated",
+      "actually": "Wren's compersion is real, but she isn't untroubled: she has carried four years of guilt over believing Sol opened up only for her, and has wondered whether she should end things with Juno to even it out."
+    },
+    {
+      "id": "not-on-the-calendar",
+      "teller": "wren",
+      "about": [
+        "felix"
+      ],
+      "text": "Felix hasn't put you on the house calendar. Don't take it hard: with Felix, that usually means he hasn't made up his mind about someone.",
+      "truth": "false",
+      "actually": "Felix makes up his mind fast. If the player has been out with him, he has kept those dates off the calendar on purpose, the one part of his week he wants to keep for himself."
+    },
+    {
+      "id": "porch-light",
+      "teller": "mateo",
+      "about": [
+        "sol",
+        "ash"
+      ],
+      "text": "Sol leaves the porch light on every night Ash might ride past, calendar or no calendar. That's not a situationship. That's a lighthouse.",
+      "truth": "true",
+      "actually": "Sol has fallen properly for Ash and once said 'I love you' to them half asleep without remembering it; Sol still hasn't told Wren that 'only for you' stopped being true."
+    },
+    {
+      "id": "sunday-pool",
+      "teller": "ash",
+      "about": [
+        "wren",
+        "felix"
+      ],
+      "text": "Heads up: there's a pool going in larkspur logistics on who you end up with. Wren's got twenty on 'all of us'.",
+      "truth": "exaggerated",
+      "actually": "There is no money on it. Wren did tell the group chat she hopes the player ends up at Sunday dinner, which in that house is practically a proposal, and Felix replied with a calendar invite he deleted a minute later."
+    }
+  ]
+}

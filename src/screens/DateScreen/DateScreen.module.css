@@ -619,3 +619,39 @@
     opacity: 0.8;
   }
 }
+
+/* Phase 4: the way into Define the relationship, above the composer (brass: agreements). */
+.dtrEntry {
+  flex: none;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* Soft keyboard up, or a short window: the transcript keeps the room; the status panel still
+   offers it. */
+:global(html[data-keyboard='open']) .dtrEntry {
+  display: none;
+}
+
+@media (max-height: 620px) {
+  .dtrEntry {
+    display: none;
+  }
+}
+
+.epilogueTag {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid rgb(201 164 92 / 0.6);
+  background: rgb(28 9 20 / 0.6);
+  color: var(--brass);
+  font-weight: 700;
+  font-size: 12px;
+}

@@ -17,6 +17,7 @@ import { Wordmark } from '../../ui/Wordmark'
 import { ConnectionStatus } from './ConnectionStatus'
 import styles from './Hub.module.css'
 import { greetingFor, hubView, regularsText, type HubSort } from './hubModel'
+import { NewsStrip } from './NewsStrip'
 import { useRosterAndGame } from './useRosterGame'
 
 const SHOW_ME: SelectOption[] = [
@@ -153,6 +154,8 @@ export default function Hub() {
       </header>
 
       <ConnectionStatus />
+
+      {ready && !noSets && <NewsStrip />}
 
       {!noSets && (
         <section className={styles.filters} aria-label="Filter and sort">

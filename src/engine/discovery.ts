@@ -6,7 +6,7 @@
 //   the character learns how the player dates when the player says so. detectTopics() is the
 //   keyword heuristic for both (patterns below).
 
-import type { Character, DiscoveredTrait, JudgeHit, JudgeResult, Relationship, TraitType } from '../types'
+import type { Character, DiscoveredTrait, JudgeHit, JudgeResult, Relationship, Trait, TraitType } from '../types'
 import { giftReaction, venueReaction } from './math'
 
 const TRAIT_LISTS: Readonly<Record<TraitType, 'likes' | 'dislikes' | 'turnOns' | 'turnOffs'>> = {
@@ -16,10 +16,33 @@ const TRAIT_LISTS: Readonly<Record<TraitType, 'likes' | 'dislikes' | 'turnOns' |
   turnOff: 'turnOffs',
 }
 
-/** True when the character's card has a trait with this type and id. */
+/**
+ * Traits every character has without their card listing them (docs/SPEC.md: misgendering or
+ * deadnaming is a turn-off for every character in the game). The judge sees them with the card's
+ * turn-offs, a hit on one is applied like any other, and the story's LANDED line names it. They are
+ * not hidden, so they are never added to the profile's discoveries.
+ */
+export const UNIVERSAL_TRAITS: Readonly<Partial<Record<TraitType, readonly Trait[]>>> = {
+  turnOff: [
+    {
+      id: 'misgendering',
+      label: 'Being misgendered or deadnamed, or having their gender or sexuality treated as a kink or a curiosity',
+    },
+  ],
+}
+
+/** True when the hit is one of the traits every character has (and not on this card). */
+export function isUniversalHit(character: Character, hit: JudgeHit): boolean {
+  const list = TRAIT_LISTS[hit.type]
+  if (list && (character[list] ?? []).some((t) => t.id === hit.id)) return false
+  return (UNIVERSAL_TRAITS[hit.type] ?? []).some((t) => t.id === hit.id)
+}
+
+/** True when the character's card (or the universal traits) has a trait with this type and id. */
 export function hasTrait(character: Character, hit: JudgeHit): boolean {
   const list = TRAIT_LISTS[hit.type]
-  return !!list && (character[list] ?? []).some((t) => t.id === hit.id)
+  if (!list) return false
+  return (character[list] ?? []).some((t) => t.id === hit.id) || (UNIVERSAL_TRAITS[hit.type] ?? []).some((t) => t.id === hit.id)
 }
 
 /** The judge's hits that exist on the card, without duplicates, in the judge's order. */
@@ -51,7 +74,7 @@ export function revealHits(
   const found: DiscoveredTrait[] = []
   const hint = typeof judge.hint === 'string' ? judge.hint.trim() : ''
   for (const hit of knownHits(character, judge.hits)) {
-    if (isDiscovered(rel, hit)) continue
+    if (isDiscovered(rel, hit) || isUniversalHit(character, hit)) continue
     found.push({ type: hit.type, id: hit.id, hint, at })
   }
   if (found.length === 0) return { rel, found }

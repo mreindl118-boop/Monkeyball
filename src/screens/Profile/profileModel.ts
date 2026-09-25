@@ -7,10 +7,12 @@ import type {
   Agreement,
   AgreementType,
   Character,
+  HeardRumor,
   Jealousy,
   PartnerRelation,
   Relationship,
   Route,
+  Rumor,
   Secret,
   Style,
   TierNumber,
@@ -153,14 +155,20 @@ export function routeTitle(route: Route): string {
   return route === 'friend' ? 'Friend route' : 'Romantic route'
 }
 
+/** "Nova's", "Jules'": a name's possessive, so copy never picks a pronoun for someone. */
+export function possessiveName(name: string): string {
+  const n = name.trim()
+  return /s$/i.test(n) ? `${n}'` : `${n}'s`
+}
+
 /** One line explaining the route. `mode` is the orientation mode in effect. */
 export function routeExplanation(name: string, route: Route, mode: 'realistic' | 'everyone'): string {
   if (route === 'friend') {
-    return `${name} isn't into your gender, so this stays a friendship: affection stops at Friend, tiers 1 and 2 and their secrets can still unlock, and friends share gossip.`
+    return `${name} isn't into your gender, so this stays a friendship: affection stops at Friend, tiers 1 and 2 and both secrets can still unlock, and friends share gossip.`
   }
   return mode === 'everyone'
-    ? `Everyone's into you is on, so ${name} is dateable. Everything is possible, at their pace.`
-    : `${name} could fall for you. Everything is possible, at their pace.`
+    ? `Everyone's into you is on, so ${name} is dateable. Everything is possible, at ${possessiveName(name)} pace.`
+    : `${name} could fall for you. Everything is possible, at ${possessiveName(name)} pace.`
 }
 
 const AGREEMENT_TITLES: Record<AgreementType, string> = {
@@ -272,3 +280,40 @@ export function ageLine(c: Pick<Character, 'age' | 'pronouns'>): string {
 export function stageName(affection: number): string {
   return stageLabel(stageFor(affection))
 }
+
+// ---------------------------------------------------------------------------
+// Rumors heard about them
+
+export interface RumorRow {
+  id: string
+  /** Who told you, by first name (their id when they aren't on this device). */
+  teller: string
+  tellerId: string
+  text: string
+  at: number
+}
+
+/**
+ * Rumors the player has heard that are about this character, newest first. Only rumors from the
+ * manifests on this device (a removed pack's rumors drop out).
+ */
+export function rumorsAbout(
+  characterId: string,
+  heard: readonly HeardRumor[] | undefined,
+  rumors: readonly Rumor[],
+  names: Readonly<Record<string, string>>,
+): RumorRow[] {
+  const out: RumorRow[] = []
+  const list = [...(heard ?? [])].sort((a, b) => (b.at ?? 0) - (a.at ?? 0))
+  for (const h of list) {
+    const r = rumors.find((x) => x.id === h.rumorId)
+    if (!r || !(r.about ?? []).includes(characterId) || out.some((o) => o.id === r.id)) continue
+    const tellerId = h.heardFrom || r.teller
+    const teller = (names[tellerId] ?? tellerId).trim().split(/\s+/)[0] || tellerId
+    out.push({ id: r.id, teller, tellerId, text: r.text.trim(), at: h.at ?? 0 })
+  }
+  return out
+}
+
+/** Said under the rumors, every time. */
+export const RUMOR_WARNING = 'Rumors can be wrong. Relay one wrong and trust drops; use it as leverage and it gets worse.'

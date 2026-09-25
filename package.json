@@ -16,6 +16,7 @@
     "e2e:phase1": "node scripts/e2e/phase1.mjs",
     "e2e:phase2": "node scripts/e2e/phase2.mjs",
     "e2e:phase3": "node scripts/e2e/phase3.mjs",
+    "e2e:phase4": "node scripts/e2e/phase4.mjs",
     "e2e:android": "node scripts/e2e/android.mjs",
     "cap:sync": "cap sync android"
   },

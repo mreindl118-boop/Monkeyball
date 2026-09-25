@@ -2,7 +2,20 @@
 // date revealed, and the outcome line. No React, no stores.
 
 import { stageIndex, stageLabel } from '../../engine/stages'
-import type { Character, DateRecap, DateRecord, DiscoveredTrait, Stage, TierNumber, TraitType } from '../../types'
+import type {
+  Agreement,
+  AgreementType,
+  BetrayalEvent,
+  Character,
+  DateRecap,
+  DateRecord,
+  DiscoveredTrait,
+  NewsItem,
+  Rumor,
+  Stage,
+  TierNumber,
+  TraitType,
+} from '../../types'
 
 export type CharacterRecap = DateRecap['perCharacter'][string]
 
@@ -186,4 +199,128 @@ export function recapFor(record: Pick<DateRecord, 'recap' | 'characterIds'> | nu
   if (!record?.recap) return undefined
   const id = characterId ?? record.characterIds?.[0]
   return id ? record.recap.perCharacter?.[id] : undefined
+}
+
+// ---------------------------------------------------------------------------
+// Relationships (Phase 4): the agreement made or changed, betrayals, gossip, rumors, rekindles
+
+const AGREEMENT_WORDS: Record<AgreementType, string> = {
+  none: 'no agreement',
+  exclusive: 'exclusive',
+  open: 'open',
+  poly: 'poly',
+  casual: 'casual',
+}
+
+/** "exclusive", "open", "poly", "casual" or "no agreement". */
+export function agreementWords(type: AgreementType | undefined): string {
+  return AGREEMENT_WORDS[type ?? 'none'] ?? String(type)
+}
+
+export interface AgreementChange {
+  /** "You went from no agreement to exclusive." */
+  line: string
+  /** Their terms, in their words ('' when none). */
+  terms: string
+  /** True when the date left them with an agreement. */
+  made: boolean
+}
+
+/** The agreement made or changed on this date, before and after in words (no arrows). */
+export function agreementChange(before: Agreement | undefined, after: Agreement | undefined, first: string): AgreementChange | null {
+  if (!after) return null
+  const b = before?.type ?? 'none'
+  const a = after.type ?? 'none'
+  const terms = a === 'none' ? '' : (after.terms ?? '').trim()
+  if (b === a) {
+    if (a === 'none') return null
+    return { line: `You and ${first} are still ${agreementWords(a)}, on new terms.`, terms, made: true }
+  }
+  if (a === 'none') return { line: `You went from ${agreementWords(b)} to no agreement.`, terms: '', made: false }
+  return { line: `You went from ${agreementWords(b)} to ${agreementWords(a)}.`, terms, made: true }
+}
+
+/** The betrayals' total hit on the meters (both negative, or 0). */
+export function betrayalHit(betrayals: readonly BetrayalEvent[] | undefined): { affection: number; trust: number } {
+  let affection = 0
+  let trust = 0
+  for (const b of betrayals ?? []) {
+    affection += Number.isFinite(b.affectionDelta) ? b.affectionDelta : 0
+    trust += Number.isFinite(b.trustDelta) ? b.trustDelta : 0
+  }
+  return { affection: Math.round(affection), trust: Math.round(trust) }
+}
+
+/** "Betrayal −12" for a meter's hit badge ('' when there's no hit). */
+export function hitBadge(delta: number): string {
+  const v = Math.round(delta)
+  return v < 0 ? `Betrayal −${Math.abs(v)}` : ''
+}
+
+/**
+ * What came out, as a sentence about them: the event's note with their name in front ("Nova heard
+ * about Kai from you after you agreed to be exclusive."), or a plain line when it has none.
+ */
+export function betrayalLine(b: BetrayalEvent, first: string, names: Readonly<Record<string, string>>): string {
+  const note = memoryQuote(b.note).replace(/[.!]+$/, '').trim()
+  if (note && !/^(i|we|you)\b/i.test(note)) {
+    const lead = /^[A-Z][a-z]/.test(note) ? note.charAt(0).toLowerCase() + note.slice(1) : note
+    return `${first} ${lead}.`
+  }
+  const about = b.about ? (names[b.about] ?? b.about).trim().split(/\s+/)[0] : ''
+  if (b.kind === 'lie' || !about) return `${first} caught you in a lie.`
+  return `${first} found out about ${about}, and it broke what you two agreed.`
+}
+
+/** The betrayal in their own voice (the memory line it left), without wrapping quote marks. */
+export function betrayalVoice(b: BetrayalEvent): string {
+  return memoryQuote(b.memory ?? '')
+}
+
+export interface HeardLine {
+  key: string
+  /** The teller's first name ('' when unknown). */
+  teller: string
+  text: string
+}
+
+/**
+ * Rumors this date passed on. The recap stores rumor ids (or, from older engines, the text): ids
+ * found in the manifests' rumors read as the teller tells them.
+ */
+export function rumorLines(
+  heard: readonly string[] | undefined,
+  rumors: readonly Rumor[],
+  names: Readonly<Record<string, string>>,
+): HeardLine[] {
+  const out: HeardLine[] = []
+  for (const h of heard ?? []) {
+    const r = rumors.find((x) => x.id === h)
+    const key = r ? r.id : h
+    if (!key || out.some((o) => o.key === key)) continue
+    if (r) out.push({ key, teller: (names[r.teller] ?? r.teller).trim().split(/\s+/)[0], text: r.text.trim() })
+    else if (h.trim()) out.push({ key, teller: '', text: h.trim() })
+  }
+  return out
+}
+
+/** Gossip lines, trimmed and each once. */
+export function gossipLines(gossip: readonly string[] | undefined): string[] {
+  const out: string[] = []
+  for (const g of gossip ?? []) {
+    const t = (g ?? '').trim()
+    if (t && !out.includes(t)) out.push(t)
+  }
+  return out
+}
+
+/** News a date produced (rekindles, word getting round): items dated from its start to its end. */
+export function dateNews(
+  record: Pick<DateRecord, 'startedAt' | 'endedAt'>,
+  news: readonly NewsItem[] | undefined,
+  kinds: readonly NewsItem['kind'][] = ['rekindle'],
+): NewsItem[] {
+  const from = record.startedAt ?? 0
+  const to = (record.endedAt ?? from) + 60_000
+  return (news ?? []).filter((n) => kinds.includes(n.kind) && n.at >= from && n.at <= to)
 }

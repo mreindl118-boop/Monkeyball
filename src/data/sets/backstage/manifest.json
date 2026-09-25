@@ -1,0 +1,257 @@
+{
+  "id": "backstage",
+  "name": "Backstage",
+  "blurb": "Velvet Static and their crew are stuck in the city for a month-long residency, six people on one corridor of a cheap hotel with paper-thin walls. Late nights, small rooms, and everyone in everyone's business.",
+  "author": "crushLAB",
+  "heat": 2,
+  "version": "1.0.0",
+  "setting": "Velvet Static are two weeks into a month-long residency at The Carousel Room, a mid-size club in an old ballroom with a sprung dance floor, a balcony that sways when the room jumps, and a sound desk in the middle of the crowd where Minh lives four nights a week. Doors at eight, Eli opens at nine, the band goes on at ten, and curfew is midnight, when the whole circus crosses the road to the Hotel Paloma: a cheap hotel whose neon sign has been missing its O for as long as anyone can remember, where band and crew have six rooms down one fourth-floor corridor with walls thin enough to hear a guitar being tuned two doors down. The ice machine is broken, the lift has opinions, the van lives in the loading bay behind the club, and the band's tab lives at The Low Tide, where they drink after every show until Nova's 1am set chases them home. Nobody has booked anything after the last night, and everyone has noticed. A month is a long time to stay put for people who live on the road, and it's starting to show.",
+  "characters": [
+    "rox",
+    "bash",
+    "minh",
+    "tamsin",
+    "grant",
+    "eli"
+  ],
+  "relationships": [
+    {
+      "a": "rox",
+      "b": "bash",
+      "kind": "ex",
+      "note": "Three years together until Rox opened things up and then couldn't stand it when Bash actually dated someone; it ended in the van in the rain, and the band survived it, mostly."
+    },
+    {
+      "a": "grant",
+      "b": "eli",
+      "kind": "situationship",
+      "note": "Something that started in the loading bay in the residency's first week and that nobody is supposed to know about: Grant wants more than he says, and Eli is poly and says so."
+    },
+    {
+      "a": "rox",
+      "b": "tamsin",
+      "kind": "situationship",
+      "note": "Three months of something Rox calls open and Tamsin, who is monogamous, has never quite said she agreed to."
+    },
+    {
+      "a": "rox",
+      "b": "minh",
+      "kind": "bandmate",
+      "note": "Minh has mixed Rox's voice for three tours and can hear things in it she'd rather nobody heard."
+    },
+    {
+      "a": "rox",
+      "b": "grant",
+      "kind": "bandmate",
+      "note": "Six years of Grant handling Rox's contracts, bad nights and tantrums, and lately a lot of long phone calls behind closed doors."
+    },
+    {
+      "a": "rox",
+      "b": "eli",
+      "kind": "rival",
+      "note": "Rox calls Eli 'the opener' to his face and is quietly rattled that his crowd has started turning up early."
+    },
+    {
+      "a": "bash",
+      "b": "minh",
+      "kind": "friend",
+      "note": "The band's night owls: they split the late drives, the snacks and the last word on every setlist."
+    },
+    {
+      "a": "bash",
+      "b": "tamsin",
+      "kind": "neighbor",
+      "note": "Next-door rooms on the Hotel Paloma's fourth floor, with a wall thin enough that they knock goodnight on it."
+    },
+    {
+      "a": "bash",
+      "b": "grant",
+      "kind": "bandmate",
+      "note": "Grant trusts Bash to keep the band calm and Bash trusts Grant to keep it paid; neither has asked the other what happens after this month."
+    },
+    {
+      "a": "bash",
+      "b": "eli",
+      "kind": "friend",
+      "note": "Bash adopted Eli on his first night, taught him the band's unwritten rules, and shares his soda water and his hotel ice bucket."
+    },
+    {
+      "a": "minh",
+      "b": "tamsin",
+      "kind": "friend",
+      "note": "The crew table: breakfast together every morning before the band is up, and a perfect, silent understanding about the band's chaos."
+    },
+    {
+      "a": "minh",
+      "b": "grant",
+      "kind": "bandmate",
+      "note": "The two professionals holding the whole circus together, with a standing debrief over bad hotel tea after every show."
+    },
+    {
+      "a": "minh",
+      "b": "eli",
+      "kind": "coworker",
+      "note": "Minh mixes Eli's set too, and gives him far better sound than openers usually get."
+    },
+    {
+      "a": "tamsin",
+      "b": "grant",
+      "kind": "coworker",
+      "note": "Grant signs off Tamsin's merch count every night and is the only one who has ever asked to see her photos."
+    },
+    {
+      "a": "tamsin",
+      "b": "eli",
+      "kind": "friend",
+      "note": "Tamsin shot Eli's first real press photos for free in the loading bay, and he's been trying to pay her back in songs ever since."
+    },
+    {
+      "a": "minh",
+      "b": "nova",
+      "kind": "friend",
+      "note": "After shows Minh ends up in The Low Tide's DJ booth with Nova, trading mixing tricks and arguing about compression until her 1am set."
+    },
+    {
+      "a": "eli",
+      "b": "jules",
+      "kind": "friend",
+      "note": "Jules cried at Eli's first set in the city and now lends him an empty room at Echo Box on off afternoons, for free."
+    },
+    {
+      "a": "grant",
+      "b": "kai",
+      "kind": "rival",
+      "note": "Grant settles Velvet Static's tab at The Low Tide every night and disputes every line of it; Kai has started itemizing the toasties out of spite."
+    }
+  ],
+  "rumors": [
+    {
+      "id": "rox-solo-deal",
+      "teller": "eli",
+      "about": [
+        "rox",
+        "grant"
+      ],
+      "text": "I heard Grant on the stairwell phone saying 'she's the product, not the band.' Somebody in Velvet Static is getting a solo deal, and I don't think it's the drummer.",
+      "truth": "true",
+      "actually": "A label has offered Rox a solo deal without Velvet Static, set up quietly by Grant. She hasn't said yes, and she hasn't told the band."
+    },
+    {
+      "id": "bash-drum-offer",
+      "teller": "grant",
+      "about": [
+        "bash"
+      ],
+      "text": "An arena act's tour manager asked me for Bash's number last week. I gave it to him. I run a band, not a prison.",
+      "truth": "true",
+      "actually": "That arena act has offered Bash their drum chair for next year's world tour. He hasn't answered or told anyone, because he's sure Velvet Static would fold without him."
+    },
+    {
+      "id": "bash-van-nights",
+      "teller": "tamsin",
+      "about": [
+        "bash"
+      ],
+      "text": "Bash hasn't slept in his own bed all week. I hear his door go at midnight and then nothing. He's met someone in town, and he's being very un-Bash about it.",
+      "truth": "false",
+      "actually": "There's nobody in town. Bash has been sleeping in the van so he can take late calls about the arena drum job where nobody on the corridor can hear him."
+    },
+    {
+      "id": "goodbye-tour",
+      "teller": "bash",
+      "about": [
+        "grant",
+        "rox"
+      ],
+      "text": "Nothing's booked after the last night. Nothing. Grant always has the next run booked by now. This is the goodbye tour, and they're letting me find out last.",
+      "truth": "exaggerated",
+      "actually": "Nobody has decided to end the band. Grant stopped booking dates because he's planning to leave touring, and Rox and Bash each have an offer to leave that the other doesn't know about."
+    },
+    {
+      "id": "eli-next-door",
+      "teller": "bash",
+      "about": [
+        "grant",
+        "eli"
+      ],
+      "text": "Grant had the hotel move Eli into the room next to his in week one. 'Noise complaint,' he said. Eli is the quietest guy on the floor. Do the maths.",
+      "truth": "true",
+      "actually": "Grant and Eli have been seeing each other since the residency's first week and keeping it quiet, and it was Eli who asked for the secret."
+    },
+    {
+      "id": "grant-hiding-someone",
+      "teller": "rox",
+      "about": [
+        "grant"
+      ],
+      "text": "Grant's sneaking around with somebody. Six years and he's never once brought a man on tour, so if he's hiding one now, he's embarrassed of him.",
+      "truth": "false",
+      "actually": "Grant is seeing Eli and isn't embarrassed of him at all. Eli asked to keep it quiet so nobody would think he got his support slot through the tour manager."
+    },
+    {
+      "id": "rox-diva-era",
+      "teller": "grant",
+      "about": [
+        "rox"
+      ],
+      "text": "Rox has skipped soundcheck four days running and cancelled a radio interview. The diva era has officially begun, and I'm the one who has to apologize for it.",
+      "truth": "false",
+      "actually": "Rox isn't being a diva. She has nodules on her vocal cords, a doctor ordered three months of rest, and she's saving every note for the show; only Minh knows."
+    },
+    {
+      "id": "opening-night-walls",
+      "teller": "minh",
+      "about": [
+        "rox",
+        "bash"
+      ],
+      "text": "The walls at the Paloma are paper. On opening night Rox wasn't in her own room, and she wasn't in Tamsin's. I'm only telling you so you don't walk into it blind.",
+      "truth": "true",
+      "actually": "Rox spent the residency's opening night in Bash's room after a terrible soundcheck. They agreed it meant nothing and aren't back together, and Tamsin saw her leave at five in the morning."
+    },
+    {
+      "id": "residency-extension",
+      "teller": "minh",
+      "about": [
+        "grant"
+      ],
+      "text": "The club's booker asked me if the band would stay another month. Before I could open my mouth, Grant said no. He didn't ask anyone.",
+      "truth": "true",
+      "actually": "The Carousel Room did offer to extend the residency, and Grant turned it down without telling the band, because he doesn't plan to be touring by then."
+    },
+    {
+      "id": "tamsin-magazine-job",
+      "teller": "eli",
+      "about": [
+        "tamsin"
+      ],
+      "text": "Tamsin's taking a magazine job back home. She'll be gone before the van's even unpacked, and Rox has no idea.",
+      "truth": "exaggerated",
+      "actually": "A magazine has offered Tamsin a staff photographer job, but she hasn't said yes: she's waiting to see whether Rox asks her to stay on the road."
+    },
+    {
+      "id": "minh-bootlegs",
+      "teller": "tamsin",
+      "about": [
+        "minh"
+      ],
+      "text": "Minh's been recording every show off the desk. Live records sell. I'd just like to know who's getting the cheque.",
+      "truth": "exaggerated",
+      "actually": "Minh is multitracking every show, but nobody is selling anything: they're keeping it because they're sure this is the band's last month, and someone should."
+    },
+    {
+      "id": "minh-bash-married",
+      "teller": "rox",
+      "about": [
+        "minh",
+        "bash"
+      ],
+      "text": "Minh and Bash are basically married. They split the drives, the snacks, the hotel kettle. Somebody should tell Bash.",
+      "truth": "exaggerated",
+      "actually": "They aren't together. Minh has been in love with Bash for three tours, romantically, and has never said so, and Bash hasn't noticed."
+    }
+  ],
+  "knows": [
+    "afterhours"
+  ]
+}

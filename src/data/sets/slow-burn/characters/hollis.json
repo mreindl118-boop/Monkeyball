@@ -1,0 +1,166 @@
+{
+  "id": "hollis",
+  "name": "Hollis Grey",
+  "age": 42,
+  "gender": "man",
+  "pronouns": "he/him",
+  "attractedTo": [
+    "man"
+  ],
+  "orientation": "gay",
+  "relationshipStyle": "monogamous",
+  "jealousy": "medium",
+  "aceSpectrum": {
+    "label": "Demisexual",
+    "heatUnlockTrust": 70
+  },
+  "bodyNotes": "Heavy-set and strong, a broad back and thick forearms from planing oak, a solid belly he isn't bothered about, scarred knuckles and a silvering chest; demisexual, so desire arrives slowly and only with someone he knows well, and when it does he is unhurried and very sure",
+  "partners": [
+    {
+      "characterId": "cyrus",
+      "relation": "ex"
+    }
+  ],
+  "occupation": "Boatbuilder; runs Grey's Boatyard, the last wooden-boat yard on Gullhaven harbor",
+  "difficulty": "hard",
+  "accent": "#C58D67",
+  "look": "Built like a bollard, dark brown skin, close-cropped hair and a short beard both going salt-and-pepper, reading glasses pushed up on his head, a flannel shirt with the sleeves rolled over thick forearms, a canvas work apron, a carpenter's pencil behind one ear, and cedar shavings caught in his beard",
+  "artTags": "adult man, 42 years old, big broad build, dark brown skin, close-cropped greying hair, short salt-and-pepper beard, deep-set brown eyes, reading glasses pushed up on head, flannel shirt with rolled sleeves, thick forearms, canvas work apron, carpenter's pencil behind ear",
+  "personality": "Gruff, patient and deeply kind, a man who measures twice, says half of what he thinks and means every word of it",
+  "voice": "Low and slow with long pauses, answers personal questions with something about wood or weather, dry one-liners you catch a beat late; starts calling the player 'love', gruffly, as if it slipped out",
+  "backstory": "Fifth generation of Grey boatbuilders; his great-great-grandfather is the bronze captain on the boardwalk, and Hollis crosses the road to avoid him. He took over the yard at 30, builds two wooden boats a year by hand and does every refit in the harbor, including the Kittiwake's, with Maren bringing him coffee on the slipway most mornings. He's demisexual, which he didn't have a word for until his thirties: attraction only arrives once he really knows someone. He and Cyrus were together for two years a long time ago; it ended when Cyrus left for the city, and since Cyrus came home to run the baths they have been carefully, painfully polite.",
+  "opener": "Sorry, I was looking at your hands. Occupational habit: I can always tell who's built something. Hello.",
+  "likes": [
+    {
+      "id": "honest-work",
+      "label": "Honest work done well, whatever the work is"
+    },
+    {
+      "id": "cedar-shavings",
+      "label": "The smell of cut cedar and linseed oil"
+    },
+    {
+      "id": "shed-jazz",
+      "label": "Old jazz records crackling in the shed while he works"
+    },
+    {
+      "id": "on-the-stocks",
+      "label": "Questions about whatever boat is on the stocks"
+    },
+    {
+      "id": "same-stool",
+      "label": "Six o'clock breakfast at The Tidewater, same stool for twenty years"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "fiberglass",
+      "label": "Fiberglass boats, and people who call wood 'high maintenance'"
+    },
+    {
+      "id": "bronze-captain",
+      "label": "The bronze captain on the boardwalk, and being asked about him"
+    },
+    {
+      "id": "mid-measure",
+      "label": "Chatter while he's measuring"
+    },
+    {
+      "id": "sell-the-yard",
+      "label": "Talk of selling the waterfront to mainland developers"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "shared-plank",
+      "label": "Working on something together, side by side, without needing to talk"
+    },
+    {
+      "id": "comes-back",
+      "label": "Someone who keeps coming back, same time next week"
+    },
+    {
+      "id": "his-own-time",
+      "label": "Being told to take his time, and meaning it"
+    },
+    {
+      "id": "scar-stories",
+      "label": "Trading the stories behind your scars"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "slow-lock",
+      "label": "Treating his pace like a lock to pick"
+    },
+    {
+      "id": "public-spectacle",
+      "label": "Big romantic gestures with an audience"
+    },
+    {
+      "id": "cyrus-digging",
+      "label": "Digging for gossip about him and Cyrus"
+    },
+    {
+      "id": "tool-borrow",
+      "label": "Using his tools without asking"
+    }
+  ],
+  "favoriteVenues": [
+    "art-museum",
+    "record-store",
+    "bookstore-cafe"
+  ],
+  "hatedVenues": [
+    "amusement-park"
+  ],
+  "lovedGifts": [
+    "rare-vinyl",
+    "red-wine"
+  ],
+  "hatedGifts": [
+    "silver-necklace"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "The ferry authority asked him to quote for breaking up the Kittiwake in the spring. He hasn't told Maren he knows, and he's been drawing plans at night for a smaller boat the town could own and run itself, with Maren at the wheel."
+    },
+    {
+      "unlockAt": 80,
+      "text": "The dinghy under a tarp in the back shed isn't a commission. He started it the winter Cyrus left, has added one plank every winter since, and has never let anyone see it."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Measure twice",
+      "scene": "Hollis in the boatyard shed with a carpenter's pencil behind his ear, looking up from a half-built hull as you come in out of the rain"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Cedar curls",
+      "scene": "Side by side at his workbench, Hollis's big hands steadying yours on the plane as the first long curl of cedar comes away"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Sea trial",
+      "scene": "A small wooden boat on a flat grey bay at first light, Hollis at the tiller with his free arm around you under a shared oilskin"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Lamp in the loft",
+      "scene": "Lamplight in the loft above the yard with a storm on the roof, Hollis's shirt open and his reading glasses set aside, drawing you down beside him like a man who is finally sure"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Launch day",
+      "scene": "Launch day for the dinghy from the back shed, the whole harbor watching from the quay, and the name freshly painted on her stern is yours"
+    }
+  ]
+}

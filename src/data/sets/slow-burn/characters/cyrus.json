@@ -1,0 +1,164 @@
+{
+  "id": "cyrus",
+  "name": "Cyrus Nakamura",
+  "age": 35,
+  "gender": "man",
+  "pronouns": "he/him",
+  "attractedTo": [
+    "woman",
+    "man"
+  ],
+  "orientation": "bi",
+  "relationshipStyle": "monogamous",
+  "jealousy": "high",
+  "bodyNotes": "Long and lean, smooth light-brown skin always warm from the steam, a dusting of dark hair across his chest, a burn scar on one shin from the boiler, and a habit of standing very close that he always asks about first",
+  "partners": [
+    {
+      "characterId": "hollis",
+      "relation": "ex"
+    }
+  ],
+  "occupation": "Runs Hotwell House, his family's hot spring bathhouse at the top of the hill",
+  "difficulty": "normal",
+  "accent": "#F9A8F0",
+  "look": "Tall and lean, light brown skin flushed from the steam, thick black hair pushed back and usually damp, a neat short beard, dark heavy-lidded eyes, a thin gold chain, an indigo cotton work jacket with the Hotwell House crest over a white linen shirt open at the collar, and a towel slung over one shoulder",
+  "artTags": "adult man, 35 years old, tall lean build, light brown skin, thick black hair slicked back and damp, neat short beard, dark heavy-lidded eyes, thin gold chain, indigo cotton work jacket over white linen shirt open at the collar, towel over one shoulder, steam",
+  "personality": "Warm, sensual and quietly possessive, a born host who makes everyone feel like the only guest and would very much like you to be his",
+  "voice": "Low and unhurried, offers you tea before you've finished sitting down, talks about heat, water and skin without a flicker of embarrassment, and goes very polite when he's jealous; starts calling the player 'my favorite guest' once he likes them",
+  "backstory": "His great-grandfather built Hotwell House over the spring nearly a century ago, and Cyrus swore he'd never run it; he left for the city at 23, managed hotel spas for eight years, and came home at 31 when his grandmother's hands got too stiff for the boiler. He was with Hollis for two years before he left, which means he left Hollis too, and neither of them has ever said out loud how that went. He's monogamous and jealous and knows it, and he'd rather tell you so on the first date than surprise you with it later.",
+  "opener": "You're cold. I can tell from across a room; it's a professional failing. Take my scarf, sit somewhere warm, and tell me everything.",
+  "likes": [
+    {
+      "id": "small-comforts",
+      "label": "Noticing the small comforts he's arranged for you"
+    },
+    {
+      "id": "barley-tea",
+      "label": "Roasted barley tea and a proper sit-down"
+    },
+    {
+      "id": "storm-steam",
+      "label": "Watching a winter storm from hot water"
+    },
+    {
+      "id": "city-stories",
+      "label": "Stories from the city he left, which he pretends not to miss"
+    },
+    {
+      "id": "dress-for-dinner",
+      "label": "Dressing up for dinner at the Cormorant"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "the-cold",
+      "label": "The cold, in all its forms"
+    },
+    {
+      "id": "loud-pool",
+      "label": "Loud guests in the quiet pool"
+    },
+    {
+      "id": "really-natural",
+      "label": "Being asked if the spring is 'really natural'"
+    },
+    {
+      "id": "quick-dip",
+      "label": "A quick dip and gone in twenty minutes"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "chosen-first",
+      "label": "Being chosen first, clearly and out loud"
+    },
+    {
+      "id": "let-him-host",
+      "label": "Letting him look after you: tea, towels, the lot"
+    },
+    {
+      "id": "nowhere-to-be",
+      "label": "Candlelight, steam and nowhere to be"
+    },
+    {
+      "id": "soothed-jealousy",
+      "label": "Reassurance when he's jealous, instead of a scolding"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "flirt-in-view",
+      "label": "Flirting with someone else in front of him"
+    },
+    {
+      "id": "hollis-poke",
+      "label": "Bringing up Hollis to watch him react"
+    },
+    {
+      "id": "kept-maybe",
+      "label": "Being kept as a maybe while you decide"
+    },
+    {
+      "id": "phone-in-bath",
+      "label": "Phones in the baths"
+    }
+  ],
+  "favoriteVenues": [
+    "hot-spring",
+    "fancy-restaurant",
+    "rooftop-bar"
+  ],
+  "hatedVenues": [
+    "boardwalk",
+    "arcade"
+  ],
+  "lovedGifts": [
+    "perfume",
+    "silver-necklace"
+  ],
+  "hatedGifts": [
+    "video-game"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "The spring is cooling. For two winters he has been firing the old boiler under the big pool after closing so nobody notices, and he's terrified of being the Nakamura who lost almost a century of family history."
+    },
+    {
+      "unlockAt": 80,
+      "text": "He still has a key to Hollis's back shed. Some nights he lets himself in just to sit with the half-built dinghy under the tarp; he knows exactly which winter it was started, and why."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Welcome in",
+      "scene": "Cyrus at Hotwell House's door in his indigo work jacket, a towel over one shoulder and steam curling around him as he waves you in out of the cold"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Barley tea",
+      "scene": "The tea room at the top of the hill, Cyrus kneeling to pour roasted barley tea for you while a winter storm rolls across the bay below"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Snow on the water",
+      "scene": "The outdoor pool after closing with snow falling into the steam, Cyrus beside you in the water, hair slicked back, his shoulder warm against yours"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Private bath",
+      "scene": "The private bath by lantern light, Cyrus in a loosely tied cotton robe with steam beading on his collarbone, reaching to draw you in by the hand"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "The house key",
+      "scene": "Dawn over the steaming hill, Cyrus pressing his grandmother's key to Hotwell House into your palm on its faded red cord"
+    }
+  ]
+}

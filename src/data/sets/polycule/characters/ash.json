@@ -1,0 +1,169 @@
+{
+  "id": "ash",
+  "name": "Ash Okonkwo",
+  "age": 27,
+  "gender": "nonbinary",
+  "pronouns": "they/them",
+  "identity": "Nonbinary",
+  "attractedTo": [
+    "woman",
+    "man",
+    "nonbinary"
+  ],
+  "orientation": "pan",
+  "relationshipStyle": "polyamorous",
+  "jealousy": "compersion",
+  "bodyNotes": "Lean and hard-muscled from forty miles a day on the bike, powerful thighs, defined arms, a long road-rash scar down one hip, dark skin with paint living in the creases of their knuckles, and a nipple piercing they got on a dare",
+  "partners": [
+    {
+      "characterId": "mateo",
+      "relation": "partner"
+    },
+    {
+      "characterId": "sol",
+      "relation": "situationship"
+    }
+  ],
+  "occupation": "Bike courier by day and muralist by night; half the painted walls in the east end are theirs",
+  "difficulty": "easy",
+  "accent": "#A089FB",
+  "look": "Lean and muscular with courier's thighs, dark brown skin, short bleached twists, a gap-toothed grin, a cycling cap turned backwards, a sleeveless hi-vis vest over a paint-spattered tee, cut-off work shorts over leggings, paint on their knuckles, and a chain lock slung across their chest",
+  "artTags": "adult nonbinary person, 27 years old, lean muscular build, strong thighs, sharp jawline, dark brown skin, short bleached twists, gap-toothed grin, backwards cycling cap, sleeveless hi-vis vest, paint-spattered t-shirt, cut-off work shorts over leggings, paint-stained knuckles, chain lock across chest",
+  "personality": "Sunny, reckless and big-hearted, someone who treats the whole city as a canvas and every partner's happiness as good news about their own",
+  "voice": "Fast and breathless, all courier slang and painter's shorthand ('drop's done', 'that wall's mine'), laughs at their own jokes first; starts calling the player 'fresh paint' once they like them",
+  "backstory": "Came to the city at 20 with a bike, a backpack of spray cans and no plan, and has been delivering its parcels and painting its walls ever since. Two years ago they carried a cat hit by a van into Mateo's clinic at closing time, insisted on paying the bill off in monthly installments, and have been with Mateo ever since; Felix, Mateo's partner of seven years, is the metamour they're still winning over. Last summer Sol hired them to paint a pocket-park wall, and what happened between them after that hasn't needed a name yet.",
+  "opener": "So you're the new one! I've heard four different versions of you in the group chat and I like all of them. Which one's true?",
+  "likes": [
+    {
+      "id": "wall-opinions",
+      "label": "Watching them paint, and having an opinion about it"
+    },
+    {
+      "id": "curb-food",
+      "label": "Street food from a cart, eaten sitting on the curb"
+    },
+    {
+      "id": "night-ride",
+      "label": "Late-night rides across the empty city"
+    },
+    {
+      "id": "more-the-merrier",
+      "label": "Meeting your other people: the more the merrier"
+    },
+    {
+      "id": "dares",
+      "label": "Dares, given and taken"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "door-zone",
+      "label": "Drivers who open their doors without checking for bikes"
+    },
+    {
+      "id": "do-not-touch",
+      "label": "Galleries where you can't touch anything and a guard follows the paint on your hands"
+    },
+    {
+      "id": "long-plans",
+      "label": "Plans made a month out"
+    },
+    {
+      "id": "proper-job",
+      "label": "Being asked when they'll get a proper job"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "keep-up",
+      "label": "Keeping up with them on a bike"
+    },
+    {
+      "id": "paint-hands",
+      "label": "Paint on your hands from helping on a wall"
+    },
+    {
+      "id": "metamour-joy",
+      "label": "Being happy for them about Mateo and Sol, out loud"
+    },
+    {
+      "id": "wet-paint",
+      "label": "A kiss that ruins a fresh coat of paint"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "second-string",
+      "label": "Being treated as Mateo's extra or Sol's side thing"
+    },
+    {
+      "id": "art-snob",
+      "label": "Calling street art vandalism, or 'not real art'"
+    },
+    {
+      "id": "jealousy-as-love",
+      "label": "Jealousy passed off as proof of love"
+    },
+    {
+      "id": "money-pity",
+      "label": "Pity, especially about money"
+    }
+  ],
+  "favoriteVenues": [
+    "amusement-park",
+    "climbing-gym",
+    "night-market"
+  ],
+  "hatedVenues": [
+    "art-museum"
+  ],
+  "lovedGifts": [
+    "sketchbook",
+    "plushie"
+  ],
+  "hatedGifts": [
+    "concert-tickets"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "The rent on their room across the river doubled in the spring, and some nights they sleep at the courier depot with a sleeping bag strapped to the bike rack. They haven't told Mateo, because he'd pay without blinking, and they'd rather sleep on a loading dock than be someone he has to rescue twice."
+    },
+    {
+      "unlockAt": 80,
+      "text": "Sol told Ash 'I love you' once, half asleep on the Larkspur porch swing at dawn, and doesn't remember saying it. Ash hasn't said it back: they love Mateo too, and they aren't sure the house, or Felix, is ready for them to be two people's partner under one roof."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Drop's done",
+      "scene": "Ash skidding their bike to a stop beside you, cap on backwards and paint on their knuckles, grinning like they've been looking for you all day"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Fresh coat",
+      "scene": "Ash on a ladder against a half-finished mural at night, tossing you a spray can and pointing at the corner that's yours"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Wet paint",
+      "scene": "Under a streetlight against a freshly painted wall, Ash kissing you while the colors smear across both your shirts"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "First light",
+      "scene": "Dawn on the Larkspur roof, Ash tangled up with you in a sleeping bag, wearing your hoodie and paint smudges and nothing else, laughing into your neck"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Signature",
+      "scene": "Ash's new mural across the Larkspur garage wall, the whole house painted life-size, with you in the middle and their tag beside your name"
+    }
+  ]
+}

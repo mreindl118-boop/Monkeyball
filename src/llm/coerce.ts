@@ -74,14 +74,58 @@ export function coerceJudge(raw: unknown): JudgeResult | null {
   }
 }
 
-function normalizeAgreementType(v: unknown): AgreementType | null {
-  const t = text(v).toLowerCase()
-  if (t === 'exclusive' || t === 'monogamous') return 'exclusive'
-  if (t === 'open') return 'open'
-  if (t === 'poly' || t === 'polyamorous') return 'poly'
-  if (t === 'casual') return 'casual'
-  if (t === 'none' || t === '') return 'none'
-  return null
+const AGREEMENT_WORDS: Readonly<Record<string, AgreementType>> = {
+  exclusive: 'exclusive',
+  monogamous: 'exclusive',
+  monogamy: 'exclusive',
+  mono: 'exclusive',
+  exclusivity: 'exclusive',
+  'exclusive relationship': 'exclusive',
+  'just us': 'exclusive',
+  'only us': 'exclusive',
+  open: 'open',
+  'open relationship': 'open',
+  'non-monogamous': 'open',
+  'non monogamous': 'open',
+  enm: 'open',
+  poly: 'poly',
+  polyamorous: 'poly',
+  polyamory: 'poly',
+  polycule: 'poly',
+  casual: 'casual',
+  'keep it casual': 'casual',
+  'casual dating': 'casual',
+  'no labels': 'casual',
+  'friends with benefits': 'casual',
+  none: 'none',
+  'no agreement': 'none',
+  nothing: 'none',
+  declined: 'none',
+  undecided: 'none',
+  '': 'none',
+}
+
+/**
+ * The agreement word, tolerant of synonyms ("monogamous", "polyamory", "open relationship", "keep
+ * it casual"), case, quotes and trailing punctuation. The template's own "exclusive|open|..." echoed
+ * back, or an unknown word, is null.
+ */
+export function normalizeAgreementType(v: unknown): AgreementType | null {
+  const t = text(v)
+    .toLowerCase()
+    .replace(/^["'“]+|["'”.!]+$/g, '')
+    .replace(/[_\s]+/g, ' ')
+    .trim()
+  if (t.includes('|')) return null
+  return Object.hasOwn(AGREEMENT_WORDS, t) ? AGREEMENT_WORDS[t] : null
+}
+
+/** accepted: true/"true"/"yes"/"accepted"/"agreed", or a status of accepted or countered. */
+function acceptedFlag(o: Record<string, unknown>): boolean {
+  const a = o.accepted
+  if (typeof a === 'boolean') return a
+  const word = text(a ?? o.status ?? o.outcome).toLowerCase()
+  return ['true', 'yes', 'accepted', 'accept', 'agreed', 'agree', 'countered', 'counter'].includes(word)
 }
 
 /** The fallback agreement result: declined, nothing changes. */
@@ -89,16 +133,22 @@ export function noAgreementResult(): AgreementResult {
   return { agreement: 'none', accepted: false, terms: '', trustDelta: 0 }
 }
 
-/** Agreement JSON -> AgreementResult. trustDelta is clamped to -5..5. */
+/**
+ * Agreement JSON -> AgreementResult. The agreement word is read tolerantly (normalizeAgreementType;
+ * `type` is accepted for `agreement`); accepted also reads "yes" and a status of accepted or
+ * countered, and is never true for 'none'. Terms are one line, at most 300 characters. trustDelta
+ * is clamped to -5..5.
+ */
 export function coerceAgreement(raw: unknown): AgreementResult | null {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
   const o = raw as Record<string, unknown>
-  const agreement = normalizeAgreementType(o.agreement)
+  const agreement = normalizeAgreementType(o.agreement ?? o.type)
   if (agreement === null) return null
+  const terms = text(o.terms).replace(/\s+/g, ' ')
   return {
     agreement,
-    accepted: bool(o.accepted) && agreement !== 'none',
-    terms: text(o.terms),
+    accepted: acceptedFlag(o) && agreement !== 'none',
+    terms: terms.length > 300 ? `${terms.slice(0, 299).trimEnd()}…` : terms,
     trustDelta: Math.round(clamp(num(o.trustDelta ?? o.trust_delta) ?? 0, -5, 5)),
   }
 }

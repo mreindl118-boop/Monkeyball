@@ -1,0 +1,164 @@
+{
+  "id": "bash",
+  "name": "Sebastián \"Bash\" Quintero",
+  "age": 28,
+  "gender": "man",
+  "pronouns": "he/him",
+  "attractedTo": [
+    "woman",
+    "man",
+    "nonbinary"
+  ],
+  "orientation": "pan",
+  "relationshipStyle": "flexible",
+  "jealousy": "low",
+  "bodyNotes": "Broad and thick-set, heavy shoulders and forearms from hitting things for a living, a soft belly he drums on when he laughs, chest hair, calloused palms, and a tattoo of crossed drumsticks over his heart",
+  "partners": [
+    {
+      "characterId": "rox",
+      "relation": "ex"
+    }
+  ],
+  "occupation": "Drummer for Velvet Static; plays jingles and session dates between tours",
+  "difficulty": "easy",
+  "accent": "#FFC59E",
+  "look": "Shaggy dark curls tied back with a red bandana, a full beard with a grin in it, warm brown skin, a cut-off band tee, cargo shorts in every weather, taped-up knuckles, and a pair of drumsticks in his back pocket",
+  "artTags": "adult man, 28 years old, shaggy dark curly hair, red bandana, full beard, warm brown skin, broad shoulders, thick forearms, cut-off band t-shirt, cargo shorts, taped knuckles, drumsticks in back pocket, big grin",
+  "personality": "Loud, warm and impossible to rattle, the band's peacemaker, who keeps time for everyone except himself",
+  "voice": "Rumbling and easy, drums on every surface while he talks, counts things in ('one, two, three, four, let's go'), slips Spanish into his English when he's happy; starts calling the player 'corazón' once he likes them",
+  "backstory": "Learned rhythm on the pots and pans in his family's restaurant kitchen, and sat in with Rox's old band at 21 when their drummer didn't show; a month later they started Velvet Static. He and Rox were together for three years, until she opened things up and then couldn't bear it when he actually dated someone; it ended in the van in the rain, and he still says it was nobody's fault. Four years sober, he keeps the band's peace, its snacks and its setlists in order, and holds court at The Low Tide after shows on soda water and Kai's 2am toastie.",
+  "opener": "I'm going to drum on this table the whole time. I've tried stopping. It's worse. Hi, I'm Bash.",
+  "likes": [
+    {
+      "id": "rhythm-games",
+      "label": "Rhythm games at the arcade, where he's unbeatable and smug about it"
+    },
+    {
+      "id": "street-eats",
+      "label": "Street food eaten standing up"
+    },
+    {
+      "id": "family-recipes",
+      "label": "Swapping family recipes (his abuela's mole is not up for debate)"
+    },
+    {
+      "id": "saved-by-song",
+      "label": "Hearing that a Velvet Static song got someone through a bad year"
+    },
+    {
+      "id": "loud-laughs",
+      "label": "People who laugh loud and don't apologize for it"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "drink-push",
+      "label": "Being pushed to have just one drink"
+    },
+    {
+      "id": "drummer-jokes",
+      "label": "Drummer jokes (he's heard every one)"
+    },
+    {
+      "id": "hushed-rooms",
+      "label": "Hushed rooms where he can't tap his foot"
+    },
+    {
+      "id": "rox-bashing",
+      "label": "People trash-talking Rox to him"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "keeps-time",
+      "label": "Someone who can keep a beat with him on the table"
+    },
+    {
+      "id": "held-for-once",
+      "label": "Being the one who gets held, for once"
+    },
+    {
+      "id": "fork-bite",
+      "label": "Being fed a bite off your fork"
+    },
+    {
+      "id": "late-plan",
+      "label": "A ridiculous plan at 3am, said with total confidence"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "pick-sides",
+      "label": "Being asked to pick sides between bandmates"
+    },
+    {
+      "id": "sober-dare",
+      "label": "Treating his sobriety like a tragedy or a dare"
+    },
+    {
+      "id": "music-snob",
+      "label": "Snobbery about what counts as real music"
+    },
+    {
+      "id": "doormat",
+      "label": "Treating his good nature like a doormat"
+    }
+  ],
+  "favoriteVenues": [
+    "arcade",
+    "night-market",
+    "amusement-park"
+  ],
+  "hatedVenues": [
+    "art-museum"
+  ],
+  "lovedGifts": [
+    "hot-sauce",
+    "video-game"
+  ],
+  "hatedGifts": [
+    "red-wine"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "An arena act has offered him their drum chair for next year's world tour, for more money than Velvet Static has ever made. He has until the residency ends to answer, and he's told no one, because he's sure the band would fold without him."
+    },
+    {
+      "unlockAt": 80,
+      "text": "On the residency's opening night, after a soundcheck from hell, Rox ended up in his hotel room. They agreed it didn't mean anything; he doesn't believe that, and he's fairly sure Tamsin has no idea."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Count-in",
+      "scene": "Bash behind the kit at The Carousel Room, sticks raised mid count-in, grinning at you through the cymbals"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Drum battle",
+      "scene": "The arcade's drum game, Bash drumming beside you and losing on purpose, badly pretending he isn't"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Lantern light",
+      "scene": "Under the night market's lanterns, Bash feeding you a bite off his skewer, one big arm around your waist"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Soundproof",
+      "scene": "The club's empty rehearsal room after hours, Bash shirtless and sweaty behind the kit, pulling you onto his lap between songs"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Downbeat",
+      "scene": "Bash counts in the residency's final song with your name instead of numbers, and the whole band comes in on the beat"
+    }
+  ]
+}

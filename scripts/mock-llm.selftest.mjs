@@ -195,12 +195,35 @@ await check('judge streams too when asked', async () => {
   assert.equal(JSON.parse(text).delta, 3)
 })
 
-await check('agreement accepts the requested agreement', async () => {
-  const sys = `The player and Nova Castellanos just talked about what they are to each other. The player asked for: exclusive (only each other). Nova Castellanos is open with low jealousy, trusts the player 40/100, and has these partners: none.\n\nConversation:\nPlayer: hi\n\nReply with JSON only:`
-  const a = JSON.parse(await complete(base, [{ role: 'system', content: sys }, { role: 'user', content: 'Settle the agreement.' }]))
-  assert.equal(a.agreement, 'exclusive')
-  assert.equal(a.accepted, true)
-  assert.equal(typeof a.terms, 'string')
+const agreementSystem = (asked, talk, style = 'open') =>
+  `The player and Nova Castellanos just talked about what they are to each other. The player asked for: ${asked}. Nova Castellanos is ${style} with low jealousy, trusts the player 40/100, and has these partners: none.\n\nConversation:\n${talk}\n\nReply with JSON only:\n{"agreement": "exclusive|open|poly|casual|none", "accepted": true, "terms": "one sentence in Nova Castellanos's words", "trustDelta": 0}`
+const settle = async (sys) => JSON.parse(await complete(base, [{ role: 'system', content: sys }, { role: 'user', content: 'Settle the agreement.' }]))
+
+await check('agreement accepts the requested agreement, by type', async () => {
+  for (const [asked, type] of [
+    ['exclusive (only each other)', 'exclusive'],
+    ['an open relationship', 'open'],
+    ['poly (partners known to each other)', 'poly'],
+    ['keeping it casual', 'casual'],
+  ]) {
+    const a = await settle(agreementSystem(asked, 'Player: hi'))
+    assert.equal(a.agreement, type)
+    assert.equal(a.accepted, true)
+    assert.match(a.terms, /^Nova says: /)
+    assert.equal(a.trustDelta, 2)
+  }
+})
+
+await check('agreement: [decline], [counter] and [silent] in the talk', async () => {
+  const no = await settle(agreementSystem('exclusive (only each other)', 'Player: [decline] be mine'))
+  assert.equal(no.accepted, false)
+  assert.equal(no.trustDelta, -2)
+  const counter = await settle(agreementSystem('exclusive (only each other)', 'Player: [counter] be mine', 'open'))
+  assert.deepEqual([counter.agreement, counter.accepted], ['open', true])
+  const mono = await settle(agreementSystem('keeping it casual', 'Player: [counter] whatever', 'monogamous'))
+  assert.equal(mono.agreement, 'exclusive')
+  const silent = await settle(agreementSystem('poly (partners known)', 'Player: [silent] ...'))
+  assert.deepEqual([silent.agreement, silent.accepted, silent.terms], ['none', false, ''])
 })
 
 await check('suggestions use romantic keys', async () => {

@@ -1,0 +1,165 @@
+{
+  "id": "maren",
+  "name": "Maren Olsen",
+  "age": 37,
+  "gender": "woman",
+  "pronouns": "she/her",
+  "attractedTo": [
+    "woman"
+  ],
+  "orientation": "lesbian",
+  "relationshipStyle": "monogamous",
+  "jealousy": "low",
+  "aceSpectrum": {
+    "label": "Asexual",
+    "heatCap": 2
+  },
+  "bodyNotes": "Tall and broad through the shoulders, strong forearms and rope-callused palms, windburned cheeks, and a pale band on one wrist where her watch strap sits; she's asexual, loves holding and being held, and is plain about what she does and doesn't want",
+  "partners": [
+    {
+      "characterId": "ines",
+      "relation": "ex"
+    }
+  ],
+  "occupation": "Captain of the Kittiwake, the Gullhaven ferry that crosses the bay to the mainland four times a day in winter",
+  "difficulty": "hard",
+  "accent": "#A6B5C4",
+  "look": "Tall and weathered, ash-blonde hair in a thick plait under a navy watch cap, grey eyes with deep crow's feet from squinting at weather, windburned cheeks, a cream cable-knit fisherman's sweater under a yellow oilskin, and her father's brass pocket watch on a chain",
+  "artTags": "adult woman, 37 years old, tall, broad shoulders, weathered fair skin, windburned cheeks, crow's feet, grey eyes, ash-blonde hair in a thick plait, navy watch cap, cream cable-knit fisherman's sweater, yellow oilskin jacket, brass pocket watch chain",
+  "personality": "Steady, weather-wise and drily funny, a woman of few words who shows love by being exactly where she said she'd be",
+  "voice": "Unhurried and spare, talks in tide times and weather, says 'noted' when something matters to her, and laughs like it surprised her; starts calling the player 'fair weather' once she likes them",
+  "backstory": "Grew up aboard the Kittiwake, which her father captained for thirty years, and took the wheel herself at 29 when his knees gave out; in eight years she has missed one sailing, the night the harbor wall went, and she's still annoyed about it. She's asexual and says so plainly: she wants a partner, a shared kitchen and someone to hold through a storm, not the rest. She and Ines were together three years until Ines took a kitchen job on the mainland, and they still do the Sunday crossword together at The Tidewater's counter, in pen. Hollis keeps her boat afloat, and she keeps him in coffee.",
+  "opener": "Wind's backing to the east, so it'll rain by nine. That gives us two good hours. Tell me something true.",
+  "likes": [
+    {
+      "id": "sky-reading",
+      "label": "Reading tomorrow's weather off tonight's sky, together"
+    },
+    {
+      "id": "ferry-time",
+      "label": "Punctuality you could set a ferry by"
+    },
+    {
+      "id": "crossword-pen",
+      "label": "Cryptic crosswords, done in pen"
+    },
+    {
+      "id": "storm-watching",
+      "label": "Watching a storm come in from somewhere warm and dry"
+    },
+    {
+      "id": "smoked-fish",
+      "label": "Smoked fish from the Saturday harbor market, eaten on the harbor wall"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "seasick-bravado",
+      "label": "Pretending you're fine when you've gone green"
+    },
+    {
+      "id": "gull-feeding",
+      "label": "People who feed the gulls"
+    },
+    {
+      "id": "captains-daughter",
+      "label": "Being taken for the captain's daughter instead of the captain"
+    },
+    {
+      "id": "whistling-aboard",
+      "label": "Whistling on a boat, which calls up the wind"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "on-the-dock",
+      "label": "Being met on the dock after her last crossing"
+    },
+    {
+      "id": "rail-hands",
+      "label": "Holding hands at the rail on a night crossing"
+    },
+    {
+      "id": "first-to-know",
+      "label": "Being the first person you tell something real"
+    },
+    {
+      "id": "no-asterisks",
+      "label": "Being wanted exactly as she is, with no asterisks"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "ace-challenge",
+      "label": "Treating her asexuality as a phase or a challenge"
+    },
+    {
+      "id": "rail-showboat",
+      "label": "Showing off at the rail or rocking the boat for a laugh"
+    },
+    {
+      "id": "weather-dismissed",
+      "label": "Brushing her off when she says the weather's turning"
+    },
+    {
+      "id": "dying-job",
+      "label": "Calling the ferry a dead-end job"
+    }
+  ],
+  "favoriteVenues": [
+    "boardwalk",
+    "night-market"
+  ],
+  "hatedVenues": [
+    "karaoke-box"
+  ],
+  "lovedGifts": [
+    "houseplant",
+    "chocolates"
+  ],
+  "hatedGifts": [
+    "perfume"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "The ferry authority is retiring the Kittiwake after this winter and replacing the daily crossings with a weekend service from the mainland, and it has offered her a captain's berth on a mainland commuter line. The letter has been in the wheelhouse drawer for a month; she hasn't told the town, or Ines."
+    },
+    {
+      "unlockAt": 80,
+      "text": "Two winters ago, when The Tidewater nearly went under, Maren sold her father's brass sextant and paid the diner's overdue supplier bills anonymously. Ines still believes a mainland supplier forgave the debt."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "The six-thirty",
+      "scene": "Maren at the Kittiwake's wheel in a yellow oilskin, one hand on the spokes, nodding you aboard the last crossing of the day"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Harbor wall",
+      "scene": "Saturday at the harbor market, Maren sharing a paper cone of smoked fish with you on the harbor wall and reading tomorrow's weather off the clouds"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Night crossing",
+      "scene": "A starlit night crossing, Maren letting you take the wheel while her hand rests over yours and the wake glows faintly green behind the boat"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Red flag",
+      "scene": "A red-flag storm day with no sailings, rain hammering her cottage window, Maren curled against you under one heavy quilt with her plait coming loose and her cold feet tucked against yours"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Home port",
+      "scene": "Dawn on the slipway with the Kittiwake's lines made fast, Maren meeting you at the end of the dock with two mugs of tea and resting her forehead against yours"
+    }
+  ]
+}

@@ -1,0 +1,197 @@
+/* Define the relationship: brass throughout (agreements are brass). */
+
+/* The sheet's four choices, as a radio group of big targets. */
+.group {
+  display: grid;
+  gap: 8px;
+}
+
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 12px 14px;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--line);
+  background: var(--field-bg);
+  color: var(--blush);
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: border-color 140ms var(--ease-out), background-color 140ms var(--ease-out);
+}
+
+.choice:hover {
+  border-color: var(--line-strong);
+}
+
+.choice:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+  border-radius: var(--radius-m);
+}
+
+.chosen {
+  border-color: rgb(201 164 92 / 0.8);
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgb(201 164 92 / 0.18), transparent 70%),
+    var(--field-bg);
+}
+
+.radio {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  border-radius: 50%;
+  border: 2px solid var(--line-strong);
+}
+
+.chosen .radio {
+  border-color: var(--brass);
+  background: radial-gradient(circle, var(--brass) 0 42%, transparent 46%);
+}
+
+.choiceText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.choiceTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 18px;
+}
+
+.theirs {
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid rgb(201 164 92 / 0.55);
+  font-family: var(--font-ui);
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--brass);
+}
+
+.choiceLine {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--smoke-text);
+}
+
+/* The banner when they bring it up, and the bar while the talk is open. */
+.banner {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding: 8px 10px 8px 12px;
+  border-radius: var(--radius-m);
+  border: 1px solid rgb(201 164 92 / 0.6);
+  background:
+    radial-gradient(120% 160% at 0% 0%, rgb(201 164 92 / 0.2), transparent 70%),
+    rgb(28 9 20 / 0.9);
+}
+
+.open {
+  border-style: solid;
+  border-width: 1px 1px 1px 4px;
+}
+
+.bannerText {
+  display: grid;
+  gap: 1px;
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.bannerTitle {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1.25;
+  color: var(--brass);
+}
+
+.bannerLine {
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--smoke-text);
+}
+
+.bannerActions {
+  flex: none;
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+/* Soft keyboard up: the open talk's bar keeps to one line. */
+:global(html[data-keyboard='open']) .open .bannerLine {
+  display: none;
+}
+
+/* The outcome, in the transcript. */
+.result {
+  justify-self: center;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  max-width: 94%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgb(201 164 92 / 0.65);
+  background: rgb(201 164 92 / 0.1);
+  text-align: center;
+}
+
+.declined {
+  border-style: dashed;
+}
+
+.resultTitle {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 18px;
+  color: var(--brass);
+}
+
+.resultLine {
+  font-size: 14px;
+}
+
+.resultTerms {
+  margin: 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 16px;
+  line-height: 1.4;
+  color: color-mix(in srgb, var(--brass) 50%, var(--blush));
+}
+
+.resultTerms p::before {
+  content: '\201C';
+}
+
+.resultTerms p::after {
+  content: '\201D';
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .choice {
+    transition: none;
+  }
+}

@@ -317,6 +317,9 @@ export interface DiscoveredTrait {
   at: number;
 }
 
+/** How a character came to know something about the player (Phase 4). */
+export type BetrayalHow = 'player' | 'gossip' | 'group' | 'lie';
+
 export interface BetrayalEvent {
   at: number;
   kind: 'agreement' | 'lie';
@@ -325,6 +328,12 @@ export interface BetrayalEvent {
   note: string;
   affectionDelta: number;
   trustDelta: number;
+  /** Optional (Phase 4): how they found out: the player said so, gossip, a group date, a caught lie. */
+  how?: BetrayalHow;
+  /** Optional (Phase 4): the agreement it broke, when there was one. */
+  agreement?: AgreementType;
+  /** Optional (Phase 4): the line added to their memory, in their own voice. */
+  memory?: string;
 }
 
 export interface Relationship {
@@ -446,6 +455,20 @@ export interface DateTurn {
 
 export type DateKind = 'single' | 'group' | 'epilogue';
 
+/** Who opened a Define-the-relationship talk: the player, or the character asking at date start. */
+export type DtrBy = 'player' | 'character';
+
+/** A Define-the-relationship talk on a date (Phase 4). Open until closedAt is set. */
+export interface DtrRecord {
+  requested: AgreementType;
+  by: DtrBy;
+  openedAt: number;
+  /** When the talk closed (the player closed it or the date ended). */
+  closedAt?: number;
+  /** The Agreement prompt's answer, when it ran. */
+  result?: AgreementResult;
+}
+
 export interface DateRecord {
   id?: number;
   kind: DateKind;
@@ -466,6 +489,8 @@ export interface DateRecord {
   outcome?: 'completed' | 'left' | 'ended' | 'abandoned';
   endingType?: EndingType;
   recap?: DateRecap;
+  /** Optional (Phase 4): the Define-the-relationship talk on this date, if one was opened. */
+  dtr?: DtrRecord;
 }
 
 export interface DateRecap {
@@ -504,8 +529,18 @@ export interface DateRecap {
        * (now shown on the profile), and whether they learned how the player dates.
        */
       revealed?: { attractions: boolean; style: boolean; playerStyle: boolean };
+      /** Optional (Phase 4): the Define-the-relationship talk, when one was opened on this date. */
+      dtr?: DtrRecord;
     }
   >;
+  /**
+   * Optional (Phase 4): what the date set off elsewhere once it ended: gossip, betrayals other
+   * characters took from it, rekindles. The same news is added to GameState.news.
+   */
+  world?: {
+    news: NewsItem[];
+    betrayals: { characterId: string; event: BetrayalEvent }[];
+  };
 }
 
 // ---------------------------------------------------------------------------

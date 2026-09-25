@@ -13,17 +13,30 @@
 // was when the date started). findInterrupted() finds it; recoverInterrupted() finishes it into a
 // recap (no memory call when offline); dropInterrupted() files it as abandoned.
 //
+// Phase 4: the world the date sees is everyone in play (characters, relationships, the game state,
+// the active sets' relationships and rumors), so the engine can tell who else the player is
+// seeing, settle Define the relationship (openDtr, closeDtr, dismissDtrOffer), and, when the date
+// ends, spread gossip and roll rekindles; what that changes elsewhere comes back through
+// hooks.persistWorld and lands in the game store. startEpilogue plays a character's ending at 100
+// affection. The first time someone reaches 100 (and before any epilogue, if missing) the store
+// writes the save slot "Before {name}'s epilogue" (id auto-epilogue-{id}).
+//
 // Tests build their own store with createDateStore({ llm, db, game, settings, roster }).
 
 import { create } from 'zustand'
 import { db as appDb, type CrushDB } from '../db/db'
-import { getDate, kvDelete, kvGet, kvSet, putDate } from '../db/repo'
+import { getDate, kvDelete, kvGet, kvSet, putDate, snapshot } from '../db/repo'
 import {
+  canOpenDtr,
   canRetry,
   canSend,
+  closeDtr,
   createDate,
+  createEpilogue,
+  dtrOpen,
   finishDate,
   openDate,
+  openDtr,
   playerTurnCount,
   retryLastReply,
   sendPlayerMessage,
@@ -32,13 +45,28 @@ import {
   type DateSession,
   type DateWorld,
 } from '../engine/dateFlow'
+import { selectEnding } from '../engine/endings'
 import { leftEarly } from '../engine/math'
-import { withRelationshipDefaults } from '../engine/relationship'
-import { coerceJudge, coerceSuggestions, neutralJudge } from '../llm/coerce'
-import { chat, jsonChat, streamChat, suggestionsSchema, type ChatMessage } from '../llm/index'
-import type { ConnectionSettings, DateRecord, PlayerProfile, Relationship, Settings, Suggestions } from '../types'
+import { newGameState, withRelationshipDefaults } from '../engine/relationship'
+import { routeFor } from '../engine/stages'
+import { coerceAgreement, coerceJudge, coerceSuggestions, neutralJudge, noAgreementResult } from '../llm/coerce'
+import { AGREEMENT_SCHEMA, chat, jsonChat, streamChat, suggestionsSchema, type ChatMessage } from '../llm/index'
+import { endingReady, epilogueSlotId, epilogueSlotLabel, reachedWon } from '../screens/Ending/endingModel'
+import type {
+  AgreementType,
+  Character,
+  ConnectionSettings,
+  DateRecord,
+  GameState,
+  PlayerProfile,
+  Relationship,
+  SetRelationship,
+  Settings,
+  Suggestions,
+} from '../types'
 import { useGame, type GameStoreState } from './game'
-import { selectRelationsFor, useRoster, type RosterState } from './roster'
+import { selectActiveEntries, selectRelationsFor, useRoster, type RosterData, type RosterState } from './roster'
+import { appRandom } from './rolls'
 import { useSettings, type SettingsState } from './settings'
 
 /** kv key of the date that is open (cleared when it finishes). */
@@ -59,11 +87,25 @@ export interface DateEngine {
   sendPlayerMessage: typeof sendPlayerMessage
   retryLastReply: typeof retryLastReply
   finishDate: typeof finishDate
+  /** Phase 4: Define the relationship and the epilogue (the engine's own when left out). */
+  openDtr?: typeof openDtr
+  closeDtr?: typeof closeDtr
+  createEpilogue?: typeof createEpilogue
 }
 
-const ENGINE: DateEngine = { createDate, openDate, sendPlayerMessage, retryLastReply, finishDate }
+const ENGINE: DateEngine = {
+  createDate,
+  openDate,
+  sendPlayerMessage,
+  retryLastReply,
+  finishDate,
+  openDtr,
+  closeDtr,
+  createEpilogue,
+}
 
-export type DateAction = 'open' | 'send' | 'retry' | 'finish'
+/** 'dtr': closing a Define-the-relationship talk (the Agreement prompt). */
+export type DateAction = 'open' | 'send' | 'retry' | 'finish' | 'dtr'
 
 /** Something went wrong outside the engine's own handling (a bug, not a model problem). */
 export interface DateProblem {
@@ -89,6 +131,8 @@ export type StartResult =
   | { ok: false; reason: 'busy'; characterId: string }
   /** The character isn't on this device. */
   | { ok: false; reason: 'missing' }
+  /** An epilogue asked for before 100 affection (or on a friend route). */
+  | { ok: false; reason: 'not-ready' }
 
 export interface DateStoreState {
   /** The date on screen (kept after it ends, until another starts or clear()). */
@@ -110,6 +154,8 @@ export interface DateStoreState {
   interrupted: InterruptedDate | null
   /** The last storage failure while saving the date. */
   storageError: string | null
+  /** The player said "Not now" to the character's offer to define the relationship on this date. */
+  dtrOfferDismissed: boolean
 
   setDraft: (text: string) => void
   /** Start a date and its opening in the background. Resolves once the session exists. */
@@ -131,6 +177,22 @@ export interface DateStoreState {
   dropInterrupted: () => Promise<void>
   /** Forget the session (stops anything running). */
   clear: () => void
+
+  // Phase 4
+  /**
+   * Open Define the relationship, asking for `requested` (the story's next reply answers it; turns
+   * are flagged until the talk closes). False when it can't open now.
+   */
+  openDtr: (requested: AgreementType) => Promise<boolean>
+  /** Close the talk: the Agreement prompt runs once and its answer applies. */
+  closeDtr: () => Promise<void>
+  /** "Not now" to the character's own offer to define it. */
+  dismissDtrOffer: () => void
+  /**
+   * Start a character's epilogue (100 affection): the ending they're on, as a six-turn date at their
+   * first favorite venue. Writes the "Before {name}'s epilogue" slot first if there isn't one.
+   */
+  startEpilogue: (characterId: string) => Promise<StartResult>
 }
 
 type Pickable<T> = { getState(): T }
@@ -140,7 +202,7 @@ export interface DateStoreDeps {
   /** The model calls for a date with this character (tests inject a fake). */
   llm?: (characterId: string) => DateLlm
   db?: CrushDB
-  game?: Pickable<Pick<GameStoreState, 'load' | 'rel' | 'saveRel' | 'relationships'>>
+  game?: Pickable<Pick<GameStoreState, 'load' | 'rel' | 'saveRel' | 'relationships'> & Partial<Pick<GameStoreState, 'game' | 'patchGame'>>>
   settings?: Pickable<Pick<SettingsState, 'settings' | 'profile'>>
   roster?: Pickable<Pick<RosterState, 'load' | 'entries' | 'sets'>>
   now?: () => number
@@ -216,6 +278,20 @@ export function appDateLlm(characterId: string, conn: () => ConnectionSettings):
       const r = await chat({ conn: conn(), role: 'story', kind: 'memory', messages: withSystem(a.system, a.messages), signal: a.signal, debug })
       return r.refused ? '' : r.text
     },
+    agreement: async (a) => {
+      const r = await jsonChat({
+        conn: conn(),
+        role: 'judge',
+        kind: 'agreement',
+        messages: withSystem(a.system, a.messages),
+        coerce: coerceAgreement,
+        fallback: noAgreementResult(),
+        schema: AGREEMENT_SCHEMA,
+        signal: a.signal,
+        debug,
+      })
+      return { value: r.value, ok: r.ok }
+    },
   }
 }
 
@@ -288,6 +364,27 @@ export function othersSeen(
 }
 
 /**
+ * Every relationship between characters in play, as the world engine reads them (gossip, metamour
+ * approval, rekindles, endings, the polycule map): each active character's manifest relationships
+ * and card partners (roster `selectRelationsFor`), each pair and kind once.
+ */
+export function activeRelations(data: RosterData, activeSets: readonly string[]): SetRelationship[] {
+  const out: SetRelationship[] = []
+  const seen = new Set<string>()
+  for (const entry of selectActiveEntries(data, { activeSets: [...activeSets], showMe: 'everyone' })) {
+    const id = entry.character.id
+    for (const r of selectRelationsFor(data, id, activeSets)) {
+      const [a, b] = id < r.id ? [id, r.id] : [r.id, id]
+      const key = `${a}|${b}|${r.kind}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push({ a, b, kind: r.kind, note: r.note ?? '' })
+    }
+  }
+  return out
+}
+
+/**
  * The date's settings with the player's current ones (heat, chips, connection), so a heat changed
  * mid-date reaches the next story and chips call. The route (orientation mode), the date's length
  * and its gain cap stay as they were when the date began.
@@ -322,7 +419,8 @@ export function createDateStore(deps: DateStoreDeps = {}) {
   const settingsOf = () => (deps.settings ?? useSettings).getState()
   const roster = () => (deps.roster ?? useRoster).getState()
   const now = deps.now ?? (() => Date.now())
-  const rng = deps.rng ?? Math.random
+  // Math.random, or in dev builds the debug panel's pinned rolls (src/store/rolls.ts).
+  const rng = deps.rng ?? appRandom
   const online = deps.online ?? (() => typeof navigator === 'undefined' || navigator.onLine !== false)
   const makeLlm = deps.llm ?? ((id: string) => appDateLlm(id, () => settingsOf().settings.connection))
 
@@ -398,7 +496,19 @@ export function createDateStore(deps: DateStoreDeps = {}) {
         kind: x.kind,
         ...(x.note ? { note: x.note } : {}),
       }))
-      return {
+      // Phase 4: everyone in play, so the date can tell who else the player is seeing, spread
+      // gossip, roll rekindles and settle endings when it finishes.
+      const data = { sets: r.sets, entries: r.entries }
+      const characters: Record<string, Character> = {}
+      const setOf: Record<string, string> = {}
+      for (const e of selectActiveEntries(data, { activeSets: settings.activeSets, showMe: 'everyone' })) {
+        characters[e.character.id] = e.character
+        setOf[e.character.id] = e.setId
+      }
+      characters[characterId] = entry.character
+      setOf[characterId] = entry.setId
+      const activeSetIds = new Set(settings.activeSets)
+      const world: DateWorld = {
         character: entry.character,
         setId: entry.setId,
         profile: profile ?? FALLBACK_PROFILE,
@@ -409,6 +519,49 @@ export function createDateStore(deps: DateStoreDeps = {}) {
         rng,
         relations,
         others,
+        characters,
+        rels: { ...(game().relationships ?? {}) },
+        setRelations: activeRelations(data, settings.activeSets),
+        rumors: r.sets.filter((x) => activeSetIds.has(x.id)).flatMap((x) => x.rumors ?? []),
+        setOf,
+      }
+      const g = game().game
+      if (g) world.game = g
+      return world
+    }
+
+    /**
+     * What finishDate settled elsewhere (other relationships, the game state with news, rumors,
+     * metamours, rekindles and endings seen), in one transaction where storage allows.
+     */
+    const persistWorld = async (rels: Relationship[], next: GameState) => {
+      await game()
+        .load()
+        .catch(() => undefined)
+      const write = async () => {
+        for (const r of rels) await game().saveRel(r)
+        await game().patchGame?.(next)
+      }
+      try {
+        await d.transaction('rw', d.relationships, d.kv, write)
+      } catch {
+        await write().catch(() => undefined)
+      }
+    }
+
+    /**
+     * The first time a character reaches 100: a save slot from just before their epilogue, so the
+     * player can come back and try for another ending. One per character; never throws.
+     */
+    const autosaveBeforeEpilogue = async (characterId: string) => {
+      const id = epilogueSlotId(characterId)
+      try {
+        if (await d.saves.get(id)) return
+        const name = roster().entries[characterId]?.character.name ?? characterId
+        const data = await snapshot({ withSettings: false }, d)
+        await d.saves.put({ id, label: epilogueSlotLabel(name), createdAt: now(), data })
+      } catch (e) {
+        storageFailed(e)
       }
     }
 
@@ -430,6 +583,10 @@ export function createDateStore(deps: DateStoreDeps = {}) {
         story: (a) => raceAbort(inner.story({ ...a, signal: a.signal ?? signal }), a.signal ?? signal),
         judge: (a) => raceAbort(inner.judge({ ...a, signal: a.signal ?? signal }), a.signal ?? signal),
         memory: (a) => (noMemory ? Promise.resolve('') : raceAbort(inner.memory({ ...a, signal: a.signal ?? signal }), a.signal ?? signal)),
+        agreement: (a) =>
+          inner.agreement
+            ? raceAbort(inner.agreement({ ...a, signal: a.signal ?? signal }), a.signal ?? signal)
+            : Promise.resolve({ value: noAgreementResult(), ok: false }),
         suggestions: async (a) => {
           const parent = a.signal ?? signal
           const own = new AbortController()
@@ -449,10 +606,16 @@ export function createDateStore(deps: DateStoreDeps = {}) {
       }
     }
 
-    /** A finished date: the open-date mark goes, the screen moves on to the recap. */
+    /**
+     * A finished date: the open-date mark goes, the screen moves on to the recap. The first time a
+     * character reaches 100 the epilogue autosave is written, after everything else has landed.
+     */
     const landed = async (s: DateSession) => {
       await clearMark()
       set({ finishedId: s.record.id ?? get().dateId, lastRecord: s.record, draft: '' })
+      if (s.record.kind !== 'epilogue' && reachedWon(s.relBefore, s.rel)) {
+        await autosaveBeforeEpilogue(s.world.character.id)
+      }
     }
 
     type Exec = (s: DateSession, llm: DateLlm, hooks: DateHooks) => Promise<DateSession>
@@ -468,6 +631,7 @@ export function createDateStore(deps: DateStoreDeps = {}) {
           if (my === token) set({ session: s })
         },
         persist,
+        persistWorld,
       }
       const p = (async (): Promise<DateSession | null> => {
         try {
@@ -520,6 +684,57 @@ export function createDateStore(deps: DateStoreDeps = {}) {
       await clearMark()
     }
 
+    /**
+     * Start a date made by `make` from the world: another open date is refused, one left open by a
+     * reload is filed away, the record is stored and marked as the open date, and the opening runs
+     * in the background. Resolves once the session exists.
+     */
+    const begin = async (
+      characterId: string,
+      make: (world: DateWorld) => DateSession | null,
+    ): Promise<StartResult> => {
+      await Promise.all([roster().load(), game().load()]).catch(() => undefined)
+      const open = get().session
+      if (open && open.status !== 'ended') {
+        return { ok: false, reason: 'busy', characterId: open.record.characterIds[0] ?? '' }
+      }
+      const world = buildWorld(characterId)
+      if (!world) return { ok: false, reason: 'missing' }
+      let session = make(world)
+      if (!session) return { ok: false, reason: 'not-ready' }
+      await abandonOpenDate()
+
+      token++
+      let id: number
+      try {
+        id = await putDate(session.record, d)
+      } catch (e) {
+        storageFailed(e)
+        id = -++memoryIds
+      }
+      session = { ...session, record: { ...session.record, id } }
+      const mark: ActiveDateMark = { dateId: id, characterId, relBefore: session.relBefore }
+      try {
+        await kvSet(ACTIVE_DATE_KEY, mark, d)
+      } catch (e) {
+        storageFailed(e)
+      }
+      set({
+        session,
+        dateId: id,
+        running: null,
+        problem: null,
+        draft: '',
+        paused: false,
+        finishedId: null,
+        lastRecord: null,
+        interrupted: null,
+        dtrOfferDismissed: false,
+      })
+      void run('open', session, engine.openDate)
+      return { ok: true, dateId: id }
+    }
+
     return {
       session: null,
       dateId: null,
@@ -531,54 +746,19 @@ export function createDateStore(deps: DateStoreDeps = {}) {
       lastRecord: null,
       interrupted: null,
       storageError: null,
+      dtrOfferDismissed: false,
 
       setDraft: (text) => set({ draft: text }),
 
-      start: async (characterId, venueId, giftId) => {
-        await Promise.all([roster().load(), game().load()]).catch(() => undefined)
-        const open = get().session
-        if (open && open.status !== 'ended') {
-          return { ok: false, reason: 'busy', characterId: open.record.characterIds[0] ?? '' }
-        }
-        const world = buildWorld(characterId)
-        if (!world) return { ok: false, reason: 'missing' }
-        await abandonOpenDate()
-
-        token++
-        let session = engine.createDate(world, {
-          venueId,
-          ...(giftId ? { giftId } : {}),
-          maxTurns: world.settings.dateLength,
-          kind: 'single',
-        })
-        let id: number
-        try {
-          id = await putDate(session.record, d)
-        } catch (e) {
-          storageFailed(e)
-          id = -++memoryIds
-        }
-        session = { ...session, record: { ...session.record, id } }
-        const mark: ActiveDateMark = { dateId: id, characterId, relBefore: session.relBefore }
-        try {
-          await kvSet(ACTIVE_DATE_KEY, mark, d)
-        } catch (e) {
-          storageFailed(e)
-        }
-        set({
-          session,
-          dateId: id,
-          running: null,
-          problem: null,
-          draft: '',
-          paused: false,
-          finishedId: null,
-          lastRecord: null,
-          interrupted: null,
-        })
-        void run('open', session, engine.openDate)
-        return { ok: true, dateId: id }
-      },
+      start: (characterId, venueId, giftId) =>
+        begin(characterId, (world) =>
+          engine.createDate(world, {
+            venueId,
+            ...(giftId ? { giftId } : {}),
+            maxTurns: world.settings.dateLength,
+            kind: 'single',
+          }),
+        ),
 
       send: async (raw) => {
         const text = raw.trim()
@@ -605,6 +785,10 @@ export function createDateStore(deps: DateStoreDeps = {}) {
         }
         if (p?.action === 'finish') {
           await get().end()
+          return
+        }
+        if (p?.action === 'dtr') {
+          await get().closeDtr()
           return
         }
         const session = live(st.session)
@@ -716,12 +900,16 @@ export function createDateStore(deps: DateStoreDeps = {}) {
           return null
         }
         const { record } = it
-        const created = engine.createDate(world, {
-          venueId: record.venueId,
-          ...(record.giftId ? { giftId: record.giftId } : {}),
-          maxTurns: record.maxTurns,
-          kind: record.kind,
-        })
+        // An epilogue keeps its ending, so finishing it still records the ending.
+        const created =
+          record.kind === 'epilogue' && record.endingType
+            ? (engine.createEpilogue ?? createEpilogue)(world, { type: record.endingType })
+            : engine.createDate(world, {
+                venueId: record.venueId,
+                ...(record.giftId ? { giftId: record.giftId } : {}),
+                maxTurns: record.maxTurns,
+                kind: record.kind,
+              })
         const total = record.totals?.[it.characterId]?.affection ?? 0
         token++
         const base: DateSession = {
@@ -744,6 +932,7 @@ export function createDateStore(deps: DateStoreDeps = {}) {
           finishedId: null,
           lastRecord: null,
           interrupted: null,
+          dtrOfferDismissed: false,
         })
         const next = await finishRun(base, completedRecord(record) ? 'completed' : 'ended')
         return next ? get().finishedId : null
@@ -774,6 +963,61 @@ export function createDateStore(deps: DateStoreDeps = {}) {
           finishedId: null,
           lastRecord: null,
           interrupted: null,
+          dtrOfferDismissed: false,
+        })
+      },
+
+      openDtr: async (requested) => {
+        if (requested === 'none') return false
+        // Chips still loading are skipped first, so their late answer can't overwrite the talk.
+        await settle()
+        const st = get()
+        if (!st.session || st.running) return false
+        const s = live(st.session)
+        if (!canOpenDtr(s)) return false
+        const by = s.dtrOffer && !st.dtrOfferDismissed ? 'character' : 'player'
+        const next = (engine.openDtr ?? openDtr)(s, requested, by)
+        if (next === s) return false
+        set({ session: next })
+        await persist(next.rel, next.record)
+        return true
+      },
+
+      closeDtr: async () => {
+        await settle()
+        const st = get()
+        if (!st.session || st.running) return
+        const s = live(st.session)
+        if (!dtrOpen(s) || s.status === 'ended') return
+        await run('dtr', s, (b, llm, hooks) => (engine.closeDtr ?? closeDtr)(b, llm, hooks))
+      },
+
+      dismissDtrOffer: () => set({ dtrOfferDismissed: true }),
+
+      startEpilogue: async (characterId) => {
+        await Promise.all([roster().load(), game().load()]).catch(() => undefined)
+        const entry = roster().entries[characterId]
+        if (!entry) return { ok: false, reason: 'missing' }
+        const { settings, profile } = settingsOf()
+        const rel = game().rel(characterId)
+        if (!endingReady(rel, routeFor(entry.character, profile, settings.orientationMode))) return { ok: false, reason: 'not-ready' }
+        const open = get().session
+        if (open && open.status !== 'ended') {
+          return { ok: false, reason: 'busy', characterId: open.record.characterIds[0] ?? '' }
+        }
+        // The slot is normally written when they first reach 100; a game from before it existed,
+        // or a slot the player deleted, gets one now.
+        await autosaveBeforeEpilogue(characterId)
+        return begin(characterId, (world) => {
+          const pick = selectEnding({
+            characterId,
+            characters: world.characters ?? { [characterId]: world.character },
+            rels: { ...(world.rels ?? {}), [characterId]: world.rel },
+            game: world.game ?? game().game ?? newGameState(now()),
+            relations: world.setRelations ?? [],
+            names: world.names,
+          })
+          return (engine.createEpilogue ?? createEpilogue)(world, { type: pick.type, ...(pick.group?.length ? { group: pick.group } : {}) })
         })
       },
     }

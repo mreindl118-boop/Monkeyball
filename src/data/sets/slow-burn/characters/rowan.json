@@ -1,0 +1,163 @@
+{
+  "id": "rowan",
+  "name": "Rowan Fitch",
+  "age": 29,
+  "gender": "nonbinary",
+  "pronouns": "they/them",
+  "identity": "Nonbinary",
+  "attractedTo": [
+    "woman",
+    "man",
+    "nonbinary"
+  ],
+  "orientation": "pan",
+  "relationshipStyle": "open",
+  "jealousy": "low",
+  "aceSpectrum": {
+    "label": "Demisexual",
+    "heatUnlockTrust": 60
+  },
+  "bodyNotes": "Broad swimmer's shoulders and strong legs, cold-water-pale wherever the drysuit covers, a jagged scar down one calf from a rock at low tide, and callused fingertips; demisexual, so desire comes only once trust has, and then they're curious, attentive and very direct",
+  "occupation": "Marine biologist running the Gullhaven Tide Station, a one-person research post on Gull Point",
+  "difficulty": "normal",
+  "accent": "#C2C95A",
+  "look": "Tall with broad swimmer's shoulders, sandy hair cropped short at the sides and salt-stiff on top, weathered tan skin with sun lines around the eyes, a silver septum ring, a faded octopus tattoo on one forearm, a drysuit peeled down to the waist over a grey thermal, and a scuffed dive watch",
+  "artTags": "adult nonbinary person, 29 years old, tall, broad swimmer's shoulders, athletic build, sandy hair with short sides, weathered tan skin, sun lines around the eyes, strong jaw, silver septum ring, octopus tattoo on forearm, drysuit peeled to the waist over grey thermal top, dive watch",
+  "personality": "Curious, unhurried and delighted by almost everything that lives in a rock pool, an open book about their life and a slow one about their heart",
+  "voice": "Enthusiastic tangents about whatever's in the nearest rock pool, Latin names they translate right away, 'huh, okay' when surprised; starts calling the player 'barnacle' once they like them, because barnacles pick a spot and stay",
+  "backstory": "Came to Gullhaven three winters ago on a one-year contract to survey the kelp beds and never left; they run the tide station alone out of season and share the old keeper's cottage on Gull Point with Bea, who gets the roof for her telescope while Rowan gets the kitchen for their sample jars. They're demisexual and open, a combination they explain cheerfully: partners are welcome to other people, and for Rowan, attraction takes months of really knowing someone. Every Tuesday Maren slows the Kittiwake at the mid-bay buoy so Rowan can drop their sampling bottles, and after every winter dive they thaw out at Hotwell House and pay Cyrus in tide charts.",
+  "opener": "Before you say anything: I might smell faintly of seaweed. Professional hazard. I've made my peace with it. Hi!",
+  "likes": [
+    {
+      "id": "spring-low",
+      "label": "Rock-pooling at the lowest spring tide"
+    },
+    {
+      "id": "sea-facts",
+      "label": "Trading strange sea-creature facts"
+    },
+    {
+      "id": "winter-swim",
+      "label": "Winter sea swims, and the hot bath after"
+    },
+    {
+      "id": "not-whales",
+      "label": "Real questions about their work, not just whales"
+    },
+    {
+      "id": "storm-games",
+      "label": "Storm nights in with a two-player game"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "beach-balloons",
+      "label": "Balloons, which always end up in the sea"
+    },
+    {
+      "id": "bycatch-menu",
+      "label": "Ordering the fish that's being overfished"
+    },
+    {
+      "id": "anemone-poking",
+      "label": "Poking anemones to watch them close"
+    },
+    {
+      "id": "hurried-pool",
+      "label": "Being hurried away from a good rock pool"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "follow-up",
+      "label": "A follow-up question about something they said weeks ago"
+    },
+    {
+      "id": "shared-thermos",
+      "label": "Sharing a thermos on a cold beach at dawn"
+    },
+    {
+      "id": "no-clock",
+      "label": "Friendship first, with no clock on it"
+    },
+    {
+      "id": "field-assistant",
+      "label": "Offering to be their field assistant for a morning"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "how-long",
+      "label": "Asking how long until they'll 'feel something'"
+    },
+    {
+      "id": "bea-possessive",
+      "label": "Getting jealous of their time with Bea"
+    },
+    {
+      "id": "waste-of-funding",
+      "label": "Calling the tide station a waste of money"
+    },
+    {
+      "id": "wildlife-photo",
+      "label": "Disturbing wildlife for a photo"
+    }
+  ],
+  "favoriteVenues": [
+    "climbing-gym",
+    "arcade",
+    "hot-spring"
+  ],
+  "hatedVenues": [
+    "fancy-restaurant"
+  ],
+  "lovedGifts": [
+    "sketchbook",
+    "video-game"
+  ],
+  "hatedGifts": [
+    "flowers"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "They've been logging the temperature of Hotwell House's outflow for a year without asking Cyrus. The spring is cooling, about two degrees in three years, and they haven't found a way to tell him that won't sound like a eulogy."
+    },
+    {
+      "unlockAt": 80,
+      "text": "The tide station loses its funding in April, and Rowan has been offered a year on a research ship in the far south. They've told only Bea, and they still don't know whether they want to go."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Rock pool",
+      "scene": "Rowan knee-deep in a rock pool in a drysuit, holding up a starfish with a delighted grin and waving you over the rocks"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Field notes",
+      "scene": "Dawn on the mudflats, Rowan sharing a thermos with you while you hold the clipboard and they call out the counts"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Sea sparks",
+      "scene": "A night row in Rowan's skiff across a glowing bay, blue-green sparks swirling from the oars as they lean close and lace their fingers through yours"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Storm bunk",
+      "scene": "The tide station's bunk room on a storm night, Rowan's drysuit abandoned on the floor as they pull you under the blankets with them and say your name like a discovery"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Next winter's tides",
+      "scene": "Rowan pinning next winter's tide table to the station wall, with your name written beside every lowest tide"
+    }
+  ]
+}

@@ -1,0 +1,163 @@
+{
+  "id": "tamsin",
+  "name": "Tamsin Byrne",
+  "age": 25,
+  "gender": "woman",
+  "pronouns": "she/her",
+  "identity": "Trans woman",
+  "attractedTo": [
+    "woman"
+  ],
+  "orientation": "lesbian",
+  "relationshipStyle": "monogamous",
+  "jealousy": "medium",
+  "bodyNotes": "Tall and long-limbed, broad shoulders, soft hips and a bit of a belly she's stopped hiding, a line worn into the side of her neck from the camera strap, and stick-and-poke stars on both ankles",
+  "partners": [
+    {
+      "characterId": "rox",
+      "relation": "situationship"
+    }
+  ],
+  "occupation": "Merch manager and tour photographer for Velvet Static",
+  "difficulty": "normal",
+  "accent": "#B488BF",
+  "look": "Long copper hair half up in a claw clip, pale skin, dark plum lipstick, silver hoops, a vintage film camera on a worn strap, a thrifted suede jacket over a band tee, wide-leg jeans, and a belt bag full of markers and cash",
+  "artTags": "adult woman, 25 years old, long copper hair in a claw clip, pale skin, dark plum lipstick, silver hoop earrings, vintage film camera on strap, suede jacket, band t-shirt, wide-leg jeans, belt bag, tall, broad shoulders",
+  "personality": "Wry, observant and quietly all-in, a romantic who photographs everyone else's big moments and keeps waiting for one of her own",
+  "voice": "Soft-spoken and sardonic, talks in camera terms ('hold that, the light's perfect'), counts merch under her breath when she's nervous; starts calling the player 'keeper' once she likes them, as in the one frame on the roll worth keeping",
+  "backstory": "Talked her way into shooting gigs at 19 with a borrowed camera, came out and moved cities at 21, and found her people in sweaty back rooms with terrible lighting. She joined Velvet Static's tour two years ago when their old merch manager quit mid-run, and has run the table and shot every night since. She's monogamous down to her bones, and for three months she's been something with Rox, a something Rox calls open and Tamsin has never quite said she agreed to.",
+  "opener": "Hold still. No, really, the light on you right now is perfect. Okay. Hi. Sorry. I'm Tamsin.",
+  "likes": [
+    {
+      "id": "film-rolls",
+      "label": "Shooting film, and the wait to see how a roll turns out"
+    },
+    {
+      "id": "photo-books",
+      "label": "Photo books and the stories behind famous pictures"
+    },
+    {
+      "id": "golden-hour",
+      "label": "Golden hour by the water"
+    },
+    {
+      "id": "folds-shirts",
+      "label": "People who help fold shirts at the merch table without being asked"
+    },
+    {
+      "id": "slow-breakfast",
+      "label": "Slow hotel breakfasts before anyone else is up"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "just-merch",
+      "label": "Being treated like she's just the merch table"
+    },
+    {
+      "id": "phone-flash",
+      "label": "Phone flashes going off in the middle of a show"
+    },
+    {
+      "id": "spice-dares",
+      "label": "Being dared to eat something spicy"
+    },
+    {
+      "id": "rox-status",
+      "label": "Being asked what she and Rox actually are"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "only-one",
+      "label": "Being told plainly that she's the only one"
+    },
+    {
+      "id": "turned-camera",
+      "label": "Having her own camera turned on her, lovingly"
+    },
+    {
+      "id": "real-plans",
+      "label": "A date planned down to the details, just for her"
+    },
+    {
+      "id": "slow-kiss",
+      "label": "A slow kiss in good light"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "options-open",
+      "label": "Keeping your options open out loud"
+    },
+    {
+      "id": "smile-demand",
+      "label": "Being told to smile"
+    },
+    {
+      "id": "compared-to-rox",
+      "label": "Being compared to Rox"
+    },
+    {
+      "id": "no-credit",
+      "label": "Using her photos without credit"
+    }
+  ],
+  "favoriteVenues": [
+    "boardwalk",
+    "queer-bar",
+    "art-museum"
+  ],
+  "hatedVenues": [
+    "fancy-restaurant"
+  ],
+  "lovedGifts": [
+    "flowers",
+    "poetry-book"
+  ],
+  "hatedGifts": [
+    "hot-sauce"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "A music magazine back home has offered her a staff photographer job starting the week after the residency ends. It's everything she's worked for, and she hasn't said yes, because she's waiting to see whether Rox asks her to stay on the road."
+    },
+    {
+      "unlockAt": 80,
+      "text": "At five in the morning after the residency's opening night, she saw Rox leave Bash's room, next door to hers. She hasn't said a word; she's waiting for Rox to tell her, and every day Rox doesn't, it gets harder to pretend she's fine."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Merch table",
+      "scene": "Tamsin behind the merch table at The Carousel Room, a marker between her teeth, snapping your photo before you can object"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Darkroom",
+      "scene": "A hotel bathroom turned darkroom under a red safelight, Tamsin holding up a strip of negatives with your face on every frame"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Golden hour",
+      "scene": "The boardwalk at golden hour, Tamsin handing you her camera and wrapping her arms around your waist from behind while you take the shot"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Long exposure",
+      "scene": "Tamsin's hotel room by lamplight, the camera on a slow shutter, Tamsin in an unbuttoned flannel shirt pulling you onto the bed before it clicks"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Keeper",
+      "scene": "Tamsin's first gallery wall, every photo from the tour, and in the middle the biggest print of all: you, laughing, the one worth keeping"
+    }
+  ]
+}

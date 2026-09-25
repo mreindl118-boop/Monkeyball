@@ -18,7 +18,9 @@ import { Divider } from '../../ui/Panel'
 import { flashNextLoad, toast } from '../../ui/toastStore'
 import { Toggle } from '../../ui/Toggle'
 import { canSaveFiles, FileSaveUnavailableError, saveFile } from '../../platform/files'
+import { isAutosave } from '../Ending/endingModel'
 import styles from './Settings.module.css'
+import own from './SavesSection.module.css'
 
 const dateFmt = new Intl.DateTimeFormat(undefined, {
   month: 'short',
@@ -33,7 +35,8 @@ function plural(n: number, one: string, many: string): string {
 }
 
 function describeSlot(s: SlotInfo): string {
-  return `Saved ${dateFmt.format(s.createdAt)}. ${plural(s.characters, 'character', 'characters')}, ${plural(s.dates, 'date', 'dates')}.`
+  const when = isAutosave(s.id) ? `Saved automatically ${dateFmt.format(s.createdAt)}` : `Saved ${dateFmt.format(s.createdAt)}`
+  return `${when}. ${plural(s.characters, 'character', 'characters')}, ${plural(s.dates, 'date', 'dates')}.`
 }
 
 /** Reload the app on the hub so every store re-reads the replaced data. */
@@ -203,7 +206,7 @@ export function SavesSection() {
       <Field
         label="Save slots"
         htmlFor="slot-label"
-        hint="A snapshot of your progress on this device. Settings and connection aren't part of it."
+        hint="A snapshot of your progress on this device. Settings and connection aren't part of it. The first time someone reaches 100, a save from just before their epilogue is kept here, so you can go back and try for another ending."
       >
         <div className={styles.newSlot}>
           <TextInput
@@ -228,7 +231,10 @@ export function SavesSection() {
           {slots.map((s) => (
             <li key={s.id} className={styles.slot}>
               <div>
-                <p className={styles.slotLabel}>{s.label}</p>
+                <p className={styles.slotLabel}>
+                  {s.label}
+                  {isAutosave(s.id) && <span className={own.auto}>Automatic</span>}
+                </p>
                 <p className={styles.slotMeta}>{describeSlot(s)}</p>
               </div>
               <div className={styles.slotActions}>

@@ -1,0 +1,164 @@
+{
+  "id": "eli",
+  "name": "Eli Navarro",
+  "age": 24,
+  "gender": "man",
+  "pronouns": "he/him",
+  "identity": "Trans man",
+  "attractedTo": [
+    "woman",
+    "man"
+  ],
+  "orientation": "bi",
+  "relationshipStyle": "polyamorous",
+  "jealousy": "compersion",
+  "bodyNotes": "Lean and long-waisted, a guitarist's calloused fingertips and forearms, dark hair across his chest and stomach, a paper-plane tattoo on his ribs, and a laugh you can feel if you're close enough",
+  "partners": [
+    {
+      "characterId": "grant",
+      "relation": "situationship"
+    }
+  ],
+  "occupation": "Singer-songwriter, and the opening act for Velvet Static's residency",
+  "difficulty": "easy",
+  "accent": "#A6C695",
+  "look": "Jaw-length dark wavy hair, a thin mustache and stubble, warm tan skin, a silver bar through one eyebrow, a pearl-snap western shirt, a denim jacket covered in hand-sewn patches, black jeans, scuffed cowboy boots, and a secondhand guitar he has named",
+  "artTags": "adult man, 24 years old, jaw-length dark wavy hair, thin mustache, stubble, warm tan skin, eyebrow piercing, pearl-snap western shirt, patched denim jacket, black jeans, scuffed cowboy boots, acoustic guitar",
+  "personality": "Open-hearted, earnest and a little reckless, a songwriter who falls for people the way he writes, all at once and out loud",
+  "voice": "Warm and quick, trails off into humming mid-sentence, turns anything you say into a possible lyric ('wait, say that again, that's a chorus'); starts calling the player 'muse' once he likes them, as a joke until it isn't",
+  "backstory": "Busked his way through two cities with a secondhand guitar until a clip of him singing in an all-night laundromat got him this support slot, his first real one. He's polyamorous and happily says so, gets a warm glow when the people he loves are loved by someone else too, and writes songs about all of it. Since the residency's first week he's been something with Grant, the tour manager, and they've agreed nobody finds out; Eli will tell you there's someone, just not who. On off afternoons he practices in an empty room at Echo Box, which Jules lends him for free because Jules cried at his first set.",
+  "opener": "Fair warning: everything you say tonight might end up in a song. So make it good.",
+  "likes": [
+    {
+      "id": "stealable-lines",
+      "label": "Being handed a good line he can steal for a song"
+    },
+    {
+      "id": "open-mics",
+      "label": "Open mic nights, especially the terrible ones"
+    },
+    {
+      "id": "laundromat-nights",
+      "label": "Laundromats at night, the best-sounding rooms in any city"
+    },
+    {
+      "id": "your-people",
+      "label": "Hearing about the people you love, and who loves you back"
+    },
+    {
+      "id": "harmony",
+      "label": "Singing harmony with someone who didn't know they could"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "day-job-talk",
+      "label": "Being asked when he'll get a real job"
+    },
+    {
+      "id": "heights",
+      "label": "Heights (don't make him look down)"
+    },
+    {
+      "id": "is-it-about-me",
+      "label": "People asking if a song is about them"
+    },
+    {
+      "id": "poly-phase",
+      "label": "Being told polyamory is a phase"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "second-chorus",
+      "label": "Someone who's singing along by the second chorus"
+    },
+    {
+      "id": "happy-for-him",
+      "label": "Being happy for him about the other people in his life"
+    },
+    {
+      "id": "first-chord",
+      "label": "Letting him teach you a chord, his hands over yours"
+    },
+    {
+      "id": "scary-true",
+      "label": "Saying the scary, true thing first"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "possessing",
+      "label": "Treating him like he belongs to you"
+    },
+    {
+      "id": "talk-through-set",
+      "label": "Talking through his set"
+    },
+    {
+      "id": "just-the-opener",
+      "label": "Calling him 'just the opener'"
+    },
+    {
+      "id": "spill-secret",
+      "label": "Spilling something he told you in confidence"
+    }
+  ],
+  "favoriteVenues": [
+    "karaoke-box",
+    "queer-bar",
+    "record-store"
+  ],
+  "hatedVenues": [
+    "rooftop-bar"
+  ],
+  "lovedGifts": [
+    "sketchbook",
+    "concert-tickets"
+  ],
+  "hatedGifts": [
+    "flowers"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "He's the one who asked Grant to keep them a secret. Everyone would assume Grant is ashamed of him; the truth is Eli didn't want anyone thinking he got his first real support slot by sleeping with the tour manager."
+    },
+    {
+      "unlockAt": 80,
+      "text": "He knows Grant has been paying his opening fee out of his own pocket: he saw the bank transfer on Grant's phone. He's let it happen, because without it he can't afford the flight home, and he hates how much that looks like exactly what he was afraid people would say."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Opening slot",
+      "scene": "Eli alone on The Carousel Room's big stage with just his guitar, half the crowd still at the bar, singing straight at you"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Spin cycle",
+      "scene": "An all-night laundromat, Eli perched on a humming dryer, playing you a song he hasn't finished yet"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "First chord",
+      "scene": "A karaoke room with the screen on mute, Eli behind you on the couch, his hands over yours on the guitar neck"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Lyric sheets",
+      "scene": "Eli's hotel bed buried in lyric sheets, Eli shirtless and laughing as he pulls you down among the pages"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Track one",
+      "scene": "Eli's first record, and track one is the song he started the night he met you, with your name in the title"
+    }
+  ]
+}

@@ -502,3 +502,78 @@
     min-width: 240px;
   }
 }
+
+/* Your ending (brass panel): the title in Bodoni, then the choice. */
+.ending {
+  display: grid;
+  gap: 8px;
+}
+
+.endingTitle {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: clamp(24px, 6.4vw, 32px);
+  line-height: 1.1;
+  color: color-mix(in srgb, var(--brass) 60%, var(--blush));
+}
+
+.endingDescription {
+  font-size: 15.5px;
+  line-height: 1.5;
+}
+
+.endingActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.endingActions > * {
+  flex: 1 1 180px;
+}
+
+.endingFolded {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 8px 14px;
+  border-radius: var(--radius-m);
+  border: 1px solid rgb(201 164 92 / 0.45);
+  background: var(--brass-soft);
+}
+
+.endingInline {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  color: var(--brass);
+}
+
+/* Rumors: brass like secrets, with who said it. */
+.rumors {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rumor {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: var(--radius-m);
+  border: 1px dashed rgb(201 164 92 / 0.55);
+  background: var(--field-bg);
+}
+
+.rumorText {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 16.5px;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--brass) 40%, var(--blush));
+}

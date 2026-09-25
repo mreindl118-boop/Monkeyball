@@ -3,6 +3,7 @@ import { Portrait } from '../../art/Portrait'
 import { portraitAccent } from '../../art/Portrait.model'
 import { GIFTS, giftById } from '../../data/gifts'
 import { VENUES, venueById } from '../../data/venues'
+import { standingLine } from '../../engine/agreements'
 import { newRelationship } from '../../engine/relationship'
 import { affectionCap, routeFor, stageFor } from '../../engine/stages'
 import { liveCharacterId, useDate } from '../../store/date'
@@ -19,9 +20,11 @@ import { Note, Panel } from '../../ui/Panel'
 import { TopBar } from '../../ui/TopBar'
 import { highestTier } from '../Hub/hubModel'
 import { useRosterAndGame } from '../Hub/useRosterGame'
+import { EndingCard } from './EndingCard'
 import styles from './Profile.module.css'
 import {
   HIDDEN,
+  RUMOR_WARNING,
   ageLine,
   agreementView,
   attractionsText,
@@ -34,6 +37,7 @@ import {
   relationText,
   routeExplanation,
   routeTitle,
+  rumorsAbout,
   secretRows,
   stageName,
   styleText,
@@ -123,6 +127,26 @@ function ProfileView({ character, setId, ready }: { character: Character; setId:
   const styleKnown = !!rel.revealed?.style
   const cap = affectionCap(route)
   const style = { '--accent': portraitAccent(character.accent) } as CSSProperties
+  const sets = useRoster((s) => s.sets)
+  const heard = useGame((s) => s.game.rumors)
+  const names = useMemo(() => {
+    const out: Record<string, string> = {}
+    for (const e of Object.values(entries)) out[e.character.id] = e.character.name.trim() || e.character.id
+    return out
+  }, [entries])
+  const rumors = useMemo(
+    () => rumorsAbout(id, heard, sets.flatMap((s) => s.rumors ?? []), names),
+    [id, heard, sets, names],
+  )
+  // Where they think the two of you stand, once there's something to stand on.
+  const standing = useMemo(() => {
+    if ((rel.dates ?? 0) === 0 && (rel.knownOthers ?? []).length === 0) return ''
+    try {
+      return standingLine(character, rel, names)
+    } catch {
+      return ''
+    }
+  }, [character, rel, names])
 
   return (
     <main className={`screen ${styles.root}`} style={style} aria-busy={!ready || undefined}>
@@ -185,8 +209,18 @@ function ProfileView({ character, setId, ready }: { character: Character; setId:
               )}
             </dd>
           </div>
+          {standing && (
+            <div className={styles.fact}>
+              <dt>What they know</dt>
+              <dd>
+                <span className={styles.value}>{standing}</span>
+              </dd>
+            </div>
+          )}
         </dl>
       </Panel>
+
+      <EndingCard character={character} />
 
       <Panel title="Look" className={styles.section}>
         <p className={styles.prose}>{character.look}</p>
@@ -308,6 +342,20 @@ function ProfileView({ character, setId, ready }: { character: Character; setId:
           </ul>
         )}
       </Panel>
+
+      {rumors.length > 0 && (
+        <Panel title="Rumors you've heard" description={`What people have said about ${first}.`} tone="brass" className={styles.section}>
+          <ul className={styles.rumors}>
+            {rumors.map((r) => (
+              <li key={r.id} className={styles.rumor}>
+                <p className={styles.rumorText}>{r.text}</p>
+                <p className={styles.caption}>From {r.teller}</p>
+              </li>
+            ))}
+          </ul>
+          <p className={styles.caption}>{RUMOR_WARNING}</p>
+        </Panel>
+      )}
 
       <Panel title="Partners and exes" className={styles.section}>
         {!partnersKnown(rel) ? (

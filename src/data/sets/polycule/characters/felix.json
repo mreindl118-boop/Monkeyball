@@ -1,0 +1,164 @@
+{
+  "id": "felix",
+  "name": "Felix Hartmann",
+  "age": 30,
+  "gender": "man",
+  "pronouns": "he/him",
+  "identity": "Trans man",
+  "attractedTo": [
+    "man",
+    "nonbinary"
+  ],
+  "orientation": "gay",
+  "relationshipStyle": "polyamorous",
+  "jealousy": "medium",
+  "bodyNotes": "Lean and wiry from running, pale, a line of dark hair down his stomach, faint top-surgery scars he mostly forgets are there, a runner's legs, and hands that are always cold",
+  "partners": [
+    {
+      "characterId": "mateo",
+      "relation": "partner"
+    }
+  ],
+  "occupation": "Software engineer who builds scheduling tools for hospitals, and keeper of the Larkspur house calendar",
+  "difficulty": "hard",
+  "accent": "#079FC5",
+  "look": "Slim and neat, pale skin, dark hair in a sharp side part, a trimmed moustache he's still deciding about, black rectangular glasses, a pressed button-down with the sleeves rolled exactly twice, a smartwatch he checks too often, and a pen clipped to his collar",
+  "artTags": "adult man, 30 years old, slim build, pale skin, dark hair in a sharp side part, trimmed moustache, black rectangular glasses, pressed button-down shirt with rolled sleeves, smartwatch, pen clipped to collar, serious expression",
+  "personality": "Precise, dryly funny and quietly anxious, a man who shows love by remembering everyone's schedule and has forgotten to put himself on it",
+  "voice": "Clipped and exact, drops into numbered lists when he's nervous and apologizes for it ('sorry, item two'), dry one-liners delivered deadpan; starts calling the player 'plus-one' once he likes them",
+  "backstory": "Moved to the city at 22 with one suitcase, a laptop and a plan, and has been making plans ever since; these days he builds scheduling software for hospitals. He has been with Mateo for seven years, and when Mateo started seeing Ash two years ago, Felix wrote the Larkspur house rules in one sleepless night and has kept the shared calendar ever since. He runs at six every morning, hasn't had a drink in five years, and hasn't dated anyone new since the rules went up.",
+  "opener": "I've blocked out two hours for this, which I'm told is not a romantic thing to say. Hi. I'm Felix. The two hours are yours.",
+  "likes": [
+    {
+      "id": "a-plan",
+      "label": "A plan, and someone who sticks to it"
+    },
+    {
+      "id": "note-perfect",
+      "label": "Rhythm games, where he's quietly terrifying"
+    },
+    {
+      "id": "dawn-run",
+      "label": "Running before the city wakes up"
+    },
+    {
+      "id": "spreadsheets",
+      "label": "A beautiful spreadsheet, and not being mocked for loving one"
+    },
+    {
+      "id": "soundtracks",
+      "label": "Digging through record bins for film soundtracks"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "no-eta",
+      "label": "Running late without sending an ETA"
+    },
+    {
+      "id": "pushed-drink",
+      "label": "Being handed a drink he didn't ask for"
+    },
+    {
+      "id": "surprise-plans",
+      "label": "Surprise plans sprung on him"
+    },
+    {
+      "id": "house-admin",
+      "label": "Being treated like the house's admin instead of a person who lives in it"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "asked-first",
+      "label": "Being asked what he wants, and given time to answer"
+    },
+    {
+      "id": "fixes-it",
+      "label": "Competence: fixing the thing instead of talking about it"
+    },
+    {
+      "id": "night-off",
+      "label": "Someone who takes over the planning so he can switch off for one night"
+    },
+    {
+      "id": "penciled-in",
+      "label": "A standing date, same time every week"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "overreacting",
+      "label": "Being told he's overreacting when he's anxious"
+    },
+    {
+      "id": "hidden-dates",
+      "label": "Keeping dates secret from the people who should know"
+    },
+    {
+      "id": "just-mateos",
+      "label": "Being treated as Mateo's other half instead of his own person"
+    },
+    {
+      "id": "last-minute-cancel",
+      "label": "Cancelling at the last minute"
+    }
+  ],
+  "favoriteVenues": [
+    "arcade",
+    "record-store"
+  ],
+  "hatedVenues": [
+    "karaoke-box",
+    "amusement-park"
+  ],
+  "lovedGifts": [
+    "video-game",
+    "rare-vinyl"
+  ],
+  "hatedGifts": [
+    "red-wine"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "He has quietly come to hate the house rules he wrote: the calendar, the overnight notice, the Sunday heads-up. There's a draft in his notes app called 'proposal: retire the chore wheel' that scraps half of them, and he hasn't shown anyone, because he's afraid Mateo will hear 'I want fewer rules' as 'I want less of you'."
+    },
+    {
+      "unlockAt": 80,
+      "text": "Every date anyone in the house goes on is on his calendar, color-coded, except his own dates with the newcomer. He has kept those off on purpose, the one part of his week that belongs to nobody's schedule, and he knows exactly how that would look at Wednesday check-in."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Color-coded",
+      "scene": "Felix at the Larkspur kitchen table with the house calendar open on his laptop, glancing up at you over his glasses"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "High combo",
+      "scene": "Felix at the arcade's rhythm cabinet with his sleeves rolled, dead serious and then suddenly grinning as the combo counter climbs and you cheer behind him"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Unscheduled",
+      "scene": "The soundtrack aisle of the record store, Felix's phone face-down on a crate for once as he kisses you between the shelves"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Off the calendar",
+      "scene": "Felix's room at Larkspur late at night, glasses on the nightstand and shirt open, pulling you close beneath a wall planner he has turned to face the wall"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Standing date",
+      "scene": "Felix hands you the pen at the kitchen calendar, where every Thursday from now on is already blocked out in your name, in ink"
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 import 'fake-indexeddb/auto'
 import { afterEach, describe, expect, it } from 'vitest'
+import { BUNDLED_CHARACTER_IDS, BUNDLED_SET_IDS, RESERVED_CHARACTER_IDS } from '../data/bundled'
 import novaJson from '../data/sets/afterhours/characters/nova.json'
 import { CrushDB } from '../db/db'
 import { normalizeCharacter } from '../mods/normalize'
@@ -54,12 +55,14 @@ const ids = (list: { character: Character }[]) => list.map((e) => e.character.id
 const view = (showMe: ShowMe, activeSets = ['afterhours']) => ({ activeSets, showMe })
 
 describe('useRoster: bundled sets', () => {
-  it('loads Afterhours from the bundle', async () => {
+  it('loads Afterhours (and every other bundled set) from the bundle', async () => {
     const { store } = await setup()
     const s = store.getState()
     expect(s.loaded).toBe(true)
-    expect(s.sets.map((x) => x.id)).toEqual(['afterhours'])
-    expect(Object.keys(s.entries)).toHaveLength(12)
+    expect(s.sets.map((x) => x.id)).toEqual([...BUNDLED_SET_IDS])
+    expect(s.sets[0].id).toBe('afterhours')
+    expect(Object.keys(s.entries)).toHaveLength(BUNDLED_CHARACTER_IDS.length)
+    expect(Object.values(s.entries).filter((e) => e.setId === 'afterhours')).toHaveLength(12)
     expect(s.entries.nova).toMatchObject({ setId: 'afterhours', source: 'bundled' })
     expect(s.setOf('nova')?.name).toBe('Afterhours')
     expect(s.setOf('nobody')).toBeUndefined()
@@ -83,7 +86,11 @@ describe('useRoster: bundled sets', () => {
   it('shows only active sets', async () => {
     const { store } = await setup()
     expect(store.getState().activeEntries(view('everyone', []))).toEqual([])
-    expect(store.getState().activeEntries(view('everyone', ['polycule']))).toEqual([])
+    expect(store.getState().activeEntries(view('everyone', ['nowhere']))).toEqual([])
+    // Only Afterhours is on by default; another bundled set's characters stay out of it.
+    const afterhours = ids(store.getState().activeEntries(view('everyone')))
+    expect(afterhours).toHaveLength(12)
+    expect(store.getState().activeEntries(view('everyone')).every((e) => e.setId === 'afterhours')).toBe(true)
   })
 
   it('merges manifest relationships and card partners without duplicates', async () => {
@@ -108,7 +115,7 @@ describe('useRoster: custom characters', () => {
     expect(issues).toEqual([])
     const s = store.getState()
     expect(s.entries.sam).toMatchObject({ setId: CUSTOM_SET_ID, source: 'custom' })
-    expect(s.sets.map((x) => x.id)).toEqual(['afterhours', 'custom'])
+    expect(s.sets.map((x) => x.id)).toEqual([...BUNDLED_SET_IDS, 'custom'])
     expect(s.setOf('sam')).toMatchObject({ id: 'custom', name: 'My characters', characters: ['sam'] })
     expect(settings.active()).toEqual(['afterhours', 'custom'])
     expect(await d.customCharacters.get('sam')).toMatchObject({ setId: 'custom', source: 'custom' })
@@ -178,15 +185,23 @@ describe('useRoster: custom characters', () => {
     expect(store.getState().entries.nova).toBeDefined()
   })
 
-  it('keeps ids of characters from sets that ship later', async () => {
+  it('keeps ids of characters from sets that ship later, and never takes a bundled one', async () => {
     const { store } = await setup()
-    const issues = await store.getState().saveCustomCharacter(card('wren', 'Wren'))
-    expect(issues.map((i) => i.message)).toEqual([
-      'The id "wren" is kept for a character in a set that ships with crushLAB. Pick a different one.',
-    ])
-    const loose = await store.getState().importPack(await importFile(new Blob([JSON.stringify(card('ash', 'Ash'))]), 'ash.json'))
+    const later = RESERVED_CHARACTER_IDS.filter((id) => !BUNDLED_CHARACTER_IDS.includes(id))
+    for (const id of later.slice(0, 1)) {
+      const issues = await store.getState().saveCustomCharacter(card(id, 'Someone'))
+      expect(issues.map((i) => i.message)).toEqual([
+        `The id "${id}" is kept for a character in a set that ships with crushLAB. Pick a different one.`,
+      ])
+    }
+    const shipped = RESERVED_CHARACTER_IDS.find((id) => BUNDLED_CHARACTER_IDS.includes(id))
+    if (shipped) {
+      const issues = await store.getState().saveCustomCharacter(card(shipped, 'Someone'))
+      expect(issues.map((i) => i.message)).toEqual([`Another character already uses the id "${shipped}". Pick a different one.`])
+    }
+    const loose = await store.getState().importPack(await importFile(new Blob([JSON.stringify(card('eli', 'Eli'))]), 'eli.json'))
     expect(loose.ok).toBe(false)
-    expect(store.getState().entries.ash).toBeUndefined()
+    expect(store.getState().entries.eli?.source).not.toBe('imported')
   })
 
   it('waits for the first load before a save, so the save survives it', async () => {
@@ -262,7 +277,7 @@ describe('useRoster: packs', () => {
     const outcome = await store.getState().importPack(result)
     expect(outcome).toEqual({ ok: true, setId: 'harbor-lights', saved: ['sam', 'lee'], errors: [] })
     const s = store.getState()
-    expect(s.sets.map((x) => x.id)).toEqual(['afterhours', 'harbor-lights'])
+    expect(s.sets.map((x) => x.id)).toEqual([...BUNDLED_SET_IDS, 'harbor-lights'])
     expect(s.entries.lee).toMatchObject({ setId: 'harbor-lights', source: 'imported' })
     expect(settings.active()).toContain('harbor-lights')
     expect(ids(s.activeEntries({ activeSets: settings.active(), showMe: 'everyone' })).slice(-2)).toEqual(['sam', 'lee'])
@@ -295,7 +310,7 @@ describe('useRoster: packs', () => {
     await d.relationships.put({ characterId: 'sam', affection: 50 } as never)
     await store.getState().removePack('harbor-lights')
     expect(store.getState().entries.sam).toBeUndefined()
-    expect(store.getState().sets.map((x) => x.id)).toEqual(['afterhours'])
+    expect(store.getState().sets.map((x) => x.id)).toEqual([...BUNDLED_SET_IDS])
     expect(settings.active()).not.toContain('harbor-lights')
     expect(await d.packs.count()).toBe(0)
     expect(await d.customCharacters.count()).toBe(0)

@@ -1,0 +1,163 @@
+{
+  "id": "juno",
+  "name": "Juno Park",
+  "age": 34,
+  "gender": "woman",
+  "pronouns": "she/her",
+  "attractedTo": [
+    "woman",
+    "nonbinary"
+  ],
+  "orientation": "lesbian",
+  "relationshipStyle": "polyamorous",
+  "jealousy": "low",
+  "bodyNotes": "Medium height, soft shoulders and strong calves from taking the courthouse stairs two at a time, a small tattoo of a balance scale on her ribs that she regrets on principle, and a thin scar through one eyebrow from a softball",
+  "partners": [
+    {
+      "characterId": "wren",
+      "relation": "partner"
+    }
+  ],
+  "occupation": "Public defender with too many cases and a flat of her own downtown, ten minutes from the courthouse and twenty from Larkspur",
+  "difficulty": "normal",
+  "accent": "#FF5C5C",
+  "look": "A sharp black bob, pale golden skin, red lipstick that survives a whole trial, a charcoal suit with the jacket slung over one shoulder, a white shirt with the sleeves pushed up, a plain silver chain, scuffed low heels she can run for a bus in, and a tote bag full of case files",
+  "artTags": "adult woman, 34 years old, sharp black bob, pale golden skin, red lipstick, charcoal suit, jacket over one shoulder, white shirt with pushed-up sleeves, plain silver chain necklace, low heels, confident smirk",
+  "personality": "Quick, fierce and funny, a woman who argues for a living and loves like it's a closing statement: all in, and home by midnight",
+  "voice": "Rapid-fire courtroom cadence, cross-examines on reflex ('objection, leading'), laughs loud and swears fluently; starts calling the player 'counsel' once she likes them",
+  "backstory": "Has been a public defender for nine years and still takes every loss personally. She's solo poly by design: her own flat, her own keys and her own nights, though most Sundays she's at Larkspur's long table. She's been with Wren for three years, since she knocked a vase off Wren's table at a studio sale and insisted on paying; she's warm with the whole house, and careful with Sol.",
+  "opener": "Let me guess: they sent you to me because I'm the one who doesn't live there. Smart. Sit down and give me your side of it.",
+  "likes": [
+    {
+      "id": "good-faith-fight",
+      "label": "A good argument, argued in good faith"
+    },
+    {
+      "id": "thursday-show",
+      "label": "Thursday drag night at the queer bar, front and center"
+    },
+    {
+      "id": "own-keys",
+      "label": "Her own space, respected without a fight"
+    },
+    {
+      "id": "verdict-ballad",
+      "label": "Belting power ballads after a verdict goes her way"
+    },
+    {
+      "id": "wren-stories",
+      "label": "Hearing about Wren from someone else who loves her"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "lawyer-jokes",
+      "label": "Lawyer jokes"
+    },
+    {
+      "id": "guilty-question",
+      "label": "Being asked how she can defend people who 'did it'"
+    },
+    {
+      "id": "procedurals",
+      "label": "Courtroom dramas on TV, and their idea of the law"
+    },
+    {
+      "id": "just-relax",
+      "label": "Being told to just relax"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "objection-sustained",
+      "label": "Winning an argument with her, fairly"
+    },
+    {
+      "id": "courthouse-coffee",
+      "label": "Someone waiting on the courthouse steps with coffee"
+    },
+    {
+      "id": "own-it",
+      "label": "Being upfront and unapologetic about who else you see"
+    },
+    {
+      "id": "after-a-loss",
+      "label": "Being looked after the night she loses a case"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "move-in-ask",
+      "label": "Being pushed to move in or give up her flat"
+    },
+    {
+      "id": "punching-down",
+      "label": "Sneering at people who can't afford a lawyer"
+    },
+    {
+      "id": "wren-jealous",
+      "label": "Jealousy about Wren"
+    },
+    {
+      "id": "pick-a-side",
+      "label": "Being asked to pick a side in a house argument"
+    }
+  ],
+  "favoriteVenues": [
+    "queer-bar",
+    "karaoke-box",
+    "rooftop-bar"
+  ],
+  "hatedVenues": [
+    "hot-spring"
+  ],
+  "lovedGifts": [
+    "chocolates",
+    "silver-necklace"
+  ],
+  "hatedGifts": [
+    "houseplant"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "Wren has asked her twice to move into the attic room at Larkspur, and Juno blamed her lease both times. The truth is Sol: something went unsaid between them on the back porch last winter, and Juno won't move in on top of it."
+    },
+    {
+      "unlockAt": 80,
+      "text": "She's been offered the top job at the public defender's office. It would swallow what's left of her free nights, Wren's included, and she's going to say yes; she has been rehearsing how to tell Wren the way she rehearses a closing."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Courthouse steps",
+      "scene": "Juno on the courthouse steps at dusk, jacket over one shoulder and red lipstick intact, pointing at you like you're her next witness"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Verdict night",
+      "scene": "A karaoke box after a win, Juno up on the seat with her heels kicked off, belting a power ballad and holding the mic out to you"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Thursday night",
+      "scene": "Drag night at the queer bar, Juno's arm around your waist in the crush by the stage, murmuring commentary into your ear between kisses"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Off the clock",
+      "scene": "Juno's flat downtown with the case files swept off the couch, her suit jacket on the floor, her shirt half unbuttoned and her red lipstick on your collar"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Sustained",
+      "scene": "Juno presses a key to her flat into your palm, the one thing she has never given anyone, and tells you she'll allow it"
+    }
+  ]
+}

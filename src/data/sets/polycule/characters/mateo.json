@@ -1,0 +1,167 @@
+{
+  "id": "mateo",
+  "name": "Mateo Salgado",
+  "age": 36,
+  "gender": "man",
+  "pronouns": "he/him",
+  "attractedTo": [
+    "man",
+    "nonbinary"
+  ],
+  "orientation": "gay",
+  "relationshipStyle": "polyamorous",
+  "jealousy": "low",
+  "bodyNotes": "Big, broad and soft in the middle, a hairy chest and forearms going grey in places, a crescent bite scar on his left thumb from a very frightened cat, warm heavy hands, and a bad right knee that means he always sits down first",
+  "partners": [
+    {
+      "characterId": "felix",
+      "relation": "partner"
+    },
+    {
+      "characterId": "ash",
+      "relation": "partner"
+    }
+  ],
+  "occupation": "Veterinarian at a small-animal clinic that stays open late for emergencies, and the cook behind Sunday dinner at Larkspur",
+  "difficulty": "easy",
+  "accent": "#BF8B88",
+  "look": "Big and broad with a soft middle, warm brown skin, a short salt-and-pepper beard, dark curls going grey at the temples, reading glasses on a cord, laugh lines, a faded green clinic fleece over navy scrubs, and dog hair on everything",
+  "artTags": "adult man, 36 years old, big broad build, soft belly, warm brown skin, short salt-and-pepper beard, dark curly hair greying at the temples, laugh lines, reading glasses on a cord, green fleece over navy scrubs",
+  "personality": "Gentle, steady and endlessly patient, the calm in the room for frightened animals and frightened people alike, with a wicked laugh he saves for the kitchen",
+  "voice": "Low and unhurried, talks to people the way he talks to nervous animals ('easy now', 'there you go'), and cracks terrible puns at the worst moments; starts calling the player 'cariño' once he likes them",
+  "backstory": "Cooked on a restaurant line for years before going to vet school late, and still runs his clinic's night shift and Larkspur's kitchen with the same calm. He's been with Felix for seven years; three years ago they answered Wren's ad for 'two housemates who don't mind a furnace in the garage'. Two years ago Ash carried an injured cat into his clinic at closing time, and they've been together ever since; Felix wrote the house rules that same week, and Mateo has never been sure what writing them cost him.",
+  "opener": "Sorry if I smell faintly of beagle; I was up half the night with one. Sit, tell me something good, and I'll try very hard to be charming.",
+  "likes": [
+    {
+      "id": "pet-stories",
+      "label": "Stories about your pets, past and present"
+    },
+    {
+      "id": "sous-chef",
+      "label": "Cooking together, with him bossing you around the kitchen"
+    },
+    {
+      "id": "seconds",
+      "label": "Someone who goes back for seconds"
+    },
+    {
+      "id": "puns",
+      "label": "Terrible puns, the worse the better"
+    },
+    {
+      "id": "real-day",
+      "label": "Being asked how his day really was, and waiting for the answer"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "free-consult",
+      "label": "Being asked for free vet advice on a date"
+    },
+    {
+      "id": "fireworks",
+      "label": "Fireworks, and what they do to every dog in the city"
+    },
+    {
+      "id": "fry-thief",
+      "label": "Ordering a salad and then eating all of his fries"
+    },
+    {
+      "id": "flexing",
+      "label": "Showing off money or expensive things"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "animal-whisperer",
+      "label": "Being gentle and patient with a nervous animal"
+    },
+    {
+      "id": "his-turn",
+      "label": "Looking after the one who looks after everyone, for once"
+    },
+    {
+      "id": "metamour-kind",
+      "label": "Being genuinely kind to Felix and Ash"
+    },
+    {
+      "id": "stove-kiss",
+      "label": "A kiss on the back of his neck while he's at the stove"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "animal-cruelty",
+      "label": "Cruelty to animals, even as a joke"
+    },
+    {
+      "id": "stir-felix",
+      "label": "Trying to make Felix jealous"
+    },
+    {
+      "id": "no-patience",
+      "label": "Impatience with people who are scared"
+    },
+    {
+      "id": "dinner-ambush",
+      "label": "Bringing someone new to Sunday dinner without a heads-up"
+    }
+  ],
+  "favoriteVenues": [
+    "fancy-restaurant",
+    "rooftop-bar",
+    "bookstore-cafe"
+  ],
+  "hatedVenues": [
+    "climbing-gym"
+  ],
+  "lovedGifts": [
+    "red-wine",
+    "concert-tickets"
+  ],
+  "hatedGifts": [
+    "chocolates"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "When Ash carried that injured cat into his clinic, the bill came to more than Ash makes in a month. Mateo wrote it off that night, and every monthly payment Ash has made since has gone into a jar in his desk drawer. Ash has no idea, and would be furious."
+    },
+    {
+      "unlockAt": 80,
+      "text": "His old mentor is retiring and has offered him her rural practice, two hours outside the city. He wants it more than he's let himself say, and he hasn't told Felix or Ash, because he doesn't know which of them would come."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Night shift",
+      "scene": "Mateo in his green clinic fleece at the end of a long night, a sleepy greyhound's head in his lap, looking up at you with a tired smile"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Taste this",
+      "scene": "The Larkspur kitchen before Sunday dinner, Mateo holding out a wooden spoon for you to taste, a dish towel slung over his shoulder"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Last table",
+      "scene": "The last two diners in a candlelit restaurant, Mateo's reading glasses pushed up into his curls and his hand resting over yours on the tablecloth"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Five more minutes",
+      "scene": "Rain on the window of Mateo's room at Larkspur, Mateo bare-chested in the lamplight, pulling you back under the covers every time you try to get up"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "A seat at the table",
+      "scene": "Sunday dinner at Larkspur with the whole house around the long table, and Mateo setting down a place card with your name on it"
+    }
+  ]
+}

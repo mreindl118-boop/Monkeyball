@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { coerceAgreement, coerceJudge, coerceSuggestions, neutralJudge } from './coerce'
+import { coerceAgreement, coerceJudge, coerceSuggestions, neutralJudge, normalizeAgreementType } from './coerce'
 
 describe('coerceJudge', () => {
   it('accepts a full result', () => {
@@ -44,5 +44,35 @@ describe('coerceSuggestions', () => {
     const romantic = coerceSuggestions(['sweet', 'flirty', 'bold'])
     expect(romantic({ sweet: 'a', flirty: '"b"', bold: 'c' })).toEqual({ sweet: 'a', flirty: 'b', bold: 'c' })
     expect(romantic({ sweet: 'a', curious: 'b', honest: 'c' })).toBeNull()
+  })
+})
+
+describe('coerceAgreement (tolerant)', () => {
+  it('reads synonyms, case, quotes and punctuation', () => {
+    const t = (agreement: string) => coerceAgreement({ agreement, accepted: true, terms: 'x', trustDelta: 1 })?.agreement
+    expect(t('Monogamous')).toBe('exclusive')
+    expect(t('monogamy')).toBe('exclusive')
+    expect(t('"exclusive."')).toBe('exclusive')
+    expect(t('Open relationship')).toBe('open')
+    expect(t('non-monogamous')).toBe('open')
+    expect(t('polyamory')).toBe('poly')
+    expect(t('keep it casual')).toBe('casual')
+    expect(t('friends with benefits')).toBe('casual')
+    expect(t('no agreement')).toBe('none')
+    expect(t('exclusive|open|poly|casual|none')).toBeUndefined()
+    expect(normalizeAgreementType('marriage')).toBeNull()
+  })
+
+  it('reads accepted from yes, a status, or type for agreement; never accepted on none', () => {
+    expect(coerceAgreement({ agreement: 'open', accepted: 'yes' })?.accepted).toBe(true)
+    expect(coerceAgreement({ agreement: 'open', status: 'countered' })?.accepted).toBe(true)
+    expect(coerceAgreement({ agreement: 'open', status: 'declined' })?.accepted).toBe(false)
+    expect(coerceAgreement({ type: 'poly', accepted: true })).toMatchObject({ agreement: 'poly', accepted: true })
+    expect(coerceAgreement({ agreement: 'declined', accepted: true })?.accepted).toBe(false)
+  })
+
+  it('keeps terms on one line and not too long', () => {
+    expect(coerceAgreement({ agreement: 'open', accepted: true, terms: ' Open,\n  and we talk. ' })?.terms).toBe('Open, and we talk.')
+    expect(coerceAgreement({ agreement: 'open', accepted: true, terms: 'a'.repeat(400) })?.terms).toHaveLength(300)
   })
 })

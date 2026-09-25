@@ -9,7 +9,8 @@
 // It recognises the prompt kind by the system prompt's first line and answers deterministically:
 //   story        "You are the story engine ..."
 //   judge        "You score one message ..."      keywords in "Player's new message:" force results
-//   agreement    "The player and ..."
+//   agreement    "The player and ..."        accepts the requested type; "[decline]", "[counter]" and
+//                                                "[silent]" in the talk decline, counter or leave it open
 //   suggestions  "Suggest three things ..."
 //   memory       "Summarize this date ..."
 //   (no system prompt) a plain reply, "ok"
@@ -125,14 +126,36 @@ export function judgeReply(system) {
   return base
 }
 
+/** What someone of this style settles on when they counter: monogamous -> exclusive, and so on. */
+const STYLE_AGREEMENT = { monogamous: 'exclusive', open: 'open', polyamorous: 'poly', flexible: 'casual' }
+
+/**
+ * The Agreement prompt: accepts the requested type ("The player asked for: exclusive (...)"), with
+ * the character's name in the terms. Keywords in the player's lines of the talk (the Conversation
+ * section) steer it for e2e checks: "[decline]" says no (accepted false, trust -2), "[counter]"
+ * counters with what their style wants (their relationshipStyle line), "[silent]" leaves the talk
+ * unresolved (agreement none, no terms).
+ */
 export function agreementReply(system) {
   const name = firstName((system.match(/^The player and (.+?) just talked/) || [])[1])
   const asked = lineAfter(system, 'The player asked for:').toLowerCase()
-  const agreement = (asked.match(/\b(exclusive|open|poly|casual|none)\b/) || [])[1] || 'none'
+  const requested = (asked.match(/\b(exclusive|open|poly|casual|none)\b/) || [])[1] || 'none'
+  const talk = system.includes('Conversation:') ? system.slice(system.indexOf('Conversation:')).split('\nReply with JSON')[0].toLowerCase() : ''
+  const style = ((system.match(/ is (monogamous|open|polyamorous|flexible) with /) || [])[1] || '').toLowerCase()
+  if (talk.includes('[decline]')) {
+    return { agreement: requested, accepted: false, terms: `${name} says: not like this, not yet.`, trustDelta: -2 }
+  }
+  if (talk.includes('[silent]')) {
+    return { agreement: 'none', accepted: false, terms: '', trustDelta: 0 }
+  }
+  if (talk.includes('[counter]')) {
+    const counter = STYLE_AGREEMENT[style] && STYLE_AGREEMENT[style] !== requested ? STYLE_AGREEMENT[style] : requested === 'casual' ? 'open' : 'casual'
+    return { agreement: counter, accepted: true, terms: `${name} says: ${counter}, that's what I can do.`, trustDelta: 1 }
+  }
   return {
-    agreement,
-    accepted: agreement !== 'none',
-    terms: agreement === 'none' ? '' : `${name} says: ${agreement}, and we tell each other the truth.`,
+    agreement: requested,
+    accepted: requested !== 'none',
+    terms: requested === 'none' ? '' : `${name} says: ${requested}, and we tell each other the truth.`,
     trustDelta: 2,
   }
 }

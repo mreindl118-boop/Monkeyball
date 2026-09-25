@@ -1,0 +1,163 @@
+{
+  "id": "ines",
+  "name": "Ines Duarte",
+  "age": 33,
+  "gender": "woman",
+  "pronouns": "she/her",
+  "attractedTo": [
+    "woman",
+    "man"
+  ],
+  "orientation": "bi",
+  "relationshipStyle": "flexible",
+  "jealousy": "compersion",
+  "bodyNotes": "Curvy and strong, a soft belly and wide hips, forearms dotted with small oven burns, a sardine tattoo on one ankle, and hands that are always warm from the coffee pot",
+  "partners": [
+    {
+      "characterId": "maren",
+      "relation": "ex"
+    }
+  ],
+  "occupation": "Runs The Tidewater, the harbor diner that opens at five for the fishing boats",
+  "difficulty": "easy",
+  "accent": "#FFA399",
+  "look": "Curvy and quick on her feet, olive skin, dark curls pinned up under a red bandana, gold hoops, laugh lines, a striped boat-neck top under a diner apron, jeans rolled at the ankle, small oven burns on her forearms, and a coffee pot that seems attached to her hand",
+  "artTags": "adult woman, 33 years old, curvy figure, olive skin, dark curly hair pinned up under a red bandana, gold hoop earrings, warm brown eyes, laugh lines, striped boat-neck top, diner apron, rolled jeans, coffee pot in hand",
+  "personality": "Warm, nosy and endlessly generous, the town's switchboard and its kitchen, happiest when everyone she loves is fed and happy, with or without her",
+  "voice": "Talks fast and with her hands, feeds you mid-sentence, slips into Portuguese when she's moved, gossips without an ounce of malice; starts calling the player 'sardinha' once she likes them",
+  "backstory": "Grew up over her mother's bakery on Quay Street and was cooking the fishing fleet's breakfasts by 19. She and Maren were together three years; she took a line-cook job on the mainland and was gone a year, then came home, bought The Tidewater from its retiring owner, and she and Maren still do the Sunday crossword together at the counter. She's flexible about the shape love takes and genuinely happy when the people she loves are happy with someone else, which confuses half the town and delights the other half.",
+  "opener": "Sit, sit. You look like someone who hasn't eaten since noon. I'm not asking, I'm guessing, and I'm never wrong.",
+  "likes": [
+    {
+      "id": "clean-plate",
+      "label": "Cleaning your plate and asking what else there is"
+    },
+    {
+      "id": "kind-gossip",
+      "label": "Gossip that's kind, or at least funny"
+    },
+    {
+      "id": "friday-karaoke",
+      "label": "Friday karaoke in the back room of The Grapnel"
+    },
+    {
+      "id": "happy-details",
+      "label": "Hearing about your other dates, happy details included"
+    },
+    {
+      "id": "planned-for-her",
+      "label": "A night out that someone else planned, for once"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "quaint",
+      "label": "Anyone calling Gullhaven 'quaint'"
+    },
+    {
+      "id": "bad-tipper",
+      "label": "Stingy tipping at the counter"
+    },
+    {
+      "id": "own-good",
+      "label": "Secrets kept 'for her own good'"
+    },
+    {
+      "id": "diet-talk",
+      "label": "Diet talk at the table"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "closing-dance",
+      "label": "Slow dancing in the empty diner after close"
+    },
+    {
+      "id": "made-a-plate",
+      "label": "Someone cooking for her, however badly"
+    },
+    {
+      "id": "pot-down",
+      "label": "Making her laugh so hard she has to put the coffee pot down"
+    },
+    {
+      "id": "want-out-loud",
+      "label": "Saying out loud what, and who, you want"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "food-snob",
+      "label": "Snobbery about diner food"
+    },
+    {
+      "id": "maren-trash",
+      "label": "Running Maren down to get on her good side"
+    },
+    {
+      "id": "hidden-others",
+      "label": "Hiding who else you're seeing, as if she'd mind"
+    },
+    {
+      "id": "make-me-jealous",
+      "label": "Trying to make her jealous on purpose"
+    }
+  ],
+  "favoriteVenues": [
+    "night-market",
+    "karaoke-box",
+    "amusement-park"
+  ],
+  "hatedVenues": [
+    "rooftop-bar"
+  ],
+  "lovedGifts": [
+    "hot-sauce",
+    "concert-tickets"
+  ],
+  "hatedGifts": [
+    "houseplant"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "She's been seating Maren and Bea side by side at the counter for months on purpose, and lately she leaves the Sunday crossword half done so Bea will finish it with Maren. She thinks they'd be wonderful together and would be delighted to be right."
+    },
+    {
+      "unlockAt": 80,
+      "text": "Everyone thinks the mainland job found her. She went looking for it, because she had never lived anywhere but Gullhaven and a future that certain frightened her, and she has never told Maren she was happy the whole time."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Early shift",
+      "scene": "Ines behind The Tidewater's counter at five in the morning, coffee pot in hand, already pouring you a cup you didn't order"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Market haul",
+      "scene": "The Saturday harbor market, Ines haggling over the morning catch with one hand and feeding you a warm custard tart with the other"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Chairs up",
+      "scene": "The diner after closing with the chairs on the tables and the radio on, Ines pulling you into a slow dance between the booths, flour still on her apron"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Above the diner",
+      "scene": "Her flat above the diner with rain on the skylight, Ines in a silky slip and her gold hoops, perched on the kitchen counter and pulling you in by your belt loops to taste something from the stove"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "Lanterns on the water",
+      "scene": "Winter Lantern Night on the harbor, Ines launching a paper lantern with you, her arm around your waist while the whole town's lights drift out to sea"
+    }
+  ]
+}

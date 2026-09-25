@@ -445,3 +445,41 @@ describe('message helpers', () => {
     expect(named[1].content).toBe('Venue: Arcade. Gift: a poetry book.\nThe date:\nRobin: Hi\n\nWrite the summary.')
   })
 })
+
+describe('Phase 4 prompt hooks', () => {
+  const misgendering = { id: 'misgendering', label: 'Being misgendered or deadnamed' }
+
+  it('fills {knownOthers} from a given text, else the names as before', () => {
+    const r = rel({ knownOthers: ['kai'] })
+    expect(buildStoryPrompt(story({ rel: r }))).toContain('knows about: Kai Okoro\n')
+    expect(buildStoryPrompt(story({ rel: r, knownOthersText: 'Kai Okoro, which breaks it' }))).toContain('knows about: Kai Okoro, which breaks it\n')
+    expect(buildStoryPrompt(story({ rel: r, knownOthersText: '  ' }))).toContain('knows about: Kai Okoro\n')
+  })
+
+  it('names a hit on an extra trait in the LANDED line', () => {
+    const j = judge({ hits: [{ type: 'turnOff', id: 'misgendering' }], mood: 'hurt' })
+    expect(buildStoryPrompt(story({ judge: j }))).toContain('Mood: hurt. It hit nothing in particular.')
+    expect(buildStoryPrompt(story({ judge: j, extraTraits: { turnOff: [misgendering] } }))).toContain(
+      'Mood: hurt. It hit a turn-off: Being misgendered or deadnamed.',
+    )
+  })
+
+  it('lists extra traits after the card in the judge, and takes a whole {sharedSecrets}', () => {
+    const base = {
+      character: nova,
+      rel: rel(),
+      route: 'romantic' as const,
+      names,
+      others: [],
+      recent: [],
+      message: 'Hi.',
+    }
+    const p = buildJudgePrompt({ ...base, extraTraits: { turnOff: [misgendering, { id: 'cute', label: 'Not this one' }] } })
+    expect(p).toContain('cute: Being called cute; misgendering: Being misgendered or deadnamed\n')
+    expect(p).not.toContain('Not this one')
+    expect(buildJudgePrompt(base)).toContain('Known secrets shared with Nova Castellanos: none\n')
+    expect(buildJudgePrompt({ ...base, sharedSecretsText: 'the player heard "x" (false)' })).toContain(
+      'Known secrets shared with Nova Castellanos: the player heard "x" (false)\n',
+    )
+  })
+})

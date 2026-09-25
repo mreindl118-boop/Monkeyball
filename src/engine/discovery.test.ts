@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { bundledEntry } from '../data/bundled'
-import { applyTopics, detectTopics, knownHits, recordGift, recordVenue, revealHits, topicsGained } from './discovery'
+import { applyTopics, detectTopics, hasTrait, isUniversalHit, knownHits, recordGift, recordVenue, revealHits, topicsGained } from './discovery'
 import { newRelationship } from './relationship'
 
 const nova = bundledEntry('nova')!.character
@@ -165,5 +165,18 @@ describe('applyTopics', () => {
     expect(b.knowsPlayerStyle).toBe(true)
     expect(topicsGained(rel, b)).toEqual({ attractions: true, style: true, playerStyle: true })
     expect(topicsGained(a, b)).toEqual({ attractions: false, style: true, playerStyle: false })
+  })
+})
+
+describe('traits every character has', () => {
+  it('keeps a misgendering hit for any card but never adds it to the profile', () => {
+    const hit = { type: 'turnOff' as const, id: 'misgendering' }
+    expect(hasTrait(nova, hit)).toBe(true)
+    expect(hasTrait(nova, { type: 'like', id: 'misgendering' })).toBe(false)
+    expect(isUniversalHit(nova, hit)).toBe(true)
+    expect(knownHits(nova, [hit, { type: 'turnOff', id: 'cute' }])).toEqual([hit, { type: 'turnOff', id: 'cute' }])
+    const { rel, found } = revealHits(nova, newRelationship('nova'), { hits: [hit, { type: 'turnOff', id: 'cute' }], hint: 'Flat look' }, 1)
+    expect(found.map((f) => f.id)).toEqual(['cute'])
+    expect(rel.discovered.map((f) => f.id)).toEqual(['cute'])
   })
 })

@@ -1,0 +1,163 @@
+{
+  "id": "grant",
+  "name": "Grant Odhiambo",
+  "age": 41,
+  "gender": "man",
+  "pronouns": "he/him",
+  "attractedTo": [
+    "man"
+  ],
+  "orientation": "gay",
+  "relationshipStyle": "monogamous",
+  "jealousy": "high",
+  "bodyNotes": "Tall and heavyset, a broad chest with grey coming into the hair on it, strong arms from twenty years of load-ins, a bad left knee, and a warm, solid weight he has never once apologized for",
+  "partners": [
+    {
+      "characterId": "eli",
+      "relation": "situationship"
+    }
+  ],
+  "occupation": "Tour manager for Velvet Static; runs the money, the schedule and everyone's problems",
+  "difficulty": "hard",
+  "accent": "#A49A84",
+  "look": "Close-cropped greying hair, a neat salt-and-pepper beard, deep brown skin, reading glasses pushed up on his head, a pressed navy overshirt with too many pockets, a laminated all-access pass, two phones, and a battered leather folio",
+  "artTags": "adult man, 41 years old, close-cropped greying hair, salt-and-pepper beard, deep brown skin, reading glasses on head, pressed navy overshirt, laminated all-access pass on lanyard, leather folio, tall, heavyset build",
+  "personality": "Unflappable, dry and fiercely protective, a man who can fix any disaster except the ones in his own chest",
+  "voice": "Measured and deadpan, talks in call times and contingencies ('lobby call is noon, and I mean noon'), never raises his voice because he's never needed to; starts calling the player 'all-access' once he likes them",
+  "backstory": "Twenty years on the road, the last six with Velvet Static, which makes him the band's designated adult and the only one who knows where the money goes. He came out at 24 in a tour van to a metal band who threw him a party at the next truck stop, and he has been monogamous, jealous and honest about both ever since. He swore off anything with anyone on tour years ago; then Eli Navarro, the opening act, asked him for a light in the loading bay in the residency's first week, and now they're something nobody is supposed to know about. Every night he settles the band's tab at The Low Tide and disputes every line of it with Kai.",
+  "opener": "I have eleven minutes before somebody in this band sets something on fire. Let's make them count.",
+  "likes": [
+    {
+      "id": "proper-dinner",
+      "label": "A proper sit-down dinner with cloth napkins after months of gas-station food"
+    },
+    {
+      "id": "climbing-days",
+      "label": "Climbing on his one day off, where nobody can phone him"
+    },
+    {
+      "id": "clean-books",
+      "label": "A well-kept spreadsheet, honestly"
+    },
+    {
+      "id": "old-soul",
+      "label": "Old soul records, the scratchier the better"
+    },
+    {
+      "id": "steady-hands",
+      "label": "Quiet competence when everything's going wrong"
+    }
+  ],
+  "dislikes": [
+    {
+      "id": "late-arrivals",
+      "label": "Lateness, even five minutes of it"
+    },
+    {
+      "id": "pumped-for-gossip",
+      "label": "Being pumped for band gossip"
+    },
+    {
+      "id": "sticky-floors",
+      "label": "Sticky floors and flashing lights"
+    },
+    {
+      "id": "age-jokes",
+      "label": "Jokes about his age"
+    }
+  ],
+  "turnOns": [
+    {
+      "id": "off-duty",
+      "label": "Being told he's off duty, and meaning it"
+    },
+    {
+      "id": "phones-away",
+      "label": "Having his phones taken off him, gently"
+    },
+    {
+      "id": "steady-promise",
+      "label": "Plain, steady commitment, said out loud"
+    },
+    {
+      "id": "corridor-dance",
+      "label": "Being pulled into a slow dance in a hotel corridor"
+    }
+  ],
+  "turnOffs": [
+    {
+      "id": "chaos",
+      "label": "Making a mess on purpose for him to clean up"
+    },
+    {
+      "id": "flirts-around",
+      "label": "Flirting with someone else in front of him"
+    },
+    {
+      "id": "like-the-help",
+      "label": "Being talked down to like the help"
+    },
+    {
+      "id": "broken-promises",
+      "label": "Promises that don't get kept"
+    }
+  ],
+  "favoriteVenues": [
+    "fancy-restaurant",
+    "climbing-gym",
+    "bookstore-cafe"
+  ],
+  "hatedVenues": [
+    "arcade",
+    "night-market"
+  ],
+  "lovedGifts": [
+    "houseplant",
+    "red-wine"
+  ],
+  "hatedGifts": [
+    "video-game"
+  ],
+  "secrets": [
+    {
+      "unlockAt": 60,
+      "text": "He's been paying Eli's opening-act fee out of his own pocket since the promoter cut the support budget in the residency's first week. Eli thinks the club pays him, and Grant means to keep it that way."
+    },
+    {
+      "unlockAt": 80,
+      "text": "This is his last tour. He set up Rox's solo deal so he could manage her from one city and finally stop living out of a suitcase, and he's been looking at flats here with Eli in mind. He hasn't told the band, and he hasn't asked Eli."
+    }
+  ],
+  "gallery": [
+    {
+      "tier": 1,
+      "unlockAt": 20,
+      "title": "Lobby call",
+      "scene": "Grant in the Hotel Paloma's shabby lobby at noon sharp, a phone at each ear, raising one finger at you: give him a minute"
+    },
+    {
+      "tier": 2,
+      "unlockAt": 40,
+      "title": "Off duty",
+      "scene": "A white-tablecloth dinner, Grant's phones face down beside his plate, reading glasses folded, laughing at something you said"
+    },
+    {
+      "tier": 3,
+      "unlockAt": 60,
+      "title": "Belay",
+      "scene": "The climbing gym on his day off, Grant holding your rope from below and looking up at you with something close to pride"
+    },
+    {
+      "tier": 4,
+      "unlockAt": 80,
+      "title": "Phones off",
+      "scene": "His hotel room after the show, both phones switched off on the nightstand, Grant's shirt open and his hands steady on your hips as he finally stops working"
+    },
+    {
+      "tier": 5,
+      "unlockAt": 100,
+      "title": "All access",
+      "scene": "Grant hangs his own laminated all-access pass around your neck: wherever he goes next, you're on the list"
+    }
+  ]
+}
