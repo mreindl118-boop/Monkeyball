@@ -349,3 +349,47 @@ Android UX rules for every screen:
 - Keep GPU cost modest for mid-range phones: avoid large `backdrop-filter` blurs and animating
   box-shadows; prefer transforms/opacity.
 - Light haptics (`@capacitor/haptics`, no-op on web) on stamp press and unlocks.
+
+## Providers: Claude and ChatGPT first
+
+The player brings their own Claude (Anthropic) or ChatGPT (OpenAI) API key; these are the two
+headline presets and Claude is the default. Ollama, LM Studio, OpenRouter and Custom stay available
+under "Other providers". `ConnectionSettings.provider` selects the wire format:
+
+| preset | provider | base URL | models (defaults, editable) |
+|---|---|---|---|
+| claude | `anthropic` | https://api.anthropic.com | story `claude-opus-5`, judge `claude-haiku-4-5` |
+| chatgpt | `openai` | https://api.openai.com/v1 | picked from the key's `/models` list after Test connection (story: newest full `gpt-*` chat model; judge: newest `*-mini`) |
+| ollama / lmstudio / openrouter / custom | `openai` | as before | as before |
+
+- `src/llm/anthropic.ts` — Claude via the official `@anthropic-ai/sdk` (`new Anthropic({ apiKey,
+  dangerouslyAllowBrowser: true })`; the SDK sends the direct-browser-access CORS header). No raw
+  fetch and no OpenAI-compatibility shim for Claude. Story: `client.beta.messages.stream(...)`,
+  deltas from `text_delta` events, `finalMessage()` for `stop_reason`. `system` is the top-level
+  system prompt; messages must start with `user` (turn 0 sends `(The date begins.)`).
+  - Thinking is on by default on Claude Opus 5; `max_tokens` caps thinking + text, so Claude calls
+    use generous caps (story 16000 streamed, JSON calls 16000) and length is controlled by the
+    prompt. Latency/cost lever: `output_config: { effort }` — story defaults to `low` (chat is
+    latency-sensitive), judge/suggestions/memory `low`. Exposed in settings as "Effort" for Claude.
+  - Sampling params are rejected (400) on Opus 5 / Sonnet 5 / Opus 4.7+ — never send `temperature`
+    to those; Haiku 4.5 and 4.6-generation models accept it (judge temperature 0.2 applies there).
+    Unknown models: send nothing, and learn from a 400 that names the parameter.
+  - JSON calls use structured outputs (`output_config.format` with a JSON schema for the judge,
+    agreement and suggestions shapes); if a model rejects it (400 naming output_config/format),
+    retry without and fall back to the defensive parse + nudge path.
+  - Refusals: always check `stop_reason === 'refusal'` before reading content. Opus 5 requests
+    opt into server-side fallbacks (`betas: ['server-side-fallback-2026-07-01']`,
+    `fallbacks: 'default'`). If the final response is still a refusal, the story turn becomes an
+    in-world beat ("{name} changes the subject.") plus a system note in the date suggesting a lower
+    heat; judge/JSON calls fall back to the neutral result. Never crash or stall the date.
+  - Models list: `client.models.list()`; Test connection lists them and runs a tiny completion.
+- `src/llm/client.ts` (OpenAI-compatible, used for ChatGPT and the others): for api.openai.com send
+  `max_completion_tokens` instead of `max_tokens`; if a model rejects `temperature` or another
+  parameter (400 naming it), retry once without it and remember per model; `response_format`
+  json_object as before. Refusals (`message.refusal`, `finish_reason: 'content_filter'`) are handled
+  like Claude's.
+- Keys are stored only on the device (Dexie), masked in the UI, never included in save exports.
+- Heat and provider policies: Claude and ChatGPT follow their providers' usage policies and generally
+  won't write explicit sexual content; heat 4–5 will often be declined or toned down. The heat
+  control shows that note when a Claude or ChatGPT preset is active; local/OpenRouter models are the
+  route for heat 4–5.
