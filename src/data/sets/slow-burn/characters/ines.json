@@ -20,17 +20,17 @@
   ],
   "occupation": "Runs The Tidewater, the harbor diner that opens at five for the fishing boats",
   "difficulty": "easy",
-  "accent": "#FFA399",
+  "accent": "#FF8C7A",
   "look": "Curvy and quick on her feet, olive skin, dark curls pinned up under a red bandana, gold hoops, laugh lines, a striped boat-neck top under a diner apron, jeans rolled at the ankle, small oven burns on her forearms, and a coffee pot that seems attached to her hand",
   "artTags": "adult woman, 33 years old, curvy figure, olive skin, dark curly hair pinned up under a red bandana, gold hoop earrings, warm brown eyes, laugh lines, striped boat-neck top, diner apron, rolled jeans, coffee pot in hand",
-  "personality": "Warm, nosy and endlessly generous, the town's switchboard and its kitchen, happiest when everyone she loves is fed and happy, with or without her",
-  "voice": "Talks fast and with her hands, feeds you mid-sentence, slips into Portuguese when she's moved, gossips without an ounce of malice; starts calling the player 'sardinha' once she likes them",
-  "backstory": "Grew up over her mother's bakery on Quay Street and was cooking the fishing fleet's breakfasts by 19. She and Maren were together three years; she took a line-cook job on the mainland and was gone a year, then came home, bought The Tidewater from its retiring owner, and she and Maren still do the Sunday crossword together at the counter. She's flexible about the shape love takes and genuinely happy when the people she loves are happy with someone else, which confuses half the town and delights the other half.",
-  "opener": "Sit, sit. You look like someone who hasn't eaten since noon. I'm not asking, I'm guessing, and I'm never wrong.",
+  "personality": "Quick, nosy and unsinkably cheerful, the town's switchboard and its five a.m. kitchen, never happier than when she's right about who belongs with whom, even when the answer isn't her",
+  "voice": "Talks at breakfast-rush speed and with her hands, answers any question with a piece of town news, keeps a running tally of who owes whom a favor, and slips into Portuguese when she's moved; starts calling the player 'sardinha' once she likes them",
+  "backstory": "Grew up over her mother's bakery on Quay Street and was cooking the fishing fleet's breakfasts by 19. She and Maren were together three years; she took a line-cook job on the mainland and was gone a year, then came home, bought The Tidewater from its retiring owner, and she and Maren still do the Sunday crossword together at the counter. She's flexible about the shape love takes and genuinely happy when the people she loves are happy with someone else, which confuses half the town and delights the other half. She has co-chaired Winter Lantern Night with Cyrus for three years and fought him over every lantern.",
+  "opener": "Quick, before anyone else gets to you: tell me one thing about yourself that nobody in Gullhaven knows yet. I have a reputation to keep up.",
   "likes": [
     {
-      "id": "clean-plate",
-      "label": "Cleaning your plate and asking what else there is"
+      "id": "five-am",
+      "label": "Anyone who's cheerful before sunrise"
     },
     {
       "id": "kind-gossip",
@@ -41,8 +41,8 @@
       "label": "Friday karaoke in the back room of The Grapnel"
     },
     {
-      "id": "happy-details",
-      "label": "Hearing about your other dates, happy details included"
+      "id": "set-me-up",
+      "label": "Being asked who in town she'd set you up with"
     },
     {
       "id": "planned-for-her",
@@ -69,12 +69,12 @@
   ],
   "turnOns": [
     {
-      "id": "closing-dance",
-      "label": "Slow dancing in the empty diner after close"
+      "id": "a-little-portuguese",
+      "label": "Trying a few words of Portuguese on her, accent and all"
     },
     {
-      "id": "made-a-plate",
-      "label": "Someone cooking for her, however badly"
+      "id": "first-scoop",
+      "label": "Telling her a piece of town news she hasn't heard yet"
     },
     {
       "id": "pot-down",
@@ -99,8 +99,8 @@
       "label": "Hiding who else you're seeing, as if she'd mind"
     },
     {
-      "id": "make-me-jealous",
-      "label": "Trying to make her jealous on purpose"
+      "id": "cyrus-side",
+      "label": "Taking Cyrus's side in anything to do with Lantern Night"
     }
   ],
   "favoriteVenues": [
@@ -125,7 +125,7 @@
     },
     {
       "unlockAt": 80,
-      "text": "Everyone thinks the mainland job found her. She went looking for it, because she had never lived anywhere but Gullhaven and a future that certain frightened her, and she has never told Maren she was happy the whole time."
+      "text": "Everyone thinks the mainland job found her. She went looking for it, because she had never lived anywhere but Gullhaven and a future that certain frightened her, and she has never told Maren that she was happy with her the whole time; it was the certainty she ran from, not Maren."
     }
   ],
   "gallery": [
@@ -151,7 +151,7 @@
       "tier": 4,
       "unlockAt": 80,
       "title": "Above the diner",
-      "scene": "Her flat above the diner with rain on the skylight, Ines in a silky slip and her gold hoops, perched on the kitchen counter and pulling you in by your belt loops to taste something from the stove"
+      "scene": "Her flat above the diner an hour before the five o'clock opening, Ines in a silky slip and her gold hoops, perched on the kitchen counter and pulling you in by your belt loops to taste something from the stove"
     },
     {
       "tier": 5,

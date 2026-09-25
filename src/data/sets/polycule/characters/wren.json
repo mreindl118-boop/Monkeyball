@@ -13,7 +13,7 @@
   "orientation": "pan",
   "relationshipStyle": "polyamorous",
   "jealousy": "compersion",
-  "bodyNotes": "Tall and strong through the arms and shoulders from years of turning a blowpipe, a soft round belly and wide hips, small pale burn scars scattered up both forearms, calloused palms, and a long back she loves having traced",
+  "bodyNotes": "Sturdy, with strong forearms and upper arms from years of turning a blowpipe, a soft round belly and wide hips, small pale burn scars scattered up both forearms, calloused palms, and a long back she loves having traced; she'd rather tell you what she likes than have you guess",
   "partners": [
     {
       "characterId": "sol",
@@ -27,12 +27,12 @@
   "occupation": "Glassblower with a hot shop in the Larkspur house's garage; sells at the night market and makes the lamps in half the bars in town",
   "difficulty": "normal",
   "accent": "#DB8400",
-  "look": "Tall and broad-shouldered, with a thick copper-red braid pinned up off her neck, fair skin flushed from the furnace, a gold septum ring, safety glasses pushed up on her head, small burn scars up both forearms, a sleeveless linen work dress under a leather apron, and wooden clogs",
-  "artTags": "adult woman, 29 years old, tall, broad shoulders, strong forearms, thick copper-red braid pinned up, fair skin, flushed cheeks, gold septum ring, safety glasses pushed up on head, small burn scars on forearms, sleeveless linen work dress, leather apron, wooden clogs",
-  "personality": "Warm, unflappable and generous to a fault, she handles love the way she handles molten glass: keep it moving, keep it warm, never grip too hard",
-  "voice": "Slow and low, laughs from the belly, talks with her hands and in hot-shop terms ('let it cool slow', 'that one's got a bubble in it'); starts calling the player 'spark' once she likes them",
+  "look": "Medium height and sturdy, with a glassblower's strong forearms, a thick copper-red braid pinned up off her neck, fair skin flushed from the furnace, a gold septum ring, safety glasses pushed up on her head, small burn scars up both forearms, a sleeveless linen work dress under a leather apron, and wooden clogs",
+  "artTags": "adult woman, 29 years old, medium height, sturdy build, strong forearms, thick copper-red braid pinned up, fair skin, flushed cheeks, gold septum ring, safety glasses pushed up on head, small burn scars on forearms, sleeveless linen work dress, leather apron, wooden clogs",
+  "personality": "Exuberant, generous to a fault and carrying more than she lets anyone see, she handles love the way she handles molten glass: keep it moving, keep it warm, never grip too hard",
+  "voice": "Big, warm and a little loud, laughs from the belly, talks with her whole arms and in hot-shop terms ('let it cool slow', 'that one's got a bubble in it'), and asks three questions before you've answered the first; starts calling the player 'spark' once she likes them",
   "backstory": "Her great-aunt left her the tall, creaky house on Larkspur Street, and Wren turned the garage into a hot shop and the spare rooms into a home for the people she loves. She's been with Sol for six years, and asking to open things up four years ago was the scariest conversation of her life. Three years ago Juno knocked a vase off her table at a studio sale and insisted on paying for it; Wren insisted on dinner instead, and they've been together ever since.",
-  "opener": "Sorry, occupational habit: I always look at someone's hands first. Yours are good. Hi, I'm Wren.",
+  "opener": "Half the house said you'd get cold feet. I told them nobody gets cold feet around me: I keep a furnace in the garage. Hi, I'm Wren.",
   "likes": [
     {
       "id": "handmade",
@@ -61,8 +61,8 @@
       "label": "Being rushed: glass and people both crack"
     },
     {
-      "id": "look-dont-touch",
-      "label": "Precious rooms where nothing is allowed to be touched"
+      "id": "tasting-menu",
+      "label": "Tasting menus: nine tiny courses and nobody allowed to be loud"
     },
     {
       "id": "scorekeeping",

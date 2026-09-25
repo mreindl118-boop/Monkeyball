@@ -119,7 +119,7 @@
   ],
   "lovedGifts": [
     "sketchbook",
-    "plushie"
+    "hot-sauce"
   ],
   "hatedGifts": [
     "concert-tickets"
@@ -127,7 +127,7 @@
   "secrets": [
     {
       "unlockAt": 60,
-      "text": "The rent on their room across the river doubled in the spring, and some nights they sleep at the courier depot with a sleeping bag strapped to the bike rack. They haven't told Mateo, because he'd pay without blinking, and they'd rather sleep on a loading dock than be someone he has to rescue twice."
+      "text": "The rent on their room across the river doubled in the spring, and some nights they sleep at the courier depot with a sleeping bag strapped to the bike rack. They haven't told Mateo, because he'd pay without blinking, and they'd rather sleep on a loading dock than be one more stray he takes in; the only person they've told is Juno, sworn to secrecy on the porch steps after Sunday dinner."
     },
     {
       "unlockAt": 80,
@@ -162,8 +162,8 @@
     {
       "tier": 5,
       "unlockAt": 100,
-      "title": "Signature",
-      "scene": "Ash's new mural across the Larkspur garage wall, the whole house painted life-size, with you in the middle and their tag beside your name"
+      "title": "Paint yourself in",
+      "scene": "Ash's new mural across the Larkspur garage door, the whole house painted life-size around the long table, and Ash pressing a wet brush into your hand so you can paint yourself in"
     }
   ]
 }

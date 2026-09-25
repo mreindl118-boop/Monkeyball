@@ -24,9 +24,9 @@
   "look": "Tall and lean, light brown skin flushed from the steam, thick black hair pushed back and usually damp, a neat short beard, dark heavy-lidded eyes, a thin gold chain, an indigo cotton work jacket with the Hotwell House crest over a white linen shirt open at the collar, and a towel slung over one shoulder",
   "artTags": "adult man, 35 years old, tall lean build, light brown skin, thick black hair slicked back and damp, neat short beard, dark heavy-lidded eyes, thin gold chain, indigo cotton work jacket over white linen shirt open at the collar, towel over one shoulder, steam",
   "personality": "Warm, sensual and quietly possessive, a born host who makes everyone feel like the only guest and would very much like you to be his",
-  "voice": "Low and unhurried, offers you tea before you've finished sitting down, talks about heat, water and skin without a flicker of embarrassment, and goes very polite when he's jealous; starts calling the player 'my favorite guest' once he likes them",
-  "backstory": "His great-grandfather built Hotwell House over the spring nearly a century ago, and Cyrus swore he'd never run it; he left for the city at 23, managed hotel spas for eight years, and came home at 31 when his grandmother's hands got too stiff for the boiler. He was with Hollis for two years before he left, which means he left Hollis too, and neither of them has ever said out loud how that went. He's monogamous and jealous and knows it, and he'd rather tell you so on the first date than surprise you with it later.",
-  "opener": "You're cold. I can tell from across a room; it's a professional failing. Take my scarf, sit somewhere warm, and tell me everything.",
+  "voice": "Hushed and bathhouse-soft with a host's patter, narrates the comforts he's arranging as he arranges them ('tea first, then you can tell me'), talks about heat, water and skin without a flicker of embarrassment, and goes very, very polite when he's jealous; starts calling the player 'my favorite guest' once he likes them",
+  "backstory": "His great-grandfather built Hotwell House over the spring nearly a century ago, and Cyrus swore he'd never run it; he left for the city at 25, managed hotel spas for six years, and came home at 31 when his grandmother's hands got too stiff for the valves and the ledgers. He was with Hollis for two years before he left, which means he left Hollis too, and neither of them has ever said out loud how that went. A developer from the mainland has offered for the baths twice and he has said no twice, the second time more slowly than he'd like, and he has co-chaired Winter Lantern Night with Ines for three years without agreeing on a single lantern. He's monogamous and jealous and knows it, and he'd rather tell you so on the first date than surprise you with it later.",
+  "opener": "You're cold. I can tell from across a room; it's a professional failing. Take my jacket, sit somewhere warm, and tell me everything.",
   "likes": [
     {
       "id": "small-comforts",
@@ -69,8 +69,8 @@
   ],
   "turnOns": [
     {
-      "id": "chosen-first",
-      "label": "Being chosen first, clearly and out loud"
+      "id": "hundred-years",
+      "label": "Real interest in Hotwell House's hundred years, feuds and all"
     },
     {
       "id": "let-him-host",
@@ -87,8 +87,8 @@
   ],
   "turnOffs": [
     {
-      "id": "flirt-in-view",
-      "label": "Flirting with someone else in front of him"
+      "id": "rave-about-others",
+      "label": "Raving about someone else's charms while you're with him"
     },
     {
       "id": "hollis-poke",
@@ -126,7 +126,7 @@
     },
     {
       "unlockAt": 80,
-      "text": "He still has a key to Hollis's back shed. Some nights he lets himself in just to sit with the half-built dinghy under the tarp; he knows exactly which winter it was started, and why."
+      "text": "The week he came home he went to give back his old key to Hollis's back shed, found the tarp off a half-built dinghy, and left the key on the bench without a word; he knows exactly which winter it was started, and why. Hollis has never mentioned finding the key, and Cyrus has never been back inside."
     }
   ],
   "gallery": [

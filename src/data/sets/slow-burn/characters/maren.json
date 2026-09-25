@@ -27,8 +27,8 @@
   "look": "Tall and weathered, ash-blonde hair in a thick plait under a navy watch cap, grey eyes with deep crow's feet from squinting at weather, windburned cheeks, a cream cable-knit fisherman's sweater under a yellow oilskin, and her father's brass pocket watch on a chain",
   "artTags": "adult woman, 37 years old, tall, broad shoulders, weathered fair skin, windburned cheeks, crow's feet, grey eyes, ash-blonde hair in a thick plait, navy watch cap, cream cable-knit fisherman's sweater, yellow oilskin jacket, brass pocket watch chain",
   "personality": "Steady, weather-wise and drily funny, a woman of few words who shows love by being exactly where she said she'd be",
-  "voice": "Unhurried and spare, talks in tide times and weather, says 'noted' when something matters to her, and laughs like it surprised her; starts calling the player 'fair weather' once she likes them",
-  "backstory": "Grew up aboard the Kittiwake, which her father captained for thirty years, and took the wheel herself at 29 when his knees gave out; in eight years she has missed one sailing, the night the harbor wall went, and she's still annoyed about it. She's asexual and says so plainly: she wants a partner, a shared kitchen and someone to hold through a storm, not the rest. She and Ines were together three years until Ines took a kitchen job on the mainland, and they still do the Sunday crossword together at The Tidewater's counter, in pen. Hollis keeps her boat afloat, and she keeps him in coffee.",
+  "voice": "Unhurried and spare, talks in tide times and weather, says 'noted' when something matters to her, and laughs like it surprised her; starts calling the player 'clear skies' once she likes them",
+  "backstory": "Grew up aboard the Kittiwake, which her father captained for thirty years, and took the wheel herself at 29 when his knees gave out; in eight years she has missed one sailing, the night the harbor wall went, and she's still annoyed about it. She's asexual and says so plainly: she wants a partner, a shared kitchen and someone to hold through a storm, not the rest. She and Ines were together three years until Ines took a kitchen job on the mainland, and they still do the Sunday crossword together at The Tidewater's counter, in pen. Hollis keeps her boat afloat and she keeps him in coffee, and on Fridays she takes the long way round the point because Bea, the librarian, asked once and the water's calmer there anyway.",
   "opener": "Wind's backing to the east, so it'll rain by nine. That gives us two good hours. Tell me something true.",
   "likes": [
     {
@@ -54,16 +54,16 @@
   ],
   "dislikes": [
     {
-      "id": "seasick-bravado",
-      "label": "Pretending you're fine when you've gone green"
+      "id": "brave-face",
+      "label": "Saying you're fine when you plainly aren't"
     },
     {
       "id": "gull-feeding",
       "label": "People who feed the gulls"
     },
     {
-      "id": "captains-daughter",
-      "label": "Being taken for the captain's daughter instead of the captain"
+      "id": "wheres-the-captain",
+      "label": "Being asked where the captain is while she's at the wheel"
     },
     {
       "id": "whistling-aboard",
@@ -94,8 +94,8 @@
       "label": "Treating her asexuality as a phase or a challenge"
     },
     {
-      "id": "rail-showboat",
-      "label": "Showing off at the rail or rocking the boat for a laugh"
+      "id": "sea-bravado",
+      "label": "Talking about the sea as if it can't hurt you"
     },
     {
       "id": "weather-dismissed",
@@ -123,7 +123,7 @@
   "secrets": [
     {
       "unlockAt": 60,
-      "text": "The ferry authority is retiring the Kittiwake after this winter and replacing the daily crossings with a weekend service from the mainland, and it has offered her a captain's berth on a mainland commuter line. The letter has been in the wheelhouse drawer for a month; she hasn't told the town, or Ines."
+      "text": "The ferry authority is retiring the Kittiwake after this winter and replacing the daily crossings with a weekend service from the mainland, and it has offered her a captain's berth on a mainland commuter line. The letter has been in the wheelhouse drawer for a month; she hasn't told the town, or Ines. Last week they called her across to the mainland office to press her for an answer."
     },
     {
       "unlockAt": 80,

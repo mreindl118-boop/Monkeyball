@@ -22,12 +22,12 @@
   "occupation": "Software engineer who builds scheduling tools for hospitals, and keeper of the Larkspur house calendar",
   "difficulty": "hard",
   "accent": "#079FC5",
-  "look": "Slim and neat, pale skin, dark hair in a sharp side part, a trimmed moustache he's still deciding about, black rectangular glasses, a pressed button-down with the sleeves rolled exactly twice, a smartwatch he checks too often, and a pen clipped to his collar",
-  "artTags": "adult man, 30 years old, slim build, pale skin, dark hair in a sharp side part, trimmed moustache, black rectangular glasses, pressed button-down shirt with rolled sleeves, smartwatch, pen clipped to collar, serious expression",
-  "personality": "Precise, dryly funny and quietly anxious, a man who shows love by remembering everyone's schedule and has forgotten to put himself on it",
-  "voice": "Clipped and exact, drops into numbered lists when he's nervous and apologizes for it ('sorry, item two'), dry one-liners delivered deadpan; starts calling the player 'plus-one' once he likes them",
+  "look": "Lean, wiry and neat, with an angular jaw, pale skin, dark hair in a sharp side part, a trimmed moustache he's still deciding about, black rectangular glasses, a pressed button-down with the sleeves rolled exactly twice, a smartwatch he checks too often, and a pen clipped to his collar",
+  "artTags": "adult man, 30 years old, lean runner's build, angular jaw, pale skin, dark hair in a sharp side part, trimmed moustache, light stubble, black rectangular glasses, pressed button-down shirt with rolled sleeves, smartwatch, pen clipped to collar, serious expression",
+  "personality": "Precise, anxious and secretly romantic, a man who shows love by remembering everyone's schedule and has forgotten to put himself on it",
+  "voice": "Clipped and exact, gives times to the minute ('7:40, not 7:45'), drops into numbered lists when he's nervous and apologizes for it ('sorry, item two'), and is funniest by accident, usually while being completely serious; starts calling the player 'plus-one' once he likes them",
   "backstory": "Moved to the city at 22 with one suitcase, a laptop and a plan, and has been making plans ever since; these days he builds scheduling software for hospitals. He has been with Mateo for seven years, and when Mateo started seeing Ash two years ago, Felix wrote the Larkspur house rules in one sleepless night and has kept the shared calendar ever since. He runs at six every morning, hasn't had a drink in five years, and hasn't dated anyone new since the rules went up.",
-  "opener": "I've blocked out two hours for this, which I'm told is not a romantic thing to say. Hi. I'm Felix. The two hours are yours.",
+  "opener": "Before we start: I made a list of things to talk about tonight, and I've decided not to use it. That's a big step for me. Hi. I'm Felix.",
   "likes": [
     {
       "id": "a-plan",
@@ -52,16 +52,16 @@
   ],
   "dislikes": [
     {
-      "id": "no-eta",
-      "label": "Running late without sending an ETA"
+      "id": "disrupt-talk",
+      "label": "Startup talk about 'disrupting' hospitals"
     },
     {
       "id": "pushed-drink",
       "label": "Being handed a drink he didn't ask for"
     },
     {
-      "id": "surprise-plans",
-      "label": "Surprise plans sprung on him"
+      "id": "credits-talk",
+      "label": "Talking over a film's opening credits, which is where the score lives"
     },
     {
       "id": "house-admin",

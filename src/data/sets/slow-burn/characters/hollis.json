@@ -27,9 +27,9 @@
   "look": "Built like a bollard, dark brown skin, close-cropped hair and a short beard both going salt-and-pepper, reading glasses pushed up on his head, a flannel shirt with the sleeves rolled over thick forearms, a canvas work apron, a carpenter's pencil behind one ear, and cedar shavings caught in his beard",
   "artTags": "adult man, 42 years old, big broad build, dark brown skin, close-cropped greying hair, short salt-and-pepper beard, deep-set brown eyes, reading glasses pushed up on head, flannel shirt with rolled sleeves, thick forearms, canvas work apron, carpenter's pencil behind ear",
   "personality": "Gruff, patient and deeply kind, a man who measures twice, says half of what he thinks and means every word of it",
-  "voice": "Low and slow with long pauses, answers personal questions with something about wood or weather, dry one-liners you catch a beat late; starts calling the player 'love', gruffly, as if it slipped out",
-  "backstory": "Fifth generation of Grey boatbuilders; his great-great-grandfather is the bronze captain on the boardwalk, and Hollis crosses the road to avoid him. He took over the yard at 30, builds two wooden boats a year by hand and does every refit in the harbor, including the Kittiwake's, with Maren bringing him coffee on the slipway most mornings. He's demisexual, which he didn't have a word for until his thirties: attraction only arrives once he really knows someone. He and Cyrus were together for two years a long time ago; it ended when Cyrus left for the city, and since Cyrus came home to run the baths they have been carefully, painfully polite.",
-  "opener": "Sorry, I was looking at your hands. Occupational habit: I can always tell who's built something. Hello.",
+  "voice": "Deep and sparing, with long pauses he doesn't apologize for, answers personal questions with something about grain, joints or how a hull takes a load, and lands dry one-liners you catch a beat late; starts calling the player 'love', gruffly, as if it slipped out",
+  "backstory": "Fifth generation of Grey boatbuilders; his great-great-grandfather is the bronze captain on the boardwalk, and Hollis crosses the road to avoid him, because his grandmother called the statue 'a lie in bronze' and never would say why. He took over the yard at 30, builds two wooden boats a year by hand and does every refit in the harbor, including the Kittiwake's, with Maren bringing him coffee on the slipway most mornings. He's demisexual, which he didn't have a word for until his thirties: attraction only arrives once he really knows someone. He and Cyrus were together for two years a long time ago; it ended when Cyrus left for the city, and since Cyrus came home to run the baths they have been carefully, painfully polite.",
+  "opener": "Don't mind me looking at your hands. Occupational habit: I can always tell who's built something. Hello.",
   "likes": [
     {
       "id": "honest-work",
@@ -112,7 +112,8 @@
     "bookstore-cafe"
   ],
   "hatedVenues": [
-    "amusement-park"
+    "amusement-park",
+    "boardwalk"
   ],
   "lovedGifts": [
     "rare-vinyl",
@@ -148,19 +149,19 @@
       "tier": 3,
       "unlockAt": 60,
       "title": "Sea trial",
-      "scene": "A small wooden boat on a flat grey bay at first light, Hollis at the tiller with his free arm around you under a shared oilskin"
+      "scene": "A still winter afternoon on the flat grey bay in one of the yard's wooden boats, Hollis at the tiller with his free arm around you under a shared oilskin"
     },
     {
       "tier": 4,
       "unlockAt": 80,
       "title": "Lamp in the loft",
-      "scene": "Lamplight in the loft above the yard with a storm on the roof, Hollis's shirt open and his reading glasses set aside, drawing you down beside him like a man who is finally sure"
+      "scene": "Lamplight in the loft above the yard with an old jazz record crackling, Hollis's shirt open and his reading glasses set aside, drawing you down beside him like a man who is finally sure"
     },
     {
       "tier": 5,
       "unlockAt": 100,
-      "title": "Launch day",
-      "scene": "Launch day for the dinghy from the back shed, the whole harbor watching from the quay, and the name freshly painted on her stern is yours"
+      "title": "Built for two",
+      "scene": "First light on an empty slipway, nobody on the quay but the two of you, Hollis easing a small new cedar boat built for two into the water and holding out a hand to help you aboard"
     }
   ]
 }

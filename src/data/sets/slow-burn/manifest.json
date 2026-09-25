@@ -5,7 +5,7 @@
   "author": "crushLAB",
   "heat": 1,
   "version": "1.0.0",
-  "setting": "Gullhaven sits at the end of the coast road where the bay narrows, and once the tourists leave in October it belongs again to the few hundred people who stay. The Kittiwake, Maren's old blue-and-white ferry, crosses to the mainland four times a day in winter, at 7:10, 11:40, 3:15 and 6:30, and anyone who misses the 6:30 is staying the night; when the harbormaster runs up the red flag for a storm she doesn't sail at all, and the whole town gets an unplanned day off. On the boardwalk the pier rides are shut for the season except the Ferris wheel, which turns on Sunday afternoons, the Galleon arcade opens at weekends with half its cabinets under dust sheets, and the bronze captain still stares out to sea with his lantern raised. The Tidewater diner opens at five for the fishing boats; the Saturday harbor market fills the quay with smoked fish, oysters, knitwear and lantern-lit stalls until well after dark; Spindrift, the one bookstore-cafe, has the only good coffee in town and a cat asleep in the poetry section; and up the hill, Hotwell House has steamed over its spring for almost a century. The Grapnel does karaoke in its back room on Fridays, Sea Glass, the town's one queer bar, runs quiz night on Thursdays, the Customs House museum keeps its seascapes and ship models warm for whoever wanders in, Slack Water Records has the secondhand crates, the old net loft has a bouldering wall, and the Cormorant Hotel keeps its dining room and its empty roof terrace open all winter out of stubbornness. Out on Gull Point the dark lighthouse watches over the tide station and the old keeper's cottage, the library lives in the old lifeboat station with a telescope on its roof, Grey's Boatyard smells of cedar and varnish, and a developer from the mainland keeps making offers on the waterfront. Winter means storms off the bay, early dark, cold clear skies thick with stars, and Winter Lantern Night in December, when everyone floats a paper lantern into the harbor for someone they miss; it also means the question nobody asks out loud, which is who won't be here when the tourists come back.",
+  "setting": "Gullhaven sits at the end of the coast road where the bay narrows, and once the tourists leave in October it belongs again to the few hundred people who stay. The Kittiwake, Maren's old blue-and-white ferry, crosses to the mainland four times a day in winter, at 7:10, 11:40, 3:15 and 6:30, and anyone who misses the 6:30 is staying the night; when the harbormaster runs up the red flag for a storm she doesn't sail at all, and the whole town gets an unplanned day off. On the boardwalk the pier rides are shut for the season except the Ferris wheel, which turns on Sunday afternoons, the Galleon arcade opens at weekends with half its cabinets under dust sheets, and the bronze captain still stares out to sea with his lantern raised. The Tidewater diner opens at five for the fishing boats; the Saturday harbor market fills the quay with smoked fish, oysters, knitwear and lantern-lit stalls until well after dark; Spindrift, the one bookstore-cafe, has the only good coffee in town and a cat asleep in the poetry section; and up the hill, Hotwell House has steamed over its spring for almost a century. The Grapnel does karaoke in its back room on Fridays, Sea Glass, the town's one queer bar, runs Bea's quiz on Wednesdays and a Thursday drag night that in the off-season is mostly regulars in borrowed wigs, the Customs House museum keeps its seascapes and ship models warm for whoever wanders in, Slack Water Records has the secondhand crates, the old net loft has a bouldering wall, and the Cormorant Hotel keeps its dining room and its empty roof terrace open all winter out of stubbornness. Out on Gull Point the dark lighthouse watches over the tide station and the old keeper's cottage, the library lives in the old lifeboat station with a telescope on its roof, Grey's Boatyard smells of cedar and varnish, and a developer from the mainland keeps making offers on the waterfront. Winter means storms off the bay, early dark, cold clear skies thick with stars, and Winter Lantern Night in December, when everyone floats a paper lantern into the harbor for someone they miss; it also means the question nobody asks out loud, which is who won't be here when the tourists come back.",
   "characters": [
     "maren",
     "hollis",
@@ -109,7 +109,7 @@
       ],
       "text": "Maren went over to the mainland in her good jacket last week and came back with a face like a squall. She's interviewing, I'd put money on it. Gullhaven is about to lose its captain.",
       "truth": "exaggerated",
-      "actually": "Maren isn't interviewing anywhere. The ferry authority called her in to say the Kittiwake is being retired after this winter and to offer her a berth on a mainland line; she hasn't decided, and she hasn't told anyone."
+      "actually": "Maren isn't interviewing anywhere. The ferry authority is retiring the Kittiwake after this winter and has offered her a berth on a mainland line, and last week they called her across to press her for an answer; she hasn't decided, and she hasn't told anyone."
     },
     {
       "id": "bronze-captain",
@@ -117,7 +117,7 @@
       "about": [
         "hollis"
       ],
-      "text": "You know the bronze captain on the boardwalk? Hollis's great-great-grandfather. Brought the whole herring fleet home through the Great Gale with one lantern. Hollis hates it when you bring it up, which is exactly why I do.",
+      "text": "You know the bronze captain on the boardwalk? Hollis's great-great-grandfather. Brought the whole herring fleet home through the Great Gale with one lantern. Hollis goes red as a boiled crab if you mention it, bless him, so naturally the whole town does.",
       "truth": "false",
       "actually": "A lighthouse logbook Bea found in the library basement shows Captain Grey sat out the gale in a harbor tavern; the light that brought the fleet home was kept by the lighthouse keeper, Hester Vane."
     },
@@ -130,7 +130,7 @@
       ],
       "text": "Twice this month I've walked past the boatyard at five for the tide readings and seen Cyrus's car parked behind Hollis's shed. Old flames, very slow burn. Honestly? I'm delighted for them.",
       "truth": "exaggerated",
-      "actually": "Hollis and Cyrus aren't back together, and Hollis doesn't know Cyrus has been there. Cyrus still has a key and lets himself into the back shed at night to sit with the dinghy Hollis started the winter he left."
+      "actually": "Hollis and Cyrus aren't back together. Cyrus has been parking behind the yard at five because the spring's outflow runs into the harbor there, and he checks its temperature before anyone is up; he hasn't told Hollis, and he hasn't set foot in the shed since the week he came home."
     },
     {
       "id": "rowan-ship",

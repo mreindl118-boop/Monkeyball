@@ -29,8 +29,8 @@
   "opener": "Let me guess: they sent you to me because I'm the one who doesn't live there. Smart. Sit down and give me your side of it.",
   "likes": [
     {
-      "id": "good-faith-fight",
-      "label": "A good argument, argued in good faith"
+      "id": "clients-as-people",
+      "label": "Being asked about her clients as people, not cases"
     },
     {
       "id": "thursday-show",
@@ -125,7 +125,7 @@
     },
     {
       "unlockAt": 80,
-      "text": "She's been offered the top job at the public defender's office. It would swallow what's left of her free nights, Wren's included, and she's going to say yes; she has been rehearsing how to tell Wren the way she rehearses a closing."
+      "text": "Ash told her about the doubled rent and the nights at the courier depot, sitting on the Larkspur porch steps after Sunday dinner, and made her swear not to tell Mateo. She has kept her word, and has been writing to Ash's landlord on public defender's office letterhead, which could cost her the job if anyone found out."
     }
   ],
   "gallery": [
@@ -157,7 +157,7 @@
       "tier": 5,
       "unlockAt": 100,
       "title": "Sustained",
-      "scene": "Juno presses a key to her flat into your palm, the one thing she has never given anyone, and tells you she'll allow it"
+      "scene": "Morning at Juno's flat with her alarm switched off for the first time in nine years, Juno in yesterday's white shirt dropping a spare key into your coffee saucer and telling you she'll allow it"
     }
   ]
 }

@@ -5,7 +5,7 @@
   "author": "crushLAB",
   "heat": 3,
   "version": "1.0.0",
-  "setting": "The Larkspur house is a tall, creaky place on Larkspur Street with a wraparound porch, a porch swing and a crooked weathervane, left to Wren by her great-aunt and slowly filled with people she loves. Wren's glass furnace roars in the garage, Sol's garden has swallowed the back yard (lawns are not permitted), Mateo's three-legged greyhound Parsnip patrols the kitchen alongside Van, the cat Ash once carried into Mateo's clinic, Felix's running shoes are lined up by the door at six every morning, and the attic room has stood empty for a year. Wren, Sol, Mateo and Felix live there; Juno keeps her own flat downtown by the courthouse and Ash rents a room across the river, but both have keys and a chair at the long table. The house runs on larkspur logistics, the group chat where every overnight guest has to be posted by six in the evening, and on the rules taped inside the pantry door: the chore wheel Ash painted on an old pizza board, the shared calendar Felix keeps color-coded by person, knock before opening the garage when the furnace is lit, Wednesday check-in over takeout with a glass talking stick, and no new partners at Sunday dinner without a heads-up. Sunday dinner is the one fixed point of the week: Mateo cooks, the table seats ten at a squeeze, and whoever's newest gets the chair with the wobbly leg.",
+  "setting": "The Larkspur house is a tall, creaky place on Larkspur Street with a wraparound porch, a porch swing and a crooked weathervane, left to Wren by her great-aunt and slowly filled with people she loves. Wren's glass furnace roars in the garage, Sol's garden has swallowed the back yard (lawns are not permitted), Mateo's three-legged greyhound Parsnip patrols the kitchen alongside Van, the cat Ash once carried into Mateo's clinic, Felix's running shoes are lined up by the door at six every morning, and the attic room has stood empty for a year. Wren, Sol, Mateo and Felix live there; Juno keeps her own flat downtown by the courthouse and Ash rents a room across the river, but both have keys and a chair at the long table. Everyone at Larkspur has their own room and their own door, which was the first rule and is the only one nobody argues about. The house runs on larkspur logistics, the group chat where every overnight guest has to be posted by six in the evening, and on the rules taped inside the pantry door: the chore wheel Ash painted on an old pizza board, the shared calendar Felix keeps color-coded by person, knock before opening the garage when the furnace is lit, Wednesday check-in over takeout with a glass talking stick, and no new partners at Sunday dinner without a heads-up. Sunday dinner is the one fixed point of the week: Mateo cooks, the table seats ten at a squeeze, and whoever's newest gets the chair with the wobbly leg.",
   "characters": [
     "wren",
     "sol",
@@ -49,7 +49,7 @@
       "a": "wren",
       "b": "mateo",
       "kind": "housemate",
-      "note": "Wren blows the glasses and Mateo fills them: between them they are Sunday dinner, and they're the two calmest people in the house in a crisis."
+      "note": "Wren blows the glasses and Mateo fills them: between them they are Sunday dinner, Wren the noise and Mateo the calm, and in a real crisis they swap without a word."
     },
     {
       "a": "wren",
@@ -79,13 +79,13 @@
       "a": "felix",
       "b": "ash",
       "kind": "friend",
-      "note": "Metamours through Mateo; Ash has spent two years trying to win Felix over one terrible pun at a time, and is closer than they think."
+      "note": "Metamours through Mateo; Ash has spent two years trying to win Felix over one hand-painted card at a time, and Felix has kept every one."
     },
     {
       "a": "juno",
       "b": "ash",
       "kind": "friend",
-      "note": "The two who don't live at Larkspur: they share the porch steps after Sunday dinner and a running joke about being the out-of-towners."
+      "note": "The two who don't live at Larkspur: they share the porch steps after Sunday dinner, a running joke about being the out-of-towners, and at least one secret the house doesn't know."
     },
     {
       "a": "juno",
@@ -97,7 +97,7 @@
       "a": "wren",
       "b": "ash",
       "kind": "friend",
-      "note": "Ash painted the chore wheel and Wren blew the glass talking stick; they're the house's two loudest cheerleaders for whoever's dating whoever."
+      "note": "Metamours through Sol and the house's two loudest cheerleaders: Ash painted the chore wheel, Wren blew the glass talking stick, and Wren is so glad Sol has Ash that she's never asked how serious it is."
     },
     {
       "a": "juno",
@@ -136,7 +136,7 @@
         "sol",
         "wren"
       ],
-      "text": "Everyone knows Sol's only poly because Wren is; they've said as much. Give it a year and they'll ask her to close things, and she'll say yes, because she'd do anything for them.",
+      "text": "Two things everyone at Larkspur knows and nobody says. One: Sol's only poly because Wren is; they've said as much. Two: give it a year and they'll ask her to close things, and she'll say yes, because she'd do anything for them.",
       "truth": "exaggerated",
       "actually": "Sol did tell Wren 'I'm only doing this for you' when they opened up, but it stopped being true once Sol fell for Ash, and Sol has no plans to ask Wren to close anything. It's Wren who has quietly wondered about giving something up."
     },
@@ -207,7 +207,7 @@
       "about": [
         "felix"
       ],
-      "text": "Felix hasn't put you on the house calendar. Don't take it hard: with Felix, that usually means he hasn't made up his mind about someone.",
+      "text": "Felix's color on the house calendar hasn't changed in two years: navy, Mateo, and nothing else. If he's been seeing you, he hasn't written it down, and with Felix that means he hasn't made up his mind.",
       "truth": "false",
       "actually": "Felix makes up his mind fast. If the player has been out with him, he has kept those dates off the calendar on purpose, the one part of his week he wants to keep for himself."
     },
