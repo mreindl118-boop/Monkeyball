@@ -3,7 +3,14 @@
 // goes through ./anthropic.ts. Every chat call logs a DebugEntry to useDebug. The rest of the app
 // calls ./index.ts (role-based), which resolves a route and lands here with an Endpoint.
 
-import { canUseNativeHttp, isFetchBlocked, NativeHttpError, request as nativeRequest, type HttpResult } from '../platform/http'
+import {
+  canUseNativeHttp,
+  isFetchBlocked,
+  NativeHttpError,
+  request as nativeRequest,
+  toResponse,
+  type HttpResult,
+} from '../platform/http'
 import { useDebug } from '../store/debug'
 import type { ConnectionPreset, DebugEntry } from '../types'
 import { extractJson, stripThinking } from './json'
@@ -301,16 +308,10 @@ interface SendInit {
   body?: string
 }
 
-/** Status codes whose Response must not carry a body. */
-const NULL_BODY_STATUS = new Set([101, 103, 204, 205, 304])
-
-/** A fetch Response built from a native answer (only the content type matters downstream). */
+/** A fetch Response from a native answer; an unusable status becomes a network LlmError. */
 function responseFrom(out: HttpResult, url: string): Response {
-  const headers = new Headers()
-  const type = out.headers['content-type']
-  if (type && !/[\r\n]/.test(type)) headers.set('content-type', type)
   try {
-    return new Response(NULL_BODY_STATUS.has(out.status) ? null : out.text, { status: out.status, headers })
+    return toResponse(out)
   } catch (e) {
     const err = new LlmError('network', `The model server at ${url} sent an answer the app can't read (status ${out.status}).`, {
       cause: e,

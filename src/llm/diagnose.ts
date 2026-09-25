@@ -2,6 +2,7 @@
 // Failures come back as a problem that names the fix. testConnection() works per preset and
 // handles both wire formats; testEndpoint() is the OpenAI-compatible test on its own.
 
+import { latestReleasePage } from '../platform/updates'
 import type { ConnectionPreset, ConnectionSettings } from '../types'
 import { createClaude, listClaudeModels } from './anthropic'
 import { chat, errorMessageFrom, isLlmError, LlmError, listModels, modelsUrl, type Endpoint } from './client'
@@ -87,18 +88,51 @@ export function corsFix(conn: ProblemTarget): string {
   return `Allow requests from ${appOrigin()} in the server's CORS settings (the Access-Control-Allow-Origin header), then try again.`
 }
 
-/** The https-page-to-http-server case browsers block outright (localhost is exempt). */
-function mixedContentNote(conn: ProblemTarget): string {
-  if (typeof location === 'undefined' || location.protocol !== 'https:') return ''
+/**
+ * The https-page-to-http-server case browsers block outright (mixed content): the PWA on GitHub
+ * Pages talking to a plain-http server that isn't this device. The Android app is served from
+ * http://localhost, so it never hits this.
+ */
+export function blockedAsMixedContent(conn: Pick<ProblemTarget, 'baseUrl'>): boolean {
+  if (typeof location === 'undefined' || location.protocol !== 'https:') return false
   let u: URL
   try {
     u = new URL(normalizeBaseUrl(conn.baseUrl))
   } catch {
-    return ''
+    return false
   }
-  if (u.protocol !== 'http:') return ''
-  if (isLoopbackHost(u.hostname)) return ''
-  return ' This page is served over https, so the browser blocks plain http servers other than localhost: use an https URL, or open the app over http on your network.'
+  return u.protocol === 'http:' && !isLoopbackHost(u.hostname)
+}
+
+/** Where to go instead when this https page can't reach a plain-http server. */
+function mixedContentWays(): string {
+  const apk = latestReleasePage().replace(/^https:\/\//, '')
+  return `Install the crushLAB Android app (the APK at ${apk}), which can reach servers on your Wi-Fi. Or use OpenRouter, which is https. Or serve crushLAB itself from that PC over plain http (the crushLAB LAN server) and open it from there.`
+}
+
+/** The problem for an https page pointed at a plain-http server on another machine. */
+export function mixedContentProblem(conn: ProblemTarget): ConnectionProblem {
+  return {
+    kind: 'unreachable',
+    message: `This page is served over https, so the browser won't let it talk to ${normalizeBaseUrl(conn.baseUrl)} over plain http (mixed content).`,
+    fix: mixedContentWays(),
+  }
+}
+
+function mixedContentNote(conn: ProblemTarget): string {
+  if (!blockedAsMixedContent(conn)) return ''
+  return ` This page is served over https, so the browser blocks plain http servers other than this device (mixed content). ${mixedContentWays()}`
+}
+
+/** "port 11434" from a base URL (the scheme's default when it names none), or ''. */
+function portNote(baseUrl: string): string {
+  try {
+    const u = new URL(normalizeBaseUrl(baseUrl))
+    const port = u.port || (u.protocol === 'https:' ? '443' : '80')
+    return `port ${port}`
+  } catch {
+    return 'its port'
+  }
 }
 
 /** Where the base URL points: this device, another machine on the network, or the internet. */
@@ -123,14 +157,14 @@ function unreachableFix(conn: ProblemTarget): string {
     fix =
       where === 'device'
         ? 'Check that Ollama is running (ollama serve) and the URL is http://localhost:11434/v1.'
-        : `Make sure Ollama is running on that PC and listening on your network (set OLLAMA_HOST=0.0.0.0, then restart Ollama), that this device is on the same Wi-Fi, and that the address ${host} is right.`
+        : `Make sure Ollama is running on that PC and listening on your network (set OLLAMA_HOST=0.0.0.0, then restart Ollama), that this device is on the same Wi-Fi, that the PC's firewall allows ${portNote(conn.baseUrl)}, and that the address ${host} is right.`
   } else if (isLmStudio(conn)) {
     fix =
       where === 'device'
         ? "Start the server in LM Studio's Developer tab and check the URL is http://localhost:1234/v1."
-        : `Make sure LM Studio's server is running on that PC with "Serve on local network" turned on, that this device is on the same Wi-Fi, and that the address ${host} is right.`
+        : `Make sure LM Studio's server is running on that PC with "Serve on local network" turned on, that this device is on the same Wi-Fi, that the PC's firewall allows ${portNote(conn.baseUrl)}, and that the address ${host} is right.`
   } else if (where === 'lan') {
-    fix = `Make sure the server on ${host} is running and listening on your network (not only on localhost), that this device is on the same Wi-Fi, and that the URL is right, including /v1 at the end.`
+    fix = `Make sure the server on ${host} is running and listening on your network (not only on its own machine), that this device is on the same Wi-Fi, that the firewall there allows ${portNote(conn.baseUrl)}, and that the URL is right, including /v1 at the end.`
   } else {
     fix =
       'Check that the server is running and the URL is right, including /v1 at the end (for example http://localhost:11434/v1).'
@@ -265,10 +299,19 @@ export function explainError(err: unknown, conn: ProblemTarget, model?: string):
     case 'cors':
       return { kind: 'cors', message: 'The server is up but blocks requests from this page (CORS).', fix: corsFix(conn) }
     case 'network':
+      if (blockedAsMixedContent(conn)) return mixedContentProblem(conn)
       if (hosted) {
         return {
           kind: 'unreachable',
           message: `Couldn't reach ${presetFor(hosted).label}. This device may be offline.`,
+          fix: unreachableFix(conn),
+        }
+      }
+      if (err.via === 'native') {
+        // The Android app's native retry has no CORS, so this is about the server or the network.
+        return {
+          kind: 'unreachable',
+          message: `Couldn't reach ${normalizeBaseUrl(conn.baseUrl) || 'the model server'}. It may be down, or not listening on your network.`,
           fix: unreachableFix(conn),
         }
       }
@@ -335,7 +378,9 @@ async function classifyNetwork(
   signal?: AbortSignal,
 ): Promise<ConnectionProblem> {
   if (e.kind !== 'network') return explainError(e, conn)
-  const reachable = await probeReachable(modelsUrl(conn), signal)
+  if (blockedAsMixedContent(conn)) return mixedContentProblem(conn)
+  // The Android app already retried natively (no CORS there): nothing answered.
+  const reachable = e.via === 'native' ? false : await probeReachable(modelsUrl(conn), signal)
   if (reachable) {
     return { kind: 'cors', message: 'The server is up but blocks requests from this page (CORS).', fix: corsFix(conn) }
   }
@@ -389,6 +434,13 @@ export async function testEndpoint(conn: Endpoint, opts: TestOptions = {}): Prom
       message: `"${base}" isn't a valid URL.`,
       fix: 'Use a full URL starting with http:// or https://, for example http://localhost:11434/v1.',
     })
+  }
+
+  // An https page can't reach a plain-http server elsewhere; say so before a request fails.
+  if (blockedAsMixedContent(conn)) {
+    const problem = mixedContentProblem(conn)
+    steps.push({ label: STEP_LABELS.list, ok: false, detail: problem.message })
+    return fail(problem)
   }
 
   // Hosted providers need a key for everything; don't send a request that can only fail.

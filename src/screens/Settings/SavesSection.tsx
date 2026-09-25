@@ -44,7 +44,7 @@ function reloadToHub(message: string) {
 }
 
 const EXPORT_UNAVAILABLE =
-  "Export isn't available in the Android app yet. Your progress is safe on this phone; save slots below work as usual."
+  "This device can't save files from crushLAB. Your progress is safe here; save slots below work as usual."
 
 type Pending =
   | { kind: 'import'; file: File }
@@ -91,8 +91,9 @@ export function SavesSection() {
     setExporting(true)
     try {
       const blob = await exportSave({ includeImages })
-      await saveFile(blob, saveFileName(), 'application/json')
-      toast('Save file ready.', 'success')
+      // Web: a download. Android app: the share sheet (save to Files, Drive, send it...).
+      const result = await saveFile(blob, saveFileName(), 'application/json')
+      if (result !== 'cancelled') toast('Save file ready.', 'success')
     } catch (e) {
       if (e instanceof FileSaveUnavailableError) toast(EXPORT_UNAVAILABLE, 'info', 6000)
       else toast(`Couldn't export: ${e instanceof Error ? e.message : String(e)}`, 'error')

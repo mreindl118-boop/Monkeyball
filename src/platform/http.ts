@@ -144,33 +144,55 @@ export async function request(url: string, opts: HttpRequestOptions = {}): Promi
   })
 }
 
+/** Status codes whose Response must not carry a body. */
+const NULL_BODY_STATUS = new Set([101, 103, 204, 205, 304])
+
 /**
- * GET a text resource: the WebView's fetch first, then (in the app, when fetch is blocked) the
- * native layer. Used for small JSON documents such as the update feed.
+ * A fetch Response built from a native answer, carrying its status and content type. Throws a
+ * RangeError for a status fetch can't represent (outside 200 to 599).
  */
-export async function getText(
-  url: string,
-  opts: { headers?: Record<string, string>; timeoutMs?: number; signal?: AbortSignal } = {},
-): Promise<HttpResult> {
-  const timeoutMs = opts.timeoutMs ?? 15_000
-  const controller = new AbortController()
-  const timer = timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : undefined
-  const onOuter = () => controller.abort()
-  opts.signal?.addEventListener('abort', onOuter, { once: true })
-  try {
+export function toResponse(out: HttpResult): Response {
+  const headers = new Headers()
+  for (const [k, v] of Object.entries(out.headers)) {
     try {
-      const res = await fetch(url, { headers: opts.headers, signal: controller.signal })
-      const headers: Record<string, string> = {}
-      res.headers.forEach((v, k) => {
-        headers[k.toLowerCase()] = v
-      })
-      return { status: res.status, text: await res.text(), headers }
-    } catch (e) {
-      if (!isFetchBlocked(e) || !canUseNativeHttp() || controller.signal.aborted) throw e
-      return await request(url, { headers: opts.headers, timeoutMs, signal: controller.signal })
+      headers.set(k, v)
+    } catch {
+      // A header fetch won't accept (odd characters): not needed downstream.
     }
-  } finally {
-    if (timer !== undefined) clearTimeout(timer)
-    opts.signal?.removeEventListener('abort', onOuter)
+  }
+  return new Response(NULL_BODY_STATUS.has(out.status) ? null : out.text, { status: out.status, headers })
+}
+
+function headerRecord(h: HeadersInit | undefined): Record<string, string> {
+  const out: Record<string, string> = {}
+  if (!h) return out
+  new Headers(h).forEach((v, k) => {
+    out[k] = v
+  })
+  return out
+}
+
+/**
+ * fetch, and in the app one retry through native HTTP when the WebView blocked the request
+ * (CORS, a LAN server). Only string bodies can take the native path; the native answer arrives
+ * whole (no streaming). For small documents and image servers; the model client has its own
+ * version with timeouts and streaming (src/llm/client.ts).
+ */
+export async function fetchWithFallback(url: string, init: RequestInit & { timeoutMs?: number } = {}): Promise<Response> {
+  const { timeoutMs, ...rest } = init
+  try {
+    return await fetch(url, rest)
+  } catch (e) {
+    const body = rest.body
+    if (!isFetchBlocked(e) || !canUseNativeHttp() || rest.signal?.aborted) throw e
+    if (body !== undefined && body !== null && typeof body !== 'string') throw e
+    const out = await request(url, {
+      method: rest.method,
+      headers: headerRecord(rest.headers),
+      body: body ?? undefined,
+      signal: rest.signal ?? undefined,
+      timeoutMs,
+    })
+    return toResponse(out)
   }
 }

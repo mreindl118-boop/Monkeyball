@@ -4,7 +4,7 @@
 // offers the newer APK. The request is a plain GET of the public release feed; it sends nothing
 // about the player. The web app and PWA update themselves through the service worker instead.
 
-import { getText } from './http'
+import { fetchWithFallback } from './http'
 import { isNative } from './platform'
 
 /** The GitHub repo whose releases are the update feed. */
@@ -96,16 +96,24 @@ export interface CheckOptions {
  */
 export async function checkForUpdate(repo = UPDATE_REPO, opts: CheckOptions = {}): Promise<UpdateInfo | null> {
   const current = opts.current ?? currentBuild()
+  const timeoutMs = opts.timeoutMs ?? 15_000
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  const onOuter = () => controller.abort()
+  opts.signal?.addEventListener('abort', onOuter, { once: true })
   try {
-    const res = await getText(latestReleaseApi(repo), {
+    const res = await fetchWithFallback(latestReleaseApi(repo), {
       headers: { Accept: 'application/vnd.github+json' },
-      timeoutMs: opts.timeoutMs ?? 15_000,
-      signal: opts.signal,
+      signal: controller.signal,
+      timeoutMs,
     })
-    if (res.status < 200 || res.status >= 300) return null
-    return parseRelease(JSON.parse(res.text), current)
+    if (!res.ok) return null
+    return parseRelease(JSON.parse(await res.text()), current)
   } catch {
     return null
+  } finally {
+    clearTimeout(timer)
+    opts.signal?.removeEventListener('abort', onOuter)
   }
 }
 

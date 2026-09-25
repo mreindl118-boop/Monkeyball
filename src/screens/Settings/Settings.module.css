@@ -167,3 +167,47 @@
   font-size: 12.5px;
   color: var(--smoke-text);
 }
+
+/* App section: version facts and updates. */
+.facts {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--field-bg);
+}
+
+.fact {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.fact + .fact {
+  border-top: 1px solid var(--line);
+}
+
+.fact dt {
+  color: var(--smoke-text);
+  font-size: 14px;
+}
+
+.fact dd {
+  margin: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.appUpdates {
+  display: grid;
+  gap: 12px;
+}
+
+.appNote {
+  margin: 0;
+  font-size: 14px;
+  color: var(--smoke-text);
+}

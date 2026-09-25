@@ -13,6 +13,7 @@ import { TopBar } from '../../ui/TopBar'
 import { useLongPress } from '../../ui/useLongPress'
 import { ConnectionForm } from '../ConnectionSetup/ConnectionForm'
 import { ProfileForm } from '../Onboarding/ProfileForm'
+import { AppSection } from './AppSection'
 import { ImageSection } from './ImageSection'
 import { PlaySection } from './PlaySection'
 import { SavesSection } from './SavesSection'
@@ -25,6 +26,7 @@ const SECTIONS = [
   { id: 'images', label: 'Images' },
   { id: 'mods', label: 'Sets and mods' },
   { id: 'saves', label: 'Saves' },
+  { id: 'app', label: 'App' },
   { id: 'reset', label: 'Reset' },
 ] as const
 
@@ -151,6 +153,15 @@ export default function Settings() {
         description="Move your game between devices, or keep snapshots to try a different approach. Save files never include your API keys."
       >
         <SavesSection />
+      </Panel>
+
+      <Panel
+        id="settings-app"
+        className={styles.section}
+        title="App"
+        description="Which crushLAB this is, and how it stays up to date."
+      >
+        <AppSection />
       </Panel>
 
       <Panel
