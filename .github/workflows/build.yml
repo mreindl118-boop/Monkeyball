@@ -135,11 +135,17 @@ jobs:
           echo "KEY: $FP_KEY"
           [ -n "$FP_APK" ] && [ "$FP_APK" = "$FP_KEY" ] || { echo "::error::APK signature does not match the pinned keystore"; exit 1; }
       - name: Name the APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk "crushlab-${{ github.run_number }}.apk"
+        # crushlab.apk keeps one stable download link for the newest build:
+        # https://github.com/<owner>/<repo>/releases/latest/download/crushlab.apk
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk "crushlab-${{ github.run_number }}.apk"
+          cp android/app/build/outputs/apk/debug/app-debug.apk crushlab.apk
       - uses: actions/upload-artifact@v4
         with:
           name: crushlab-android
-          path: crushlab-${{ github.run_number }}.apk
+          path: |
+            crushlab-${{ github.run_number }}.apk
+            crushlab.apk
 
   release:
     name: Publish release (APK download link and update feed)
@@ -159,9 +165,12 @@ jobs:
           body: |
             crushLAB build ${{ github.run_number }} from `${{ github.ref_name }}` (${{ github.sha }}). Adults only (18+).
 
-            - **Android**: download `crushlab-${{ github.run_number }}.apk` below and open it to install or upgrade
-              (allow installs from your browser or file manager when Android asks).
+            - **Android**: download `crushlab.apk` below (the same file as `crushlab-${{ github.run_number }}.apk`) and open
+              it to install or upgrade (allow installs from your browser or file manager when Android asks).
+              Always-newest link: https://github.com/${{ github.repository }}/releases/latest/download/crushlab.apk
             - **Web app**: https://mreindl118-boop.github.io/Monkeyball/ can be installed from Chrome on Android
               (menu, then Install app). The web app can use OpenRouter or a model running on the phone; a PC
               on your Wi-Fi needs the APK.
-          files: crushlab-${{ github.run_number }}.apk
+          files: |
+            crushlab-${{ github.run_number }}.apk
+            crushlab.apk
