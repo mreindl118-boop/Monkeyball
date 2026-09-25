@@ -201,7 +201,7 @@ describe('story prompt', () => {
     const minh = { ...nova, aceSpectrum: { label: 'asexual, panromantic', heatCap: 2 as const } }
     const p = buildStoryPrompt(story({ character: minh, heat: 5 }))
     expect(p).toContain('Intensity: Flirty:')
-    expect(p).toContain('Asexual, panromantic: heat never goes past 2, and that is who they are, not a puzzle.')
+    expect(p).toContain(`Asexual, panromantic: heat never goes past 2, and that is who ${nova.name} is, not a puzzle.`)
     const priya = { ...nova, aceSpectrum: { label: 'demisexual', heatUnlockTrust: 60 } }
     expect(buildStoryPrompt(story({ character: priya, heat: 4, rel: rel({ trust: 40 }) }))).toContain('Intensity: Flirty:')
     expect(buildStoryPrompt(story({ character: priya, heat: 4, rel: rel({ trust: 61 }) }))).toContain('Intensity: Explicit:')
@@ -326,6 +326,15 @@ describe('judge prompt', () => {
     expect(p).toContain('current opinion: thinks we agreed to be exclusive and just heard about Kai\n')
     expect(p).toContain('Recent turns: none yet')
   })
+
+  it("tells the judge an ace or demi character's pace, after their personality", () => {
+    const demi = { ...nova, aceSpectrum: { label: 'demisexual', heatUnlockTrust: 60 } }
+    const p = buildJudgePrompt({ ...ctx, character: demi })
+    expect(p).toMatch(
+      /Woman, she\/her\. Teasing and quick[^\n]* Demisexual: nothing past heat 2 until trust is over 60, and that is who Nova Castellanos is, not a puzzle\.\n/,
+    )
+    expect(buildJudgePrompt(ctx)).not.toContain('not a puzzle')
+  })
 })
 
 describe('agreement prompt', () => {
@@ -427,5 +436,12 @@ describe('message helpers', () => {
     expect(s[1].content).toBe('Last turns:\nNova: t2\nPlayer: t3\nNova: t4\nPlayer: t5\n\nSuggest the three lines.')
     const m = makeMemoryMessages('M', [{ role: 'player', text: 'Hi' }], { characterName: 'Nova', venue: 'Arcade' })
     expect(m[1].content).toBe('Venue: Arcade.\nThe date:\nPlayer: Hi\n\nWrite the summary.')
+    const named = makeMemoryMessages('M', [{ role: 'player', text: 'Hi' }], {
+      characterName: 'Nova',
+      playerLabel: 'Robin',
+      venue: 'Arcade',
+      gift: 'a poetry book',
+    })
+    expect(named[1].content).toBe('Venue: Arcade. Gift: a poetry book.\nThe date:\nRobin: Hi\n\nWrite the summary.')
   })
 })

@@ -5,6 +5,7 @@ import { GIFTS, giftById } from '../../data/gifts'
 import { VENUES, venueById } from '../../data/venues'
 import { newRelationship } from '../../engine/relationship'
 import { affectionCap, routeFor, stageFor } from '../../engine/stages'
+import { liveCharacterId, useDate } from '../../store/date'
 import { useGame } from '../../store/game'
 import { useNav } from '../../store/nav'
 import { useRelationsFor, useRoster } from '../../store/roster'
@@ -103,6 +104,8 @@ function ProfileView({ character, setId, ready }: { character: Character; setId:
   const entries = useRoster((s) => s.entries)
   const set = useRoster((s) => s.sets.find((x) => x.id === setId))
   const relations = useRelationsFor(id, activeSets)
+  // A date with them still open (the player stepped away from it): the button goes back to it.
+  const onDate = useDate(liveCharacterId) === id
 
   const name = character.name.trim() || id
   const first = name.split(/\s+/)[0]
@@ -367,9 +370,15 @@ function ProfileView({ character, setId, ready }: { character: Character; setId:
       </div>
 
       <div className={styles.actionBar} data-keyboard-static>
-        <Button variant="primary" block disabled={!active} onClick={() => go({ name: 'date-setup', id })}>
-          Ask on a date
-        </Button>
+        {onDate ? (
+          <Button variant="primary" block onClick={() => go({ name: 'date' })}>
+            Back to the date
+          </Button>
+        ) : (
+          <Button variant="primary" block disabled={!active} onClick={() => go({ name: 'date-setup', id })}>
+            Ask on a date
+          </Button>
+        )}
       </div>
     </main>
   )

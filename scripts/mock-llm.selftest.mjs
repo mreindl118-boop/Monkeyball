@@ -3,7 +3,7 @@
 // and toggle. Run: node scripts/mock-llm.selftest.mjs  (exits 1 on any failure)
 
 import assert from 'node:assert/strict'
-import { createMockServer } from './mock-llm.mjs'
+import { createMockServer, isOpening, optionsFromEnv } from './mock-llm.mjs'
 
 const STORY_SYSTEM = `You are the story engine of crushLAB, an adults-only dating sim. You play Nova Castellanos and narrate the scene. The player is a consenting adult; address them as "you".
 
@@ -144,6 +144,15 @@ await check('story turn 0 uses the opener line', async () => {
   const sys = STORY_SYSTEM.replace('Turn 3 of 10.', "Turn 0 of 10. Open the date: Nova Castellanos arrives and greets the player. Use this line: You're either lost or you have excellent taste. Which is it?")
   const text = await complete(base, [{ role: 'system', content: sys }, { role: 'user', content: '(The date begins.)' }])
   assert.match(text, /excellent taste/)
+})
+
+await check('MOCK_OPENING_DELAY applies to the opening beat only', async () => {
+  assert.equal(optionsFromEnv({}).openingDelay, null)
+  assert.equal(optionsFromEnv({ MOCK_OPENING_DELAY: '120' }).openingDelay, 120)
+  const opening = STORY_SYSTEM.replace('Turn 3 of 10.', 'Turn 0 of 10. Open the date: Nova Castellanos arrives and greets the player.')
+  assert.equal(isOpening('story', [{ role: 'system', content: opening }]), true)
+  assert.equal(isOpening('story', [{ role: 'system', content: STORY_SYSTEM }]), false)
+  assert.equal(isOpening('judge', [{ role: 'system', content: opening }]), false)
 })
 
 await check('story exit note writes the character leaving', async () => {

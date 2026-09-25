@@ -175,6 +175,16 @@ const VENUE_FEELING: Record<VenueFeeling, string> = {
   hates: "can't stand this place",
 }
 
+/** {venueFeeling} from a venue reaction as Relationship.venues stores it (unknown: fine). */
+export function venueFeelingFor(reaction: Relationship['venues'][string] | undefined): VenueFeeling {
+  return reaction === 'favorite' ? 'loves' : reaction === 'hated' ? 'hates' : 'fine'
+}
+
+/** A gift reaction as Relationship.gifts stores it, for the story prompt (unknown: neutral). */
+export function giftReactionFor(reaction: Relationship['gifts'][string] | undefined): GiftReaction {
+  return reaction === 'loved' || reaction === 'hated' ? reaction : 'neutral'
+}
+
 const GIFT_REACTION: Record<GiftReaction, string> = {
   loved: "lights up; it's exactly right",
   hated: 'tries to hide a wince',
@@ -425,7 +435,11 @@ export function storyValues(ctx: StoryContext): FillValues {
     route: ctx.route,
     agreement: agreementText(rel.agreement),
     knownOthers: namesList(knownOthers, ctx.names, `nobody, as far as ${c.name} knows`),
-    memory: memory.length ? memory.join(' ') : 'This is your first date.',
+    memory: memory.length
+      ? memory.join(' ')
+      : ctx.firstDate
+        ? 'This is your first date.'
+        : "You've been out before; nothing from those dates stands out.",
     venue: venueNote ? `${noPeriod(ctx.venue.name)} (${venueNote})` : noPeriod(ctx.venue.name),
     venueFeeling: VENUE_FEELING[ctx.venue.feeling] ?? VENUE_FEELING.fine,
     giftLine: ctx.gift
@@ -509,10 +523,14 @@ export function defaultOpinion(
   }
 }
 
-/** Judge {personality}: identity and pronouns first (so misgendering is scoreable), then personality. */
+/**
+ * Judge {personality}: identity and pronouns first (so misgendering is scoreable), then
+ * personality, then the ace-spectrum pace (so pushing past it can be scored).
+ */
 function judgePersonality(c: Character): string {
   const identity = capitalize(str(c.identity) || c.gender)
-  return `${identity}, ${noPeriod(c.pronouns)}. ${sentence(c.personality)}`
+  const ace = aceNote(c)
+  return `${identity}, ${noPeriod(c.pronouns)}. ${sentence(c.personality)}${ace ? ` ${ace}` : ''}`
 }
 
 export function judgeValues(ctx: JudgeContext): FillValues {
@@ -694,14 +712,21 @@ export function makeSuggestionsMessages(
   ]
 }
 
-/** Memory call: the whole date transcript in the user message. */
+/**
+ * Memory call: the whole date transcript in the user message, after the venue and the gift
+ * ("Venue: Record store. Gift: a poetry book."). `gift` reads mid-sentence.
+ */
 export function makeMemoryMessages(
   systemPrompt: string,
   turns: readonly TurnLike[],
-  labels: TranscriptLabels & { venue?: string },
+  labels: TranscriptLabels & { venue?: string; gift?: string },
 ): ChatMessage[] {
   const transcript = renderTranscript(turns, labels)
-  const where = labels.venue ? `Venue: ${noPeriod(labels.venue)}.\n` : ''
+  const scene = [
+    labels.venue ? `Venue: ${noPeriod(labels.venue)}.` : '',
+    labels.gift ? `Gift: ${noPeriod(labels.gift)}.` : '',
+  ].filter(Boolean)
+  const where = scene.length ? `${scene.join(' ')}\n` : ''
   return [
     { role: 'system', content: systemPrompt },
     { role: 'user', content: `${where}The date:\n${transcript || '(nothing was said)'}\n\n${MEMORY_INSTRUCTION}` },

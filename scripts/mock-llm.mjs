@@ -18,6 +18,8 @@
 //   PORT=11435                 listen port (0 picks a free one)
 //   HOST=                      listen host (default: all interfaces)
 //   MOCK_DELAY=15              ms between streamed tokens
+//   MOCK_OPENING_DELAY=        ms between streamed tokens of an opening beat (a story prompt on
+//                              turn 0), so e2e screenshots can catch a reply mid-stream
 //   MOCK_REJECT_JSON_MODE=1    400 when response_format is present
 //   MOCK_REQUIRE_KEY=secret    401 unless "Authorization: Bearer secret"
 //   MOCK_BAD_JSON=1            judge answers with prose first, valid JSON on the nudge retry
@@ -35,6 +37,7 @@ const NUDGE_RE = /valid JSON only/i
 export function optionsFromEnv(env = process.env) {
   return {
     delay: env.MOCK_DELAY !== undefined && env.MOCK_DELAY !== '' ? Number(env.MOCK_DELAY) : 15,
+    openingDelay: env.MOCK_OPENING_DELAY !== undefined && env.MOCK_OPENING_DELAY !== '' ? Number(env.MOCK_OPENING_DELAY) : null,
     rejectJsonMode: env.MOCK_REJECT_JSON_MODE === '1',
     requireKey: env.MOCK_REQUIRE_KEY || '',
     badJson: env.MOCK_BAD_JSON === '1',
@@ -209,6 +212,13 @@ export function replyFor(kind, messages, opts) {
   }
 }
 
+/** True for the story call that opens a date (turn 0). */
+export function isOpening(kind, messages) {
+  if (kind !== 'story') return false
+  const system = String(messages.find((m) => m.role === 'system')?.content ?? '')
+  return /Open the date/.test(lineAfter(system, '\nTurn '))
+}
+
 // ---------------------------------------------------------------------------
 // HTTP
 
@@ -330,10 +340,11 @@ export function createMockServer(options = {}) {
           `data: ${JSON.stringify({ id, object: 'chat.completion.chunk', created, model, choices: [{ index: 0, delta, finish_reason: finishReason }] })}\n\n`
         res.write(': mock stream\n\n')
         res.write(chunk({ role: 'assistant', content: '' }))
+        const delay = opts.openingDelay != null && isOpening(kind, messages) ? opts.openingDelay : opts.delay
         for (const t of tokens(text)) {
           if (res.destroyed) return
           res.write(chunk({ content: t }))
-          if (opts.delay > 0) await sleep(opts.delay)
+          if (delay > 0) await sleep(delay)
         }
         res.write(chunk({}, finish))
         res.write('data: [DONE]\n\n')

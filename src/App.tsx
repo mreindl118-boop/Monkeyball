@@ -18,12 +18,12 @@ const CharacterSets = lazy(() => import('./screens/CharacterSets/CharacterSets')
 const Editor = lazy(() => import('./screens/Editor/Editor'))
 const Settings = lazy(() => import('./screens/Settings/Settings'))
 const Debug = lazy(() => import('./screens/Debug/Debug'))
+const DateSetup = lazy(() => import('./screens/DateSetup/DateSetup'))
+const DateScreen = lazy(() => import('./screens/DateScreen/DateScreen'))
+const Recap = lazy(() => import('./screens/Recap/Recap'))
 
 /** Titles for screens that arrive in later phases. */
 const LATER: Partial<Record<ScreenName, string>> = {
-  'date-setup': 'Date setup',
-  date: 'Date',
-  recap: 'Recap',
   gallery: 'Gallery',
   map: 'Polycule map',
   ending: 'Ending',
@@ -88,6 +88,12 @@ function renderScreen(view: Screen, back: () => void, toHub: () => void): ReactN
       return <Settings key="settings" />
     case 'debug':
       return <Debug />
+    case 'date-setup':
+      return <DateSetup key={view.id} />
+    case 'date':
+      return <DateScreen />
+    case 'recap':
+      return <Recap key={view.dateId} />
     default:
       return <NotBuilt what={LATER[view.name]} onBack={back} onHub={toHub} />
   }
@@ -121,6 +127,18 @@ export default function App() {
       setBooted(true)
       consumeFlash()
       if (useSettings.getState().error) warnNoStorage()
+      // A date left open when the app closed (the Android app restarts on the hub): open the date
+      // screen, which offers its recap. Its own chunk, so the hub doesn't wait for the date engine.
+      if (!fromHash || fromHash.name === 'hub') {
+        void import('./store/date')
+          .then((m) => m.useDate.getState().findInterrupted())
+          .then((it) => {
+            const { settings, profile } = useSettings.getState()
+            const nav = useNav.getState()
+            if (!cancelled && it && settings.ageConfirmed && profile && nav.screen.name === 'hub') nav.go({ name: 'date' })
+          })
+          .catch(() => undefined)
+      }
       // Characters (packs and custom cards) and relationship progress load in the background, in
       // their own chunk; screens that show characters wait for them (useRosterAndGame).
       void import('./screens/Hub/useRosterGame')

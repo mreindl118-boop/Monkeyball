@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FRIENDSHIP_LOCKED, GIFT_IDS, GIFTS, giftById, giftLock, isGiftUnlocked } from './gifts'
+import { FRIENDSHIP_LOCKED, GIFT_IDS, GIFTS, giftById, giftLock, giftNoun, isGiftUnlocked } from './gifts'
 
 /** docs/SPEC.md, "Gifts (14)", in order. */
 const SPEC_GIFTS = [
@@ -53,5 +53,29 @@ describe('gifts', () => {
   it('names the stage for other thresholds and heat 5', () => {
     expect(giftLock({ id: 'x', name: 'X', description: 'x', requiresAffection: 80 }, 0, 2)).toBe('Needs Lover')
     expect(giftLock({ id: 'x', name: 'X', description: 'x', requiresHeat: 5 }, 0, 4)).toBe('Needs heat 5')
+  })
+})
+
+/** Every gift as it reads mid-sentence ("You brought {gift}."): count nouns take an article. */
+const GIFT_NOUNS: Record<string, string> = {
+  flowers: 'flowers',
+  chocolates: 'chocolates',
+  'rare-vinyl': 'rare vinyl',
+  'hot-sauce': 'hot sauce',
+  'video-game': 'a video game',
+  perfume: 'perfume',
+  'poetry-book': 'a poetry book',
+  plushie: 'a plushie',
+  'red-wine': 'red wine',
+  'concert-tickets': 'concert tickets',
+  sketchbook: 'a sketchbook',
+  'silver-necklace': 'a silver necklace',
+  houseplant: 'a houseplant',
+  lingerie: 'lingerie',
+}
+
+describe('gift nouns', () => {
+  it.each(SPEC_GIFTS)('%s reads as a noun phrase mid-sentence', (id) => {
+    expect(giftNoun(giftById(id)!)).toBe(GIFT_NOUNS[id])
   })
 })

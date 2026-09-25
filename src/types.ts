@@ -180,6 +180,11 @@ export interface VenueShape {
 export interface Gift {
   id: string;
   name: string;
+  /**
+   * Optional: the gift as it reads mid-sentence ("a poetry book"), for "You brought {gift}." and
+   * the date setup's summary. Plural and mass names ("Rare vinyl", "Flowers") read fine bare.
+   */
+  phrase?: string;
   description: string;
   /** Minimum affection (lingerie: 60 = Crush). */
   requiresAffection?: number;
@@ -431,6 +436,12 @@ export interface DateTurn {
   applied?: Record<string, { affection: number; trust: number }>;
   /** True while this turn belongs to a Define-the-relationship conversation. */
   dtr?: boolean;
+  /**
+   * Optional, system turns only: what the note is about. 'refused' follows a story turn the model
+   * declined (suggests a lower heat); 'error' says a reply didn't come through (the date offers a
+   * retry, and a successful retry removes it).
+   */
+  notice?: 'refused' | 'error';
 }
 
 export type DateKind = 'single' | 'group' | 'epilogue';
@@ -447,6 +458,11 @@ export interface DateRecord {
   turns: DateTurn[];
   /** Per-character running totals for the date (for cap and early exit). */
   totals: Record<string, { affection: number; trust: number; gained: number }>;
+  /**
+   * Optional: the venue and gift affection counted at the start of the date, per character (after
+   * the gain cap). The venue and gift reactions themselves are on the relationship.
+   */
+  opening?: Record<string, { venue: number; gift: number }>;
   outcome?: 'completed' | 'left' | 'ended' | 'abandoned';
   endingType?: EndingType;
   recap?: DateRecap;
@@ -471,8 +487,23 @@ export interface DateRecap {
       betrayals: BetrayalEvent[];
       venueReaction?: 'favorite' | 'hated' | 'neutral';
       giftReaction?: 'loved' | 'hated' | 'neutral';
+      /**
+       * Optional: false when the player already knew the venue or gift reaction before this date
+       * (the recap lists only new ones under what you learned). Missing on older records: new.
+       */
+      venueNew?: boolean;
+      giftNew?: boolean;
       gossip: string[];
       left: boolean;
+      /** Optional: the memory line this date added, in the character's voice (empty when none). */
+      memory?: string;
+      /** Optional: the route the date was played on (friend route: tiers 3-5 are friendship-locked). */
+      route?: Route;
+      /**
+       * Optional: what came up this date for the first time: the character's attractions or style
+       * (now shown on the profile), and whether they learned how the player dates.
+       */
+      revealed?: { attractions: boolean; style: boolean; playerStyle: boolean };
     }
   >;
 }

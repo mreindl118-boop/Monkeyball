@@ -14,6 +14,7 @@ import { TopBar } from '../../ui/TopBar'
 import styles from './Debug.module.css'
 import { maskKey } from './mask'
 import { buildPreviews, PROMPT_KINDS, type PromptKind } from './previews'
+import { TranscriptTab } from './TranscriptTab'
 
 type TabId = 'prompts' | 'raw' | 'transcript' | 'state'
 
@@ -133,15 +134,6 @@ function RawTab() {
           </li>
         ))}
       </ul>
-    </div>
-  )
-}
-
-function TranscriptTab() {
-  return (
-    <div className={styles.empty}>
-      <strong>No date played yet</strong>
-      <p>The full transcript of the current or last date shows here once dates arrive.</p>
     </div>
   )
 }

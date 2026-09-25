@@ -141,16 +141,72 @@ Spec: docs/SPEC.md. Build contract: docs/ARCHITECTURE.md. Casting: docs/ROSTER.m
     a pack of long unbroken words at 360px (report sheet included). Shared Android helpers
     (`PIXEL_7`, `checkTouchScreen`, `quickOnboard`...) live in scripts/e2e/lib.mjs.
 
+- Phase 3 (dating core), integrated, reviewed, fixed and checked end to end (not committed yet):
+  - Engine (src/engine, pure, tested): `math.ts` (difficulty, venue and gift deltas, the date
+    ledger with the +25 net gain cap, the meter's room and the friend-route cap, the -20 exit),
+    `discovery.ts` (trait reveals with the judge's hint, venue and gift reactions, attractions and
+    style when they come up, the player's style), `unlocks.ts` (tiers and secrets exactly once),
+    `trust.ts` (a list of trust rules Phase 4 extends; +1 for a completed date), `memory.ts`
+    (append, compress past ~250 words), `recap.ts`, and `dateFlow.ts`: the date contract
+    (`createDate`, `openDate`, `sendPlayerMessage`, `retryLastReply`, `finishDate`) with a turn
+    pipeline of small pure steps (`TURN_STEPS`: trust, affection, reveal, topics, connection,
+    unlock, mood). Decisions are in ARCHITECTURE, "Date flow", "Phase 3 decisions".
+  - Store `useDate` (src/store/date.ts) over the engine: model calls by role, persistence after
+    every step, abort and resume, retry, End date, the open date remembered in kv `activeDate` so a
+    reload or a killed app can still show that date's recap.
+  - Screens: Date setup (venue grid with backdrops and locks, gift shelf, known reactions, the
+    summary line; an interrupted date's recap on offer), Date (visual-novel text box over the
+    backdrop, streaming with a caret, turn counter, status strip that expands to the meters and
+    stamps, hints line with the judge's hint and what counted, suggestion chips that fill the
+    input, composer above the soft keyboard, End date with a confirm that the Android back button
+    also opens, "See how it went" after the last reply or the exit), Recap (meters before and
+    after, stage, memory line in their voice, traits with hints, venue and gift, tiers, secrets,
+    what it cost when they walked out), the debug panel's Transcript tab, "Back to the date" on the
+    profile while a date is open. App boot opens an interrupted date's screen when the app starts
+    on the hub.
+  - Integration fixes: chips no longer run off the text box (one per row on a phone, side by side
+    on a desktop, a sideways strip only in short windows, with scroll padding so the first chip
+    isn't pinned to the edge); the status panel is nearly opaque over busy backdrops; venue cards
+    and the recap hero have their own scrim so backdrop details don't cross the text; the
+    duplicated "Nova is replying" (status line and placeholder) shows once; the transcript fades
+    under the name plate; the portrait steps aside sooner when squeezed; the trust badge on the
+    recap is brass; the hints line says when the date's limit held a gain back.
+  - Review fixes: the +25 cap also bounds the meter's own rise over the date (a loss taken at 0
+    no longer lets the meter climb past +25; `dateRiseRoom`, `dateGainUsed`); no sending while a
+    reply is missing (the opening and every LANDED result stay in order), but Send works while the
+    chips load; an abort during the reply-landed save no longer leaves the date stuck on
+    "suggesting"; heat can change mid-date (status panel, and a declined turn's note) and reaches
+    the next call, while the route, length and gain cap stay as the date began; the composer keeps
+    focus (and the soft keyboard) between turns; the transcript only lets go of the latest line
+    when the player scrolls up (a keyboard resize no longer does); each step saves the relationship
+    and the record in one transaction; the walkout recap shows the date's running total; the turn
+    counter stays on the turn played after an early exit or End date; what you learned lists only
+    new venue and gift reactions; gifts read as noun phrases ("You brought a poetry book.",
+    `Gift.phrase`); `{memory}` no longer calls a later date the first; home is "your place"; the
+    memory call names the player and the gift; the judge gets `{others}` (characters the player has
+    dated) and the ace-spectrum pace; the ace note names the character instead of "they"; the picked
+    venue's full description shows under the grid.
+  - Mock: `MOCK_OPENING_DELAY` paces opening beats (mid-stream screenshots); self-test covers it.
+  - E2E: `npm run e2e:phase3` (Pixel 7 emulation, then 360x800 and 1280x800): connection via Other
+    providers, Custom; a full 10-turn date with a like, a turn-off, chips and small talk; the heat
+    sheet from the status panel; focus kept in the composer after sending with Enter; the emulated
+    soft keyboard; the closing reply; the recap; a reload that keeps affection, traits and memory;
+    the early exit (turn counter and the date's running total on the recap); the +25 gain cap
+    with hints on; a restart on the hub mid-date.
+
 ## In progress
 
-- Nothing. Phase 2 is done; Phase 3 (dating core) is next.
+- Nothing. Phase 3 is done; Phase 4 (relationships) is next.
 
 ## Next
 
-- Phase 3 (dating core): date setup (venue grid with Backdrop and `venueLock(venue, affection,
-  route)`, gift shelf with `giftLock(gift, affection, heat, route)`), story engine, judge,
-  suggestions, affection math, discovery, early exit, recap, memory. Then Phases 4 to 7 as listed
-  in docs/SPEC.md.
+- Phase 4 (relationships): trust rules beyond the basics (grudge factor, breach penalty, appended
+  to `BASE_TRUST_RULES`), name-mention disclosure and betrayal steps in `TURN_STEPS`,
+  `heatPushes` and `jealous`, Define the relationship (the disabled button in the date's status
+  panel; `StorySpecial` already supports the DTR turn note) and the Agreement prompt, gossip,
+  rekindle, the polycule map, endings. `world.rng` and `DateWorld.setId` are waiting for gossip;
+  `othersSeen` (src/store/date.ts, the judge's `{others}`) should follow endings and agreements.
+  Then Phases 5 to 7 as listed in docs/SPEC.md.
 - Phase 6, when a second bundled set ships: a skippable "Who's in town" step in onboarding that uses
   the Character sets toggles (SPEC: "New game, and Settings, Character sets, let the player turn
   sets on and off"). Until then a new game starts with Afterhours on, and Character sets is the
@@ -207,8 +263,28 @@ Spec: docs/SPEC.md. Build contract: docs/ARCHITECTURE.md. Casting: docs/ROSTER.m
   storage warning says so).
 - `defaultRelationship` (src/store/defaults.ts) duplicates `newRelationship`
   (src/engine/relationship.ts); a test keeps them equal.
-- Haptics: a stamp press (LipstickStamps), a saved card and an import use them; unlock reveals
-  arrive with Phase 5. The date engine should use `refusalBeat` and `REFUSAL_NOTE`, show a
-  `setup` or `empty` LlmError through `explainRoleError`, and mark its bottom composer
-  `data-keyboard-static` (Phase 3).
-- The debug panel's Transcript tab is a placeholder until dates exist (Phase 3).
+- Haptics: a stamp press (LipstickStamps, and the date's mood kiss when affection moves), a saved
+  card, an import and something unlocked on the recap use them; the Phase 5 unlock reveal will
+  too.
+- Phase 3, not checked on a device yet: the Android back button on a date (asks before ending it),
+  haptics on the date and the recap, the real soft keyboard (only emulated at 412x560 in e2e), and a
+  date over native HTTP (no streaming there: the reply arrives whole).
+- A date recovered after a restart is recapped as ended early ("You ended the date early.") unless
+  every turn was played; there is no separate wording for an interrupted date yet.
+- `rel.dates` counts a date the character walked out of (so the first-date opener isn't reused);
+  the +1 consistency trust is for completed dates only.
+- A gain the meter can't hold (friend-route 59, or 100) doesn't count toward the date's +25, and
+  losses always count in full toward the -20 exit, so the date's total can differ from the meter's
+  change (ARCHITECTURE, math.ts). The meter's net rise per date is capped at +25 either way; the
+  hints line says when a loss counted but the meter was already at 0.
+- A date filed as abandoned ("Back to the hub" on the interrupted panel, or starting another date
+  while one was left open) keeps what it changed but adds no memory and doesn't count toward
+  `rel.dates`, so after an abandoned first date the next one is still a first date (opener
+  included). The button doesn't say the date is set aside without a recap.
+- The composer's focus is kept in Chromium (e2e); whether the Android WebView keeps the soft
+  keyboard up for a read-only field between turns is still to be checked on a device.
+- The judge's `{others}` counts anyone the player has been on a date with, including characters
+  the player has stopped seeing; Phase 4 (endings, rekindles, agreements) decides who counts.
+- The date's settings refresh before each call except the orientation mode and the profile, which
+  stay as the date began (changing either mid-date could switch the route).
+- Portraits on the date and recap screens are the Phase 2 placeholder until Phase 5 art.

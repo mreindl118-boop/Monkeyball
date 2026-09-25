@@ -1,0 +1,621 @@
+/* The date: a full-height visual-novel stage. The layout is 100dvh (the soft keyboard shrinks it),
+   so the composer and the latest line always sit above the keyboard. */
+
+.root {
+  position: relative;
+  height: 100dvh;
+  /* clip, not just hidden: a field scrolled into view when the keyboard opens can't shift it. */
+  overflow: hidden;
+  overflow: clip;
+  isolation: isolate;
+  overflow-wrap: anywhere;
+}
+
+.backdrop {
+  z-index: 0;
+}
+
+.column {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: calc(var(--safe-top) + 8px) calc(var(--safe-right) + 12px) calc(var(--safe-bottom) + 10px)
+    calc(var(--safe-left) + 12px);
+}
+
+/* Top: where, which turn, End date. */
+.top {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.where {
+  min-width: 0;
+  text-shadow: 0 1px 4px rgb(0 0 0 / 0.75);
+}
+
+.venueName {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 19px;
+  line-height: 1.15;
+  color: #fff4f6;
+}
+
+.turn {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--blush) 85%, #fff);
+}
+
+.endButton {
+  flex: none;
+  --btn-bg: rgb(28 9 20 / 0.68);
+  --btn-border: var(--line-strong);
+}
+
+/* Status strip */
+.status {
+  --smoke-text: var(--smoke-on-panel);
+  flex: none;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--line);
+  /* Nearly opaque: the backdrop's shapes shouldn't show through the meters. */
+  background: rgb(28 9 20 / 0.92);
+  backdrop-filter: blur(6px);
+}
+
+.statusToggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 6px 12px;
+  border: 0;
+  border-radius: var(--radius-m);
+  background: none;
+  color: var(--blush);
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.statusToggle:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: -2px;
+}
+
+.moodKiss {
+  flex: none;
+  width: 28px;
+  height: 20px;
+  color: var(--lipstick);
+  transform: rotate(-8deg);
+}
+
+.pressed {
+  animation: stamp 420ms var(--ease-out) both;
+}
+
+.down {
+  color: color-mix(in srgb, var(--smoke) 70%, var(--lipstick));
+}
+
+@keyframes stamp {
+  0% {
+    opacity: 0;
+    transform: rotate(-8deg) scale(1.9);
+  }
+  55% {
+    opacity: 1;
+    transform: rotate(-8deg) scale(0.86);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(-8deg) scale(1);
+  }
+}
+
+.moodText {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.moodLabel {
+  font-size: 11.5px;
+  color: var(--smoke-text);
+}
+
+.mood {
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.toggleText {
+  flex: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--smoke-text);
+}
+
+.hintLine {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  padding: 0 12px 8px;
+  font-size: 13px;
+}
+
+.hint {
+  color: var(--blush);
+}
+
+.deltas {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--lipstick-text);
+}
+
+.statusPanel {
+  display: grid;
+  gap: 12px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--line);
+}
+
+.caption {
+  font-size: 12.5px;
+  color: var(--smoke-text);
+}
+
+.dtr {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+}
+
+.heatRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.heatText {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--blush);
+}
+
+.heatKiss {
+  flex: none;
+  width: 22px;
+  height: 15px;
+  color: var(--lipstick);
+}
+
+/* The character stands above the text box. Placeholder art until Phase 5. */
+.stageArea {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-top: 6px;
+  container-type: size;
+}
+
+/* Too little room (the status strip is open on a short screen): no postage-stamp portrait. */
+@container (max-height: 150px) {
+  .stageArea > .portrait {
+    display: none;
+  }
+}
+
+.stageArea > .portrait {
+  width: auto;
+  height: 100%;
+  max-height: 340px;
+  max-width: 70%;
+  box-shadow:
+    0 18px 40px rgb(0 0 0 / 0.45),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* The text box */
+.box {
+  --smoke-text: var(--smoke-on-panel);
+  position: relative;
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  max-height: 64%;
+  margin-top: 12px;
+  padding: 12px 12px 10px;
+  border-radius: var(--radius-l);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  background: linear-gradient(180deg, rgb(28 9 20 / 0.95) 0%, rgb(20 6 14 / 0.97) 100%);
+  box-shadow: 0 -8px 28px rgb(0 0 0 / 0.35);
+}
+
+/* Soft keyboard up (or a short window): the text box takes the room, the portrait steps aside. */
+@media (max-height: 620px) {
+  .stageArea {
+    display: none;
+  }
+
+  .box {
+    flex: 1 1 auto;
+    max-height: none;
+  }
+}
+
+:global(html[data-keyboard='open']) .stageArea {
+  display: none;
+}
+
+:global(html[data-keyboard='open']) .box {
+  flex: 1 1 auto;
+  max-height: none;
+}
+
+.plate {
+  position: absolute;
+  top: 0;
+  left: 16px;
+  max-width: calc(100% - 32px);
+  padding: 2px 16px 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 68%, var(--velvet-deep));
+  color: #fff;
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.2;
+  transform: translateY(-55%);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.35);
+}
+
+.transcript {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 12px;
+  min-height: 72px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 10px 2px 4px 0;
+  -webkit-overflow-scrolling: touch;
+  /* Lines scrolled up fade out under the name plate instead of being cut mid-letter. */
+  mask-image: linear-gradient(180deg, transparent 0, #000 14px);
+}
+
+.line {
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.para {
+  white-space: pre-line;
+}
+
+.para + .para {
+  margin-top: 8px;
+}
+
+.action {
+  font-style: italic;
+  color: color-mix(in srgb, var(--blush) 76%, var(--accent));
+}
+
+.caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: -0.15em;
+  background: var(--accent);
+  animation: blink 1s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.you {
+  justify-self: end;
+  max-width: 86%;
+  padding: 7px 12px 9px;
+  border-radius: 16px 16px 4px 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accent) 20%, rgb(28 9 20 / 0.85));
+}
+
+.youLabel {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--smoke-text);
+}
+
+.youText {
+  font-size: 15px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+/* System lines (a declined turn, a reply that didn't come through) never look like the character. */
+.system {
+  justify-self: center;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  max-width: 94%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px dashed rgb(201 164 92 / 0.55);
+  background: rgb(201 164 92 / 0.07);
+  color: var(--brass);
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.systemError {
+  border-color: rgb(224 36 94 / 0.55);
+  background: var(--lipstick-soft);
+  color: var(--lipstick-text);
+}
+
+.thinking {
+  padding: 4px 0;
+}
+
+.dots {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 60%, var(--blush));
+  opacity: 0.35;
+  animation: dot 1.2s ease-in-out infinite;
+}
+
+.dots span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.dots span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes dot {
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+.problem {
+  flex: none;
+}
+
+/* Suggestion chips: tapping one fills the input. Every chip is in view: one per row on a phone,
+   side by side where there is room. */
+.chips {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  gap: 6px;
+}
+
+.chip {
+  display: grid;
+  align-content: center;
+  gap: 1px;
+  min-width: 0;
+  min-height: var(--tap);
+  padding: 6px 12px;
+  border-radius: 14px;
+  border: 1px solid var(--line-strong);
+  background: var(--field-bg);
+  color: var(--blush);
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 140ms var(--ease-out);
+}
+
+/* Short windows (the soft keyboard is up): one row that scrolls sideways, so the transcript keeps
+   its room. scroll-padding keeps the first chip off the box's edge when it snaps. */
+@media (max-height: 620px) {
+  .chips {
+    display: flex;
+    gap: 8px;
+    margin: 0 -12px;
+    padding: 2px 12px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 12px;
+    scrollbar-width: none;
+  }
+
+  .chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chip {
+    flex: 0 0 auto;
+    max-width: min(72vw, 300px);
+    scroll-snap-align: start;
+  }
+}
+
+:global(html[data-keyboard='open']) .chips {
+  display: flex;
+  gap: 8px;
+  margin: 0 -12px;
+  padding: 2px 12px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: 12px;
+  scrollbar-width: none;
+}
+
+:global(html[data-keyboard='open']) .chip {
+  flex: 0 0 auto;
+  max-width: min(72vw, 300px);
+  scroll-snap-align: start;
+}
+
+.chip:hover {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.chip:active {
+  transform: scale(0.98);
+}
+
+.chipKind {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--accent) 55%, var(--blush));
+}
+
+.chipText {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.statusLine {
+  flex: none;
+  min-height: 1.3em;
+  font-size: 13px;
+  color: var(--smoke-text);
+}
+
+.statusLine:empty {
+  min-height: 0;
+  margin-top: -8px;
+}
+
+.composer {
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: var(--tap);
+  max-height: 30dvh;
+  padding: 12px 16px;
+  border-radius: 24px;
+  border: 1px solid var(--line-strong);
+  background: var(--field-bg);
+  color: var(--blush);
+  font-size: 16px;
+  line-height: 1.4;
+  resize: none;
+  field-sizing: content;
+}
+
+.input::placeholder {
+  color: var(--smoke-text);
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 1px;
+  border-radius: 24px;
+}
+
+/* Read-only (not disabled) while the character talks, so focus and the soft keyboard stay. */
+.input:disabled,
+.input[aria-disabled='true'] {
+  opacity: 0.7;
+}
+
+.send {
+  flex: none;
+}
+
+.endBar {
+  flex: none;
+  display: grid;
+  gap: 10px;
+}
+
+.endText {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 18px;
+  text-align: center;
+}
+
+/* No session */
+.looking {
+  padding: 24px 0;
+  color: var(--smoke-text);
+}
+
+.lost {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  max-width: 640px;
+}
+
+.lostActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.lostActions > * {
+  flex: 1 1 200px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .caret,
+  .dots span {
+    animation: none;
+  }
+
+  .dots span {
+    opacity: 0.8;
+  }
+}

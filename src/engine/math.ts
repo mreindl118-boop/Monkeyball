@@ -2,8 +2,9 @@
 //
 // A date keeps running totals per character (DateRecord.totals): the net affection counted this
 // date, the trust moved, and the gross gains. Positive affection is clipped so the date's net gain
-// never passes the gain cap (setting, default +25); losses are never capped, and a running total
-// of -20 or worse means the character leaves.
+// never passes the gain cap (setting, default +25), both on the ledger and on the meter itself
+// (dateRiseRoom: a loss the meter couldn't take at 0 doesn't widen the allowance); losses are never
+// capped, and a running total of -20 or worse means the character leaves.
 
 import type { Character, Difficulty, Relationship, Route } from '../types'
 import { affectionCap } from './stages'
@@ -111,6 +112,17 @@ export function applyAffection(
       gained: totals.gained + Math.max(0, applied),
     },
   }
+}
+
+/**
+ * How far the meter may still rise this date: the gain cap less the meter's net rise since the
+ * date began. The ledger (`totals.affection`) counts a loss in full even when the meter is already
+ * at 0, so on its own it would let the meter climb past the cap after a loss taken at the floor;
+ * this bound keeps the meter's net gain for the date at `gainCap` or less.
+ */
+export function dateRiseRoom(startAffection: number, affection: number, gainCap: number): number {
+  const cap = Number.isFinite(gainCap) ? Math.max(0, gainCap) : DEFAULT_GAIN_CAP
+  return Math.max(0, clamp100(startAffection) + cap - clamp100(affection))
 }
 
 /** Count a trust change toward the date's totals. */

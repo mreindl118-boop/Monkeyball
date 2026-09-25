@@ -50,7 +50,8 @@ src/
 `src/store/nav.ts` — `useNav` holds a `Screen` union and a stack; `go(screen)`, `replace(screen)`,
 `back()`, `reset(screen)`. It mirrors the current screen into `location.hash` (`#/profile/nova`) so the
 browser back button works and a reload lands on the same screen (screens must tolerate missing state,
-e.g. a reload on `#/date` with no active date goes to the hub). Every history entry the app writes
+e.g. a reload on `#/date` with no active date offers that interrupted date's recap, or goes to the
+hub when there is none). Every history entry the app writes
 carries `{ crush: true, idx }`: `go()` pushes one entry per stack item, in-app `back()` calls
 `history.back()` and the popstate handler (`bindHistory()`) pops or pushes the stack by comparing
 `idx`, so in-app Back and the system back button share one path. With an empty stack (first screen,
@@ -96,7 +97,16 @@ everything else after confirm.
   load; a read that overlaps a write reads again.
 - `game.ts` — `useGame`: `{ loaded, relationships: Record<string, Relationship>, game: GameState,
   load(), rel(id) (creates default lazily), saveRel(rel), patchGame(patch), addNews(...) }`.
-- `date.ts` — `useDate`: the active date session (see Date flow) and its actions.
+- `date.ts` — `useDate`: a thin store over the date engine (see Date flow). It builds the engine's
+  `DateWorld` from the settings, roster and game stores, gives it the app's model calls
+  (`appDateLlm`: story role for story and memory, judge role for judge and suggestions, each call
+  logged to the debug panel), persists every applied step (`useGame.saveRel` + the `DateRecord`),
+  and owns the AbortController of the call in flight. State: `session`, `dateId`, `running`,
+  `problem` (unexpected throws only; model failures are system turns), `draft`, `paused`,
+  `finishedId`, `lastRecord`, `interrupted`, `storageError`. Actions: `start`, `send` (skips chips
+  still loading), `retry`, `end`, `cancel` (leaving the screen stops the call; the date stays
+  open), `resume`, `findInterrupted`, `recoverInterrupted`, `dropInterrupted`, `setDraft`,
+  `clear`. `createDateStore(deps)` builds one with a fake model, db and stores for tests.
 - `debug.ts` — `useDebug`: ring buffer (last 200) of `DebugEntry` + the last assembled prompt per
   kind. Every LLM/image call logs here. In-memory only.
 - `nav.ts` — `useNav` (above).
@@ -184,9 +194,11 @@ Decisions:
 - `{heatDescription}` = `heat.ts` description for `effectiveHeat(character, rel, settings.heat)`:
   `min(heat, aceSpectrum.heatCap)`; and when `heatUnlockTrust` is set and trust is below it,
   `min(heat, 2)`.
-- `{aceNote}` is built from aceSpectrum, e.g. "Demisexual: nothing past heat 2 until trust is over
-  60, and that is who they are, not a puzzle." / "Asexual: heat never goes past 2, and that is who
-  they are, not a puzzle."
+- `{aceNote}` is built from aceSpectrum and names the character (so the line never picks a
+  pronoun for them), e.g. "Demisexual: nothing past heat 2 until trust is over 60, and that is who
+  Priya Raman is, not a puzzle." / "Asexual: heat never goes past 2, and that is who Minh Tran is,
+  not a puzzle." The judge's `{personality}` carries the same line after the personality, so pushing
+  past someone's pace can be scored.
 - Friend-route gossip and earned rumors ride inside existing placeholders: gossip the character is
   happy to share is appended to `{partners}`; rumors they've passed on are appended to `{secrets}`.
 - Phase 7 overrides are appended after the full base prompt under a `MOD DIRECTION` header; the
@@ -202,22 +214,39 @@ Decisions:
   profile, orientationMode)`, `affectionCap(route)` (friend route: 59), `playerBucket(profile)`
   (custom gender uses `matchAs`, default nonbinary).
 - `math.ts` — `applyDifficulty(delta, difficulty)` (×1.25/×1/×0.75, `Math.trunc`),
-  `venueDelta`, `giftDelta`, `DateLedger` helpers: `applyAffection(total, delta, cap)` clips
-  positive deltas so the date's net gain never exceeds `gainCap`; losses are uncapped;
-  `leftEarly(total)` is `total <= -20`. Clamp 0–100 and the friend-route cap.
-- `discovery.ts` — `revealHits(character, rel, judge)` (ignores unknown ids, no duplicates,
-  judge hint is the caption), `recordVenue`, `recordGift`, `detectTopics(message)` →
-  `{ attractions, style, playerStyle }` keyword heuristics that reveal a character's
-  attractions/style when they come up, and mark `knowsPlayerStyle` when the player talks about
-  how they date.
+  `venueDelta`, `giftDelta`, `venueReaction`, `giftReaction`, and the date ledger
+  (`DateRecord.totals`: net affection, trust, gross gained): `applyAffection(totals, delta, gainCap,
+  room)` clips positive deltas so the date's net gain never exceeds `gainCap` and never passes what
+  the meter can still hold (`affectionRoom(affection, route)`: a gain the meter can't hold doesn't
+  use up the date's allowance); losses always count in full, even at 0 affection, so a stranger can
+  still walk out; `leftEarly(total)` is `total <= -20`. The date flow also passes
+  `dateRiseRoom(startAffection, affection, gainCap)` as room, so the meter's own net rise since the
+  date began stays within `gainCap` (a loss the meter couldn't take at 0 would otherwise widen the
+  ledger's allowance: 0 affection, -18 at the floor, then +43). `clampAffection(value, route, previous)`:
+  0–100 and the friend-route 59, which never pulls down affection already above it (orientation
+  mode changed after the fact), only stops further gains.
+- `discovery.ts` — `revealHits(character, rel, judge, at)` (ignores unknown ids, no duplicates,
+  judge hint is the caption), `recordVenue`, `recordGift`, `detectTopics(text, speaker)` →
+  `{ attractions, style, playerStyle }` keyword heuristics (patterns documented in the file) that
+  reveal a character's attractions/style when the player asks or the character says it in the
+  first person, and mark `knowsPlayerStyle` when the player talks about how they date;
+  `applyTopics(rel, topics)`.
 - `unlocks.ts` — `newTiers(character, rel, route)` (romantic: affection ≥ unlockAt; friend route:
   tiers 1–2 only), `newSecrets(character, rel, route)` (romantic: affection ≥ unlockAt; friend
   route: trust ≥ unlockAt — friends earn secrets through trust, since affection caps at 59).
   Each tier/secret unlocks exactly once (persisted lists).
-- `trust.ts` — trust application: difficulty-scaled judge trustDelta; after any betrayal, positive
-  trust gains are multiplied by a grudge factor (compersion/low 0.75, medium 0.5, high 0.34);
-  +1 trust per completed date (consistency); `breach` → extra trust penalty so a caught lie always
-  costs more trust than affection.
+- `trust.ts` — the judge's trustDelta runs through a list of `TrustRule`s (`BASE_TRUST_RULES`:
+  difficulty; Phase 4 appends its own) and lands clamped 0–100 (`applyTrust`); +1 trust for a
+  `'completed'` date only (`consistencyTrust`; not for `'ended'` or `'left'`, so ending dates early
+  can't farm trust). Phase 4: after any betrayal, positive trust gains are multiplied by a grudge
+  factor (compersion/low 0.75, medium 0.5, high 0.34); `breach` → extra trust penalty so a caught
+  lie always costs more trust than affection.
+- `memory.ts` — `appendMemory`, `needsCompression(memory, 250)`, `compressionSplit` /
+  `applyCompression` (everything older than the last two dates becomes one paragraph),
+  `memoryRequest`, `compressionRequest`, `cleanSummary`.
+- `recap.ts` — `buildRecap(relBefore, relAfter, record, character, route, { memory })` →
+  `DateRecap` (meters before and after, stages, traits, venue and gift reactions, tiers, secrets,
+  what came up for the first time, the memory line, `left`).
 - `agreements.ts` — `seeing(rel, route)` (romantic route, ≥1 date, affection ≥ 20),
   `othersSeen(playerRels, exceptId)`, `disclosureRequired(agreement)` (poly always; open when terms
   mention telling/knowing/disclosing), `checkBetrayal(observer, learnedAbout, how)` → a
@@ -247,8 +276,16 @@ Decisions:
   6. open — agreement is open or poly.
   7. good — otherwise.
   Each ending has a title, a one-line description and a story direction for the epilogue turnNote.
-- `dateFlow.ts` — orchestration with injected dependencies (`llm`, `now`, `rng`) so tests can run a
-  full date against a fake LLM. See Date flow.
+- `dateFlow.ts` — orchestration with injected dependencies (`DateLlm`, `DateWorld.now/rng`,
+  `DateHooks.persist/onUpdate/signal`) so tests run a full date against a fake LLM:
+  `createDate`, `openDate`, `sendPlayerMessage`, `retryLastReply`, `finishDate`, the helpers
+  `canSend`, `canRetry`, `needsReply`, `isEnded`, `playerTurnCount`, `routeOf`, and the request
+  builders `storyRequest`, `judgeRequest`, `suggestionsRequest` (the debug panel can use them).
+  Sessions are immutable (every step returns a new object). A turn's effects are small pure steps,
+  `TURN_STEPS` = trust, affection, reveal, topics, connection, unlock, mood (`runTurnSteps`);
+  Phase 4 inserts disclosure, betrayal and grudge steps there. `connectionStep` tracks
+  `rel.connection` for the Hollow ending: +1 per like hit, +1 for an honest moment (trustDelta 3+),
+  −1 for a turn-on win with neither. See Date flow.
 
 ## Date flow (per turn)
 
@@ -263,11 +300,57 @@ Decisions:
    gets the last-turn note.
 5. Suggestions call (if enabled) fills three chips; tapping a chip fills the input, never sends.
 
-Date start: venue delta and gift delta applied (count toward the date total and cap), venue/gift
-reactions recorded, then turn 0 story call (opening beat; first date uses the opener line).
+Date start: venue delta and gift delta applied (count toward the date total and cap; difficulty
+doesn't scale them; `DateRecord.opening` keeps what counted), venue/gift reactions recorded, then
+turn 0 story call (opening beat; first date, `relBefore.dates === 0`, uses the opener line).
 Date end (last turn, early exit, End date, or DTR close): agreement prompt if a DTR is open, memory
-call (append, compress past ~250 words), +1 dates, trust consistency, gossip propagation, rekindle
-roll, recap assembled and stored on the DateRecord, navigate to Recap.
+call (append, compress past ~250 words), +1 dates (also for a date the character walked out of, so
+the opener isn't reused), trust consistency, gossip propagation, rekindle roll, recap assembled and
+stored on the DateRecord, navigate to Recap.
+
+Phase 3 decisions:
+- Model problems never throw out of the engine: a failed judge is neutral, failed chips are none,
+  a failed or empty story call becomes a system turn (`notice: 'error'`, worded by
+  `explainRoleError`) and the date waits for `retryLastReply`, which removes the note on success.
+  `canSend` is false while a reply is missing (`needsReply`), so the opening beat (and the opener)
+  and each LANDED result reach the story model in order; `canQueueSend` also allows a send while
+  the chips load (the store skips them first).
+  A declined story turn keeps the model layer's in-world text (or `refusalBeat(name)`) and adds
+  `REFUSAL_NOTE` (`notice: 'refused'`).
+- `sendPlayerMessage` finishes the date itself after the last turn or the exit reply and returns
+  an `'ended'` session with the recap on the record; `finishDate` on an ended session returns that
+  recap; a session that is leaving always ends as `'left'`.
+- Abort (`hooks.signal`): no further model calls or `onUpdate`s, storage still brought in line. An
+  abort before the judge answers takes the player's message back (the store puts it back in the
+  composer); an abort during `finishDate` still ends the date, without the memory call.
+- The date screen: the last reply and the exit reply stay on screen with "See how it went" (End
+  date goes straight to the recap). Leaving the screen stops the call in flight and coming back
+  resumes it (the stop waits a tick so React's development double mount doesn't cancel it).
+- The open date is remembered in kv `activeDate` (`{ dateId, characterId, relBefore }`), so a
+  reload or a killed app loses the session but not the date. The date screen and date setup offer
+  that interrupted date's recap (`recoverInterrupted`: finished as `'completed'` when every turn was
+  played, else `'ended'`; no memory call offline); starting another date files it as
+  `'abandoned'`. At boot, an app that opens on the hub with an interrupted date goes to `#/date`
+  (App.tsx, lazy import of the store).
+- Hints on: the status strip shows the judge's hint and what counted ("Affection +1 (this date's
+  limit), trust +1" when the date's gain limit held some back, per `dateGainUsed`; "Affection −8
+  (the meter stops at 0)" when a loss counts toward the date but the meter is at 0). Define the
+  relationship shows, disabled, in the expanded status panel from Friend stage until Phase 4 wires
+  it. The expanded panel also has the heat (the hub's heat sheet, also offered on a declined turn's
+  note); the store hands the engine the player's current heat, chips and connection before every
+  call (`liveSettings`), while the route, the date's length and its gain cap stay as the date began.
+- The composer is read-only (not disabled) while the character talks, and Send doesn't take focus,
+  so the soft keyboard stays up from one turn to the next.
+- Every step saves the relationship and the record in one Dexie transaction, so the last save (the
+  outcome and recap with +1 date, the memory and the consistency trust) can't half land and be
+  finished twice by a recovery.
+- The judge's `{others}` is the other characters the player has been on a date with (`othersSeen`);
+  Phase 4 refines it. The memory call labels the player's lines with their name and names the gift.
+  `{venue}` says home is "your place"; `{giftLine}` uses `Gift.phrase` ("a poetry book"); `{memory}`
+  reads "You've been out before; nothing from those dates stands out." on a later date with none.
+- Recap: a walkout shows the date's running total ("Nova walked out after the date ran to −20
+  affection. Affection was already at 0, as low as it goes."), and what you learned lists only
+  venue and gift reactions that were new this date (`venueNew`, `giftNew`).
 
 Define the relationship: from Friend stage (affection ≥ 40) the date screen offers it. The player
 picks exclusive/open/poly/casual; the next story call carries the DTR turnNote; turns are flagged
@@ -366,10 +449,24 @@ film becomes a fade; stamp press and sheet slides become instant.
   validity, Dexie repo (fake-indexeddb).
 - `scripts/mock-llm.mjs` — OpenAI-compatible mock on port 11435 (`/v1/models`, `/v1/chat/completions`
   with SSE). It recognises the prompt kind by its first line (judge / suggestions / agreement /
-  memory / story) and answers deterministically; `MOCK_JUDGE=turnoff` style keywords in the player's
-  message ("cute", "pushy", "[lie]") force specific judge results for e2e checks. Sends CORS headers.
+  memory / story) and answers deterministically; keywords in the player's message force judge
+  results for e2e checks ("vinyl" a like +3, "banter" a turn-on +6, "cute" and "pushy" turn-offs,
+  "misgender", "[lie]" a breach, "[tank]" −20), and the story reply follows the prompt (opener,
+  last turn, exit, a soured or delighted mood). `MOCK_DELAY` paces streamed tokens,
+  `MOCK_OPENING_DELAY` paces opening beats only (so e2e can photograph a reply mid-stream). Sends
+  CORS headers. `npm run mock-llm:selftest` checks every route and toggle.
 - `scripts/e2e/*.mjs` — playwright-core scripts launching `/opt/pw-browsers/chromium` against
   `vite preview` + the mock, covering onboarding, a full 10-turn date, reload persistence, etc.
+- `scripts/e2e/phase3.mjs` (`npm run e2e:phase3`) — the dating core against the mock, Pixel 7
+  profile first: connection through Other providers, Custom; Nova at the record store with hot
+  sauce (+8 before a word); the opening streams with her opener; chips fill the input and never
+  send; a full 10-turn date with a like, "what's your type" (attractions revealed), a turn-off
+  (−8 and a soured reply), a chip's line and small talk; the soft keyboard emulated at 412x560
+  (composer, Send and the latest line in view); the closing reply; the recap (+19, +10, traits with
+  hints, venue, gift, memory line); a reload keeps the recap, the profile and the memory (debug
+  State tab); a second date where "[tank]" makes her leave (exit reply, left-early recap); a third
+  with hints on where "banter" +6s stop at +25 net; the date screens at 360x800; a restart on the
+  hub mid-date. Then desktop 1280x800. Screenshots `p3-android-*`, `p3-360-*`, `p3-desktop-*`.
 - `scripts/e2e/phase2.mjs` (`npm run e2e:phase2`) — the Phase 2 screens under the same Pixel 7
   profile: hub coasters, filters and sorts, a profile, set on/off, the editor's age rule, JSON
   export (a real download), a .zip pack import, the replace-pack question, a lone card whose

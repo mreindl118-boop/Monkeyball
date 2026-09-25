@@ -181,16 +181,16 @@ export function effectiveHeat(
   return Math.max(1, h) as HeatLevel
 }
 
-const NOT_A_PUZZLE = 'and that is who they are, not a puzzle.'
-
 /**
- * One line for the story prompt's {aceNote}, e.g.
- * "Demisexual: nothing past heat 2 until trust is over 60, and that is who they are, not a puzzle."
- * Empty when the card has no aceSpectrum.
+ * One line for the story prompt's {aceNote} (and the judge's {personality}), e.g.
+ * "Demisexual: nothing past heat 2 until trust is over 60, and that is who Priya Raman is, not a
+ * puzzle." Without a name it says "who they are". Empty when the card has no aceSpectrum.
  */
-export function aceNote(character: Pick<Character, 'aceSpectrum'>): string {
+export function aceNote(character: Pick<Character, 'aceSpectrum'> & { name?: string }): string {
   const ace = character.aceSpectrum
   if (!ace) return ''
+  const name = (character.name ?? '').trim()
+  const notAPuzzle = name ? `and that is who ${name} is, not a puzzle.` : 'and that is who they are, not a puzzle.'
   const raw = (ace.label ?? '').trim() || 'Ace spectrum'
   const label = raw.charAt(0).toUpperCase() + raw.slice(1)
   const cap = ace.heatCap != null && ace.heatCap < 5 ? ace.heatCap : null
@@ -204,7 +204,7 @@ export function aceNote(character: Pick<Character, 'aceSpectrum'>): string {
   } else if (cap != null) {
     rule = `heat never goes past ${cap}`
   } else {
-    rule = 'they set their own pace'
+    rule = name ? `${name} sets the pace` : 'they set their own pace'
   }
-  return `${label}: ${rule}, ${NOT_A_PUZZLE}`
+  return `${label}: ${rule}, ${notAPuzzle}`
 }

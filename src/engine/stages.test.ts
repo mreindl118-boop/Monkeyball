@@ -153,4 +153,11 @@ describe('heat and the ace spectrum', () => {
       'Demi: nothing past heat 2 until trust is over 50, never past heat 3, and that is who they are, not a puzzle.',
     )
   })
+
+  it('names the character in the ace note when it has a name, so pronouns never slip', () => {
+    const priya = { ...char(['man'], { label: 'demisexual', heatUnlockTrust: 60 }), name: 'Priya Raman' }
+    expect(aceNote(priya)).toBe('Demisexual: nothing past heat 2 until trust is over 60, and that is who Priya Raman is, not a puzzle.')
+    const pace = { ...char(['woman'], { label: 'ace' }), name: 'Minh' }
+    expect(aceNote(pace)).toBe('Ace: Minh sets the pace, and that is who Minh is, not a puzzle.')
+  })
 })

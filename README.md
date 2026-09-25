@@ -77,7 +77,9 @@ npm test               # unit tests (vitest)
 npm run lint           # oxlint
 npm run mock-llm       # a fake OpenAI-compatible model server on :11435
 npm run e2e:phase1     # browser end-to-end check of the first-launch flow
-npm run e2e:android    # the same flow as Chrome on an Android phone (touch, 412x915 and 360x800)
+npm run e2e:phase2     # the hub, profiles, character sets, the editor and mods, on an Android phone
+npm run e2e:phase3     # full dates against the mock model: judge, chips, recap, early exit, gain cap
+npm run e2e:android    # the first-launch flow as Chrome on an Android phone (touch, 412x915 and 360x800)
 node scripts/make-icons.mjs   # redraw every icon from assets/icon.svg and assets/icon-foreground.svg
 ```
 

@@ -1,0 +1,285 @@
+.root {
+  overflow-wrap: anywhere;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 16px;
+  max-width: 760px;
+  background: radial-gradient(110% 40% at 50% 0%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 70%);
+}
+
+.loading {
+  padding: 24px 0;
+  color: var(--smoke-text);
+}
+
+.hero {
+  position: relative;
+  min-height: 150px;
+  border-radius: var(--radius-l);
+  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow: var(--shadow-panel);
+}
+
+.heroArt {
+  z-index: 0;
+}
+
+.heroBody {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  min-height: 150px;
+  padding: 16px;
+  /* Dark enough under the name that the venue's shapes (a record, a neon sign) don't show through. */
+  background: linear-gradient(90deg, rgb(20 6 14 / 0.82) 0%, rgb(20 6 14 / 0.66) 65%, rgb(20 6 14 / 0.45) 100%);
+}
+
+.heroPortrait {
+  flex: none;
+  width: 92px;
+}
+
+.heroText {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  text-shadow: 0 1px 4px rgb(0 0 0 / 0.7);
+}
+
+.heroName {
+  font-size: 26px;
+  color: #fff4f6;
+}
+
+.heroWhere {
+  font-size: 14px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--blush) 88%, #fff);
+}
+
+.heroOutcome {
+  font-size: 15px;
+  color: var(--blush);
+}
+
+.section {
+  scroll-margin-top: 12px;
+}
+
+.meters {
+  display: grid;
+  gap: 16px;
+}
+
+@media (min-width: 640px) {
+  .meters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.meterChange {
+  display: grid;
+  gap: 6px;
+}
+
+.change {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 10px;
+  font-size: 14px;
+  color: var(--smoke-text);
+}
+
+.badge {
+  padding: 1px 9px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid var(--line-strong);
+  color: var(--blush);
+}
+
+.up {
+  border-color: color-mix(in srgb, var(--lipstick) 60%, transparent);
+  background: var(--lipstick-soft);
+  color: var(--lipstick-text);
+}
+
+/* Trust is brass throughout the app. */
+.trust.up {
+  border-color: color-mix(in srgb, var(--brass) 60%, transparent);
+  background: var(--brass-soft);
+  color: var(--brass);
+}
+
+.down {
+  border-style: dashed;
+  color: var(--smoke-text);
+}
+
+.same {
+  color: var(--smoke-text);
+}
+
+.stage {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+
+.stageText {
+  font-size: 15px;
+  color: var(--smoke-text);
+}
+
+.stageMoved {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 19px;
+  font-weight: 600;
+  color: var(--blush);
+}
+
+/* The memory line, in their voice. */
+.memory {
+  margin: 0;
+  padding: 18px 20px;
+  border-radius: var(--radius-l);
+  border-left: 3px solid var(--accent);
+  background:
+    radial-gradient(120% 120% at 0% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%),
+    var(--oxblood);
+}
+
+.quote {
+  margin: 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 19px;
+  line-height: 1.45;
+}
+
+.quote p::before {
+  content: '\201C';
+}
+
+.quote p::after {
+  content: '\201D';
+}
+
+.quoteBy {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--smoke-on-panel);
+}
+
+.list,
+.plainList,
+.secrets,
+.tiers {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list {
+  display: grid;
+  gap: 10px;
+}
+
+.trait {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--line);
+  background: var(--blush-soft);
+}
+
+.traitKind {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--smoke-text);
+}
+
+.like,
+.turnOn {
+  border-color: color-mix(in srgb, var(--lipstick) 45%, transparent);
+}
+
+.like .traitKind,
+.turnOn .traitKind {
+  color: var(--lipstick-text);
+}
+
+.dislike,
+.turnOff {
+  border-style: dashed;
+}
+
+.traitLabel {
+  font-weight: 700;
+}
+
+.traitHint {
+  font-style: italic;
+  font-size: 14px;
+  color: var(--smoke-text);
+}
+
+.plainList {
+  display: grid;
+  gap: 8px;
+}
+
+.plainList li,
+.plain {
+  font-size: 15px;
+}
+
+.secrets {
+  display: grid;
+  gap: 10px;
+}
+
+.secret {
+  padding: 12px 14px;
+  border-radius: var(--radius-m);
+  border: 1px solid rgb(201 164 92 / 0.45);
+  background: var(--brass-soft);
+  color: color-mix(in srgb, var(--brass) 55%, var(--blush));
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 17px;
+  line-height: 1.4;
+}
+
+.tiers {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.tier {
+  min-width: 0;
+}
+
+.actions {
+  display: grid;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+@media (min-width: 640px) {
+  .actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
