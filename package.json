@@ -17,6 +17,7 @@
     "cap:sync": "cap sync android"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "@capacitor/core": "^8.5.2",
     "@fontsource-variable/figtree": "^5.3.0",
     "@fontsource/bodoni-moda": "^5.3.0",
