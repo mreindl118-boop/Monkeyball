@@ -72,6 +72,8 @@
   display: grid;
   grid-template-columns: auto 1fr;
   align-items: start;
+  /* Cards in a row share the tallest card's height; keep label and description together. */
+  align-content: start;
   gap: 4px 12px;
   min-height: var(--tap);
   padding: 14px 16px;

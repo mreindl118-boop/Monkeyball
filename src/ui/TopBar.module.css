@@ -10,12 +10,15 @@
     calc(-1 * (var(--safe-left) + var(--gutter)));
   padding: calc(var(--safe-top) + 8px) calc(var(--safe-right) + var(--gutter)) 8px
     calc(var(--safe-left) + var(--gutter));
-  background: linear-gradient(
-    180deg,
-    var(--velvet) 0%,
-    var(--velvet) 78%,
-    color-mix(in srgb, var(--velvet) 0%, transparent) 100%
-  );
+  /* Full-bleed backdrop: the bar's own box is only as wide as the screen column, so the fill is
+     painted out to the viewport edges with a border-image outset (no sideways overflow). */
+  border-image: linear-gradient(
+      180deg,
+      var(--velvet) 0%,
+      var(--velvet) 78%,
+      color-mix(in srgb, var(--velvet) 0%, transparent) 100%
+    )
+    fill 0 / 0 / 0 100vw;
 }
 
 .back {
