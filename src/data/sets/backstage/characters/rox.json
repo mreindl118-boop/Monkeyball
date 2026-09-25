@@ -25,8 +25,8 @@
   "occupation": "Lead singer of Velvet Static, in town for a month-long residency at The Carousel Room",
   "difficulty": "hard",
   "accent": "#FFBF00",
-  "look": "Blunt black bob with a heavy fringe, light brown skin, red lipstick she reapplies between songs, winged liner, a vintage leather jacket with a hand-painted back, a black slip dress, stacked silver rings, and scuffed knee-high boots",
-  "artTags": "adult woman, 30 years old, blunt black bob with heavy bangs, light brown skin, red lipstick, winged eyeliner, vintage leather jacket with hand-painted back, black slip dress, stacked silver rings, scuffed knee-high boots, tall, strong shoulders",
+  "look": "A shoulder-length black shag with curtain bangs, light brown skin, red lipstick she reapplies between songs, smudged kohl liner, a vintage leather jacket with a hand-painted back, a black slip dress, stacked silver rings, and scuffed knee-high boots",
+  "artTags": "adult woman, 30 years old, shoulder-length black shag with curtain bangs, light brown skin, red lipstick, smudged kohl eyeliner, vintage leather jacket with hand-painted back, black slip dress, stacked silver rings, scuffed knee-high boots, tall, strong shoulders",
   "personality": "Magnetic and imperious on stage, funny and needy off it, a woman who wants her freedom, can't stand anyone else having theirs, and knows exactly how that sounds",
   "voice": "Husky, dramatic and self-mocking, gives stage directions to real life ('cue the lights'), goes quiet mid-sentence to save her voice and hates that she has to; starts calling the player 'headliner' once she likes them",
   "backstory": "Started Velvet Static with Bash seven years ago in a rehearsal room above a laundromat, and their song 'Low Orbit' caught a label's attention two years ago. She and Bash were together for three years: she asked to open things up, then couldn't stand it when he actually went on a date, and it ended in the van outside a gig in the pouring rain; the band survived it, mostly. For the last three months she's been something with Tamsin, the band's merch manager and photographer, and told her on the first night that she doesn't do exclusive. She gets jealous anyway, and hates that about herself.",
@@ -77,8 +77,8 @@
       "label": "Someone who doesn't flinch when she's being a lot"
     },
     {
-      "id": "eyes-on-her",
-      "label": "Undivided attention in a crowded room"
+      "id": "no-need-to-talk",
+      "label": "Being told she doesn't have to say a word"
     },
     {
       "id": "almost-caught",
@@ -155,13 +155,13 @@
       "tier": 4,
       "unlockAt": 80,
       "title": "Do not disturb",
-      "scene": "Her room at the Hotel Paloma, the sign swinging on the doorknob, Rox in nothing but your jacket and her silver rings, pulling you in by the collar"
+      "scene": "Her room at the Hotel Paloma, the do-not-disturb sign swinging on the doorknob, Rox in nothing but your jacket and her silver rings, one finger on your lips because tonight she isn't wasting her voice on words"
     },
     {
       "tier": 5,
       "unlockAt": 100,
-      "title": "Headliner",
-      "scene": "The residency's last night: Rox stops the band, says your name into the mic, and sings the final song softly, only to you"
+      "title": "Vocal rest",
+      "scene": "The morning after the residency's last night, doctor's orders finally in force, Rox can't say a word, so she writes 'stay' on the Hotel Paloma notepad and holds it up until you answer"
     }
   ]
 }

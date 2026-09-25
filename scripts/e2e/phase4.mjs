@@ -636,7 +636,7 @@ async function androidFlow(browser, app, mock, dir) {
 
     await step('(d) the recap shows the ending', async () => {
       await toRecap(page)
-      checkIncludes(await mainText(page), ['The epilogue: The good ending.', 'Your ending'], 'the epilogue recap')
+      checkIncludes(await mainText(page), ['The epilogue: the good ending.', 'Your ending', "It's kept on Nova's profile, and it can play again."], 'the epilogue recap')
       await checkTouchScreen(page, 'recap-epilogue', { full: true, shot: shot('recap-epilogue') })
     }, page)
 
@@ -650,6 +650,7 @@ async function androidFlow(browser, app, mock, dir) {
       await slot.waitFor()
       checkIncludes(await slot.innerText(), ['Automatic', 'Saved automatically'], 'the automatic slot')
       await slot.scrollIntoViewIfNeeded()
+      await sleep(300)
       await screenshot(page, shot('saves-auto'))
       await press(slot.getByRole('button', { name: 'Restore' }))
       const dialog = page.getByRole('alertdialog', { name: /^Restore "Before Nova/ })

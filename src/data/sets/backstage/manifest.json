@@ -60,7 +60,7 @@
     {
       "a": "bash",
       "b": "tamsin",
-      "kind": "neighbor",
+      "kind": "friend",
       "note": "Next-door rooms on the Hotel Paloma's fourth floor, with a wall thin enough that they knock goodnight on it."
     },
     {
@@ -96,7 +96,7 @@
     {
       "a": "tamsin",
       "b": "grant",
-      "kind": "coworker",
+      "kind": "bandmate",
       "note": "Grant signs off Tamsin's merch count every night and is the only one who has ever asked to see her photos."
     },
     {
@@ -142,9 +142,9 @@
       "about": [
         "bash"
       ],
-      "text": "An arena act's tour manager asked me for Bash's number last week. I gave it to him. I run a band, not a prison.",
+      "text": "An arena act's tour manager asked me for Bash's number the week we got here. I gave it to him. I run a band, not a prison.",
       "truth": "true",
-      "actually": "That arena act has offered Bash their drum chair for next year's world tour. He hasn't answered or told anyone, because he's sure Velvet Static would fold without him."
+      "actually": "That arena act offered Bash their drum chair for next year's world tour, and he has already signed. He hasn't told anyone."
     },
     {
       "id": "bash-van-nights",
@@ -154,7 +154,7 @@
       ],
       "text": "Bash hasn't slept in his own bed all week. I hear his door go at midnight and then nothing. He's met someone in town, and he's being very un-Bash about it.",
       "truth": "false",
-      "actually": "There's nobody in town. Bash has been sleeping in the van so he can take late calls about the arena drum job where nobody on the corridor can hear him."
+      "actually": "There's nobody in town. Bash has been sleeping in the van so he can take late calls about arena rehearsals where nobody on the corridor can hear him."
     },
     {
       "id": "goodbye-tour",
@@ -165,7 +165,7 @@
       ],
       "text": "Nothing's booked after the last night. Nothing. Grant always has the next run booked by now. This is the goodbye tour, and they're letting me find out last.",
       "truth": "exaggerated",
-      "actually": "Nobody has decided to end the band. Grant stopped booking dates because he's planning to leave touring, and Rox and Bash each have an offer to leave that the other doesn't know about."
+      "actually": "Nobody has decided to end the band. Grant stopped booking because he's leaving touring, Rox has a solo offer she hasn't answered, and Bash, the one telling this, has already signed with an arena act."
     },
     {
       "id": "eli-next-door",
@@ -174,7 +174,7 @@
         "grant",
         "eli"
       ],
-      "text": "Grant had the hotel move Eli into the room next to his in week one. 'Noise complaint,' he said. Eli is the quietest guy on the floor. Do the maths.",
+      "text": "Grant had the hotel move Eli into the room next to his in week one. 'Noise complaint,' he said. Eli is the quietest guy on the floor. I'm not saying anything. I'm just very happy for whoever it is.",
       "truth": "true",
       "actually": "Grant and Eli have been seeing each other since the residency's first week and keeping it quiet, and it was Eli who asked for the secret."
     },
@@ -225,7 +225,7 @@
       "about": [
         "tamsin"
       ],
-      "text": "Tamsin's taking a magazine job back home. She'll be gone before the van's even unpacked, and Rox has no idea.",
+      "text": "Tamsin left a magazine's offer letter face up on the merch table. Staff photographer, back home. I didn't read it. Okay, I read all of it. She's going, and Rox has no idea.",
       "truth": "exaggerated",
       "actually": "A magazine has offered Tamsin a staff photographer job, but she hasn't said yes: she's waiting to see whether Rox asks her to stay on the road."
     },
@@ -235,7 +235,7 @@
       "about": [
         "minh"
       ],
-      "text": "Minh's been recording every show off the desk. Live records sell. I'd just like to know who's getting the cheque.",
+      "text": "Minh's been recording every show off the desk and won't tell me why. Live records sell. I just hope whoever ends up with the cheque is Minh.",
       "truth": "exaggerated",
       "actually": "Minh is multitracking every show, but nobody is selling anything: they're keeping it because they're sure this is the band's last month, and someone should."
     },

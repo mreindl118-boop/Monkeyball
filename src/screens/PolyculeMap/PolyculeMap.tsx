@@ -345,6 +345,12 @@ function Legend() {
       </li>
       <li>
         <svg viewBox="0 0 32 8" aria-hidden="true">
+          <line className={cx(styles.thread, styles.seeing)} x1="2" y1="4" x2="30" y2="4" />
+        </svg>
+        Seeing, no agreement
+      </li>
+      <li>
+        <svg viewBox="0 0 32 8" aria-hidden="true">
           <path className={styles.tension} d="M 2 6 Q 16 0 30 6" />
         </svg>
         Tension

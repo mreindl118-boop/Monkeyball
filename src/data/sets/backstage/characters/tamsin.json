@@ -11,7 +11,7 @@
   "orientation": "lesbian",
   "relationshipStyle": "monogamous",
   "jealousy": "medium",
-  "bodyNotes": "Tall and long-limbed, broad shoulders, soft hips and a bit of a belly she's stopped hiding, a line worn into the side of her neck from the camera strap, and stick-and-poke stars on both ankles",
+  "bodyNotes": "Medium height and soft all over, full hips and a bit of a belly she's stopped hiding, strong forearms from hauling merch bins, a line worn into the side of her neck from the camera strap, and stick-and-poke stars on both ankles",
   "partners": [
     {
       "characterId": "rox",
@@ -21,12 +21,12 @@
   "occupation": "Merch manager and tour photographer for Velvet Static",
   "difficulty": "normal",
   "accent": "#B488BF",
-  "look": "Long copper hair half up in a claw clip, pale skin, dark plum lipstick, silver hoops, a vintage film camera on a worn strap, a thrifted suede jacket over a band tee, wide-leg jeans, and a belt bag full of markers and cash",
-  "artTags": "adult woman, 25 years old, long copper hair in a claw clip, pale skin, dark plum lipstick, silver hoop earrings, vintage film camera on strap, suede jacket, band t-shirt, wide-leg jeans, belt bag, tall, broad shoulders",
+  "look": "Long dark brown hair with grown-out bleached ends, half up in a claw clip, pale skin, dark plum lipstick, silver hoops, a vintage film camera on a worn strap, a thrifted suede jacket over a band tee, wide-leg jeans, and a belt bag full of markers and cash",
+  "artTags": "adult woman, 25 years old, long dark brown hair with grown-out bleached ends in a claw clip, pale skin, dark plum lipstick, silver hoop earrings, vintage film camera on strap, suede jacket, band t-shirt, wide-leg jeans, belt bag, medium height, soft curvy build",
   "personality": "Wry, observant and quietly all-in, a romantic who photographs everyone else's big moments and keeps waiting for one of her own",
-  "voice": "Soft-spoken and sardonic, talks in camera terms ('hold that, the light's perfect'), counts merch under her breath when she's nervous; starts calling the player 'keeper' once she likes them, as in the one frame on the roll worth keeping",
+  "voice": "Soft-spoken and sardonic, talks in camera terms ('hold that, the light's perfect'), winds her camera's film lever, click, click, when she's nervous; starts calling the player 'keeper' once she likes them, as in the one frame on the roll worth keeping",
   "backstory": "Talked her way into shooting gigs at 19 with a borrowed camera, came out and moved cities at 21, and found her people in sweaty back rooms with terrible lighting. She joined Velvet Static's tour two years ago when their old merch manager quit mid-run, and has run the table and shot every night since. She's monogamous down to her bones, and for three months she's been something with Rox, a something Rox calls open and Tamsin has never quite said she agreed to.",
-  "opener": "Hold still. No, really, the light on you right now is perfect. Okay. Hi. Sorry. I'm Tamsin.",
+  "opener": "That was the last frame on this roll, and I just spent it on you. No pressure. Hi, I'm Tamsin.",
   "likes": [
     {
       "id": "film-rolls",
@@ -151,7 +151,7 @@
       "tier": 4,
       "unlockAt": 80,
       "title": "Long exposure",
-      "scene": "Tamsin's hotel room by lamplight, the camera on a slow shutter, Tamsin in an unbuttoned flannel shirt pulling you onto the bed before it clicks"
+      "scene": "Tamsin's hotel room by lamplight, the camera on a long exposure, Tamsin in an unbuttoned flannel shirt kissing you slowly on the rumpled bed while the open shutter blurs the two of you into one shape"
     },
     {
       "tier": 5,

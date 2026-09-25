@@ -51,7 +51,6 @@ import { newGameState, withRelationshipDefaults } from '../engine/relationship'
 import { routeFor } from '../engine/stages'
 import { coerceAgreement, coerceJudge, coerceSuggestions, neutralJudge, noAgreementResult } from '../llm/coerce'
 import { AGREEMENT_SCHEMA, chat, jsonChat, streamChat, suggestionsSchema, type ChatMessage } from '../llm/index'
-import { endingReady, epilogueSlotId, epilogueSlotLabel, reachedWon } from '../screens/Ending/endingModel'
 import type {
   AgreementType,
   Character,
@@ -66,6 +65,7 @@ import type {
 } from '../types'
 import { useGame, type GameStoreState } from './game'
 import { selectActiveEntries, selectRelationsFor, useRoster, type RosterData, type RosterState } from './roster'
+import { endingReady, epilogueSlotId, epilogueSlotLabel, reachedWon } from './epilogueSlot'
 import { appRandom } from './rolls'
 import { useSettings, type SettingsState } from './settings'
 

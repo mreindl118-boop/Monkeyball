@@ -26,12 +26,12 @@
   "artTags": "adult man, 28 years old, shaggy dark curly hair, red bandana, full beard, warm brown skin, broad shoulders, thick forearms, cut-off band t-shirt, cargo shorts, taped knuckles, drumsticks in back pocket, big grin",
   "personality": "Loud, warm and impossible to rattle, the band's peacemaker, who keeps time for everyone except himself",
   "voice": "Rumbling and easy, drums on every surface while he talks, counts things in ('one, two, three, four, let's go'), slips Spanish into his English when he's happy; starts calling the player 'corazón' once he likes them",
-  "backstory": "Learned rhythm on the pots and pans in his family's restaurant kitchen, and sat in with Rox's old band at 21 when their drummer didn't show; a month later they started Velvet Static. He and Rox were together for three years, until she opened things up and then couldn't bear it when he actually dated someone; it ended in the van in the rain, and he still says it was nobody's fault. Four years sober, he keeps the band's peace, its snacks and its setlists in order, and holds court at The Low Tide after shows on soda water and Kai's 2am toastie.",
-  "opener": "I'm going to drum on this table the whole time. I've tried stopping. It's worse. Hi, I'm Bash.",
+  "backstory": "Learned rhythm drumming on the pans between orders while working the line at his family's restaurant, and sat in with Rox's old band at 21 when their drummer didn't show; a month later they started Velvet Static. He and Rox were together for three years, until she opened things up and then couldn't bear it when he actually dated someone; it ended in the van in the rain, and he still says it was nobody's fault. Four years sober, he keeps the band's peace, its snacks and its setlists in order, and holds court at The Low Tide after shows on soda water and Kai's 2am toastie.",
+  "opener": "Heads up: I'm going to drum on whatever's nearest the entire time. I've tried stopping. It's worse. Hi, I'm Bash.",
   "likes": [
     {
-      "id": "rhythm-games",
-      "label": "Rhythm games at the arcade, where he's unbeatable and smug about it"
+      "id": "hit-hard",
+      "label": "Arcade games he's allowed to hit as hard as he likes"
     },
     {
       "id": "street-eats",
@@ -100,8 +100,8 @@
       "label": "Snobbery about what counts as real music"
     },
     {
-      "id": "doormat",
-      "label": "Treating his good nature like a doormat"
+      "id": "golden-retriever",
+      "label": "Being treated like the band's golden retriever instead of a grown man"
     }
   ],
   "favoriteVenues": [
@@ -122,7 +122,7 @@
   "secrets": [
     {
       "unlockAt": 60,
-      "text": "An arena act has offered him their drum chair for next year's world tour, for more money than Velvet Static has ever made. He has until the residency ends to answer, and he's told no one, because he's sure the band would fold without him."
+      "text": "He's already said yes. An arena act offered him their drum chair for next year's world tour, and for the first time in his life he picked the thing that was just for him: he signed last week and starts rehearsals the week after the residency ends. He hasn't told a soul, because he can't find a way to say it that doesn't make him the one who broke up the band."
     },
     {
       "unlockAt": 80,
@@ -157,8 +157,8 @@
     {
       "tier": 5,
       "unlockAt": 100,
-      "title": "Downbeat",
-      "scene": "Bash counts in the residency's final song with your name instead of numbers, and the whole band comes in on the beat"
+      "title": "Four-count",
+      "scene": "The van parked on the coast road after the last show, Bash asleep with his head in your lap for once, your fingers tapping a slow four-count on his chest"
     }
   ]
 }

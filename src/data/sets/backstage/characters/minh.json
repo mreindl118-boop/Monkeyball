@@ -22,11 +22,11 @@
   "difficulty": "normal",
   "accent": "#1AFFFF",
   "look": "Black hair in a low knot over a shaved undercut, light tan skin, sharp cheekbones, faint laugh lines, rectangular black-framed glasses, a black work shirt with a crew pass on a lanyard, a roll of gaffer tape worn on one wrist like a bracelet, and studio headphones always around their neck",
-  "artTags": "adult nonbinary person, 33 years old, black hair in a low knot, shaved undercut, light tan skin, sharp cheekbones, laugh lines, rectangular black-framed glasses, androgynous features, black work shirt, crew lanyard, gaffer tape roll on wrist, studio headphones around neck",
-  "personality": "Dry, exact and unshockable, the calmest person in any crisis and the one who notices everything, with a romantic streak they keep off the record",
-  "voice": "Quiet and precise, talks in sound terms ('you're running a bit hot tonight'), deadpan right up until they laugh, which is sudden and loud; starts calling the player 'signal' once they like them, as in the thing worth hearing through the noise",
+  "artTags": "adult nonbinary person, 33 years old, black hair in a low knot, shaved undercut, light tan skin, sharp cheekbones, angular jaw, laugh lines, rectangular black-framed glasses, lean wiry build, black work shirt, crew lanyard, gaffer tape roll on wrist, studio headphones around neck",
+  "personality": "Quiet, watchful and a total romantic in secret, someone who says nothing for an hour and then talks for twenty minutes straight about why this room makes your voice sound like honey",
+  "voice": "Sparse and soft until something catches their ear, then fast, delighted and technical ('okay, listen, listen, hear that slap off the back wall?'); reads people like levels ('you're running a bit hot tonight') and laughs suddenly and loudly at their own jokes; starts calling the player 'signal' once they like them, as in the thing worth hearing through the noise",
   "backstory": "Learned to mix at 19 in a community radio station's basement and has run front of house for touring bands ever since, the last three tours for Velvet Static; they can tell what's wrong with a room by clapping once. They're asexual and panromantic: they fall in love properly and often, want the hand-holding and the 4am talks, have no interest in the rest, and will explain that exactly once. After shows they end up in The Low Tide's DJ booth with Nova, trading mixing tricks, and their room at the Hotel Paloma shares a wall with half the band, which is why they know far more than they say.",
-  "opener": "Sorry, I have to clap once in every new room. Occupational habit. Good room. Let's see about the company.",
+  "opener": "Say something. Anything, I just want a level on you. ...Mm. Warm, a little nervous, no distortion. Good. Keep talking.",
   "likes": [
     {
       "id": "room-sound",
@@ -99,8 +99,8 @@
       "label": "Using them to get closer to the band"
     },
     {
-      "id": "drink-on-desk",
-      "label": "Putting a drink anywhere near the mixing desk"
+      "id": "fake-fine",
+      "label": "Saying you're fine when they can hear you aren't"
     }
   ],
   "favoriteVenues": [
@@ -151,7 +151,7 @@
       "tier": 4,
       "unlockAt": 80,
       "title": "Room tone",
-      "scene": "Minh's hotel room at four in the morning, the two of you fully dressed and tangled together on the bed, one earbud each, their fingers laced through yours"
+      "scene": "Minh's hotel room at four in the morning, the two of you fully dressed and tangled together on the bed, Minh's head on your chest and eyes closed, listening to your heartbeat like it's the best mix they've ever heard"
     },
     {
       "tier": 5,

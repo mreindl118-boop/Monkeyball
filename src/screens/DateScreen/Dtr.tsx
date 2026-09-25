@@ -66,8 +66,8 @@ export function DtrSheet({
       title="Define the relationship"
       description={
         offer
-          ? `${first} brought it up. ${offerDetail(name, offer)} Ask for what you want; ${first} can say yes, counter with other terms, or say no.`
-          : `Ask ${first} what you are. ${first} can say yes, counter with other terms, or say no.`
+          ? `${offerDetail(name, offer)} Ask for what you want; the answer can be yes, a counter with other terms, or no.`
+          : `Ask ${first} what you are. The answer can be yes, a counter with other terms, or no.`
       }
       footer={
         <>

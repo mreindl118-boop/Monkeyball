@@ -19,13 +19,13 @@
   ],
   "occupation": "Tour manager for Velvet Static; runs the money, the schedule and everyone's problems",
   "difficulty": "hard",
-  "accent": "#A49A84",
+  "accent": "#B89808",
   "look": "Close-cropped greying hair, a neat salt-and-pepper beard, deep brown skin, reading glasses pushed up on his head, a pressed navy overshirt with too many pockets, a laminated all-access pass, two phones, and a battered leather folio",
   "artTags": "adult man, 41 years old, close-cropped greying hair, salt-and-pepper beard, deep brown skin, reading glasses on head, pressed navy overshirt, laminated all-access pass on lanyard, leather folio, tall, heavyset build",
   "personality": "Unflappable, dry and fiercely protective, a man who can fix any disaster except the ones in his own chest",
-  "voice": "Measured and deadpan, talks in call times and contingencies ('lobby call is noon, and I mean noon'), never raises his voice because he's never needed to; starts calling the player 'all-access' once he likes them",
+  "voice": "Low and unhurried, a road veteran with a war story for every disaster ('this? This is nothing. Rotterdam, 2014, the van caught fire'), deadpan until something is actually wrong and then very quiet and very calm; starts calling the player 'all-access' once he likes them",
   "backstory": "Twenty years on the road, the last six with Velvet Static, which makes him the band's designated adult and the only one who knows where the money goes. He came out at 24 in a tour van to a metal band who threw him a party at the next truck stop, and he has been monogamous, jealous and honest about both ever since. He swore off anything with anyone on tour years ago; then Eli Navarro, the opening act, asked him for a light in the loading bay in the residency's first week, and now they're something nobody is supposed to know about. Every night he settles the band's tab at The Low Tide and disputes every line of it with Kai.",
-  "opener": "I have eleven minutes before somebody in this band sets something on fire. Let's make them count.",
+  "opener": "If my phone rings, it's the singer, and I'm not answering. Probably. Please tell me you're not in a band.",
   "likes": [
     {
       "id": "proper-dinner",
@@ -36,8 +36,8 @@
       "label": "Climbing on his one day off, where nobody can phone him"
     },
     {
-      "id": "clean-books",
-      "label": "A well-kept spreadsheet, honestly"
+      "id": "tour-pothos",
+      "label": "His travelling pothos, veteran of four world tours"
     },
     {
       "id": "old-soul",
@@ -50,12 +50,12 @@
   ],
   "dislikes": [
     {
-      "id": "late-arrivals",
-      "label": "Lateness, even five minutes of it"
+      "id": "road-romance",
+      "label": "Hearing that life on the road sounds romantic"
     },
     {
-      "id": "pumped-for-gossip",
-      "label": "Being pumped for band gossip"
+      "id": "curfew-bust",
+      "label": "Encores that blow the curfew"
     },
     {
       "id": "sticky-floors",
@@ -72,16 +72,16 @@
       "label": "Being told he's off duty, and meaning it"
     },
     {
-      "id": "phones-away",
-      "label": "Having his phones taken off him, gently"
+      "id": "staying-put",
+      "label": "Talk of staying put: one city, one kitchen, one key"
     },
     {
       "id": "steady-promise",
       "label": "Plain, steady commitment, said out loud"
     },
     {
-      "id": "corridor-dance",
-      "label": "Being pulled into a slow dance in a hotel corridor"
+      "id": "handsome-full-stop",
+      "label": "Being called handsome, full stop, no 'for his age'"
     }
   ],
   "turnOffs": [
@@ -94,8 +94,8 @@
       "label": "Flirting with someone else in front of him"
     },
     {
-      "id": "like-the-help",
-      "label": "Being talked down to like the help"
+      "id": "opener-snub",
+      "label": "Sneering at the opening act"
     },
     {
       "id": "broken-promises",
@@ -121,7 +121,7 @@
   "secrets": [
     {
       "unlockAt": 60,
-      "text": "He's been paying Eli's opening-act fee out of his own pocket since the promoter cut the support budget in the residency's first week. Eli thinks the club pays him, and Grant means to keep it that way."
+      "text": "He's been paying Eli's opening-act fee out of his own pocket since the promoter cut the support budget in the residency's first week. Eli thinks the club pays him, and Grant means to keep it that way. It has nothing to do with what's between them; he'd keep paying it if they ended tomorrow."
     },
     {
       "unlockAt": 80,
@@ -145,7 +145,7 @@
       "tier": 3,
       "unlockAt": 60,
       "title": "Belay",
-      "scene": "The climbing gym on his day off, Grant holding your rope from below and looking up at you with something close to pride"
+      "scene": "The climbing gym on his day off, Grant catching you by the waist as you drop from the last hold, and neither of you letting go once your feet touch the mat"
     },
     {
       "tier": 4,

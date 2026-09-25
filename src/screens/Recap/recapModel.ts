@@ -304,11 +304,12 @@ export function rumorLines(
   return out
 }
 
-/** Gossip lines, trimmed and each once. */
+/** Gossip lines, trimmed, each ending as a sentence (the engine's lines ride in a prompt without one), each once. */
 export function gossipLines(gossip: readonly string[] | undefined): string[] {
   const out: string[] = []
   for (const g of gossip ?? []) {
-    const t = (g ?? '').trim()
+    let t = (g ?? '').trim()
+    if (t && !/[.!?]["”’)]?$/.test(t)) t = `${t}.`
     if (t && !out.includes(t)) out.push(t)
   }
   return out

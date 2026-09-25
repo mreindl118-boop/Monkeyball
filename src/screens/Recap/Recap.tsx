@@ -186,7 +186,7 @@ function RecapView({ record, recap, character }: { record: DateRecord; recap: Ch
             </h2>
             <p className={styles.heroWhere}>{venue?.id === 'home' ? 'A night in' : `At ${where}`}</p>
             <p className={styles.heroOutcome}>
-              {epilogue && ending ? `The epilogue: ${ending}.` : outcomeText(record.outcome, first)}
+              {epilogue && ending ? `The epilogue: ${ending.charAt(0).toLowerCase()}${ending.slice(1)}.` : outcomeText(record.outcome, first)}
             </p>
           </div>
         </div>
@@ -195,7 +195,7 @@ function RecapView({ record, recap, character }: { record: DateRecord; recap: Ch
       {epilogue && ending && (
         <Panel title="Your ending" tone="brass" className={styles.section}>
           <p className={styles.endingTitle}>{ending}</p>
-          <p className={styles.plain}>It's recorded with {first}. Their profile keeps it, and it can play again.</p>
+          <p className={styles.plain}>It's kept on {possessive(first)} profile, and it can play again.</p>
         </Panel>
       )}
 

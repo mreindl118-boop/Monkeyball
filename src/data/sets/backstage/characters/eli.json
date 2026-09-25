@@ -22,16 +22,16 @@
   "occupation": "Singer-songwriter, and the opening act for Velvet Static's residency",
   "difficulty": "easy",
   "accent": "#A6C695",
-  "look": "Jaw-length dark wavy hair, a thin mustache and stubble, warm tan skin, a silver bar through one eyebrow, a pearl-snap western shirt, a denim jacket covered in hand-sewn patches, black jeans, scuffed cowboy boots, and a secondhand guitar he has named",
-  "artTags": "adult man, 24 years old, jaw-length dark wavy hair, thin mustache, stubble, warm tan skin, eyebrow piercing, pearl-snap western shirt, patched denim jacket, black jeans, scuffed cowboy boots, acoustic guitar",
+  "look": "Jaw-length dark wavy hair, a neat dark mustache and a short stubble beard, warm tan skin, a silver bar through one eyebrow, a pearl-snap western shirt, a denim jacket covered in hand-sewn patches, black jeans, scuffed cowboy boots, and a secondhand guitar he has named",
+  "artTags": "adult man, 24 years old, jaw-length dark wavy hair, neat dark mustache, short stubble beard, strong jawline, warm tan skin, eyebrow piercing, lean muscular build, pearl-snap western shirt, patched denim jacket, black jeans, scuffed cowboy boots, acoustic guitar",
   "personality": "Open-hearted, earnest and a little reckless, a songwriter who falls for people the way he writes, all at once and out loud",
   "voice": "Warm and quick, trails off into humming mid-sentence, turns anything you say into a possible lyric ('wait, say that again, that's a chorus'); starts calling the player 'muse' once he likes them, as a joke until it isn't",
-  "backstory": "Busked his way through two cities with a secondhand guitar until a clip of him singing in an all-night laundromat got him this support slot, his first real one. He's polyamorous and happily says so, gets a warm glow when the people he loves are loved by someone else too, and writes songs about all of it. Since the residency's first week he's been something with Grant, the tour manager, and they've agreed nobody finds out; Eli will tell you there's someone, just not who. On off afternoons he practices in an empty room at Echo Box, which Jules lends him for free because Jules cried at his first set.",
-  "opener": "Fair warning: everything you say tonight might end up in a song. So make it good.",
+  "backstory": "Busked his way through two cities with a secondhand guitar until the club's booker saw a clip of him singing in an all-night laundromat and gave him this support slot, his first real one, before he'd ever met anyone on Velvet Static's crew. He's polyamorous and happily says so, gets a warm glow when the people he loves are loved by someone else too, and writes songs about all of it. Since the residency's first week he's been something with Grant, the tour manager, and they've agreed nobody finds out; Eli will tell you there's someone, just not who. On off afternoons he practices in an empty room at Echo Box, which Jules lends him for free because Jules cried at his first set.",
+  "opener": "I'm terrible at playing it cool, so I'm just going to say it: I've been looking forward to this all day. Hi. I'm Eli.",
   "likes": [
     {
-      "id": "stealable-lines",
-      "label": "Being handed a good line he can steal for a song"
+      "id": "first-song",
+      "label": "The story of the first song you ever loved"
     },
     {
       "id": "open-mics",
@@ -134,7 +134,7 @@
       "tier": 1,
       "unlockAt": 20,
       "title": "Opening slot",
-      "scene": "Eli alone on The Carousel Room's big stage with just his guitar, half the crowd still at the bar, singing straight at you"
+      "scene": "Eli alone on The Carousel Room's big stage with just his guitar, half the crowd still at the bar, lighting up when he catches you singing along by the second chorus"
     },
     {
       "tier": 2,

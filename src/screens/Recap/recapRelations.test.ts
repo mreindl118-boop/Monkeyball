@@ -81,7 +81,8 @@ describe('gossip, rumors and rekindles', () => {
   })
 
   it('tidies gossip', () => {
-    expect(gossipLines([' Kai is into you. ', 'Kai is into you.', ''])).toEqual(['Kai is into you.'])
+    expect(gossipLines([' Kai is into you. ', 'Kai is into you', ''])).toEqual(['Kai is into you.'])
+    expect(gossipLines(['Is Kai into you?'])).toEqual(['Is Kai into you?'])
   })
 
   it('finds the rekindle news this date produced', () => {
