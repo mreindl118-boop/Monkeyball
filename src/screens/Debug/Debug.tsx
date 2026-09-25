@@ -217,7 +217,7 @@ export default function Debug() {
         onChange={setTab}
         tabs={[
           { id: 'prompts', label: 'Prompts', content: <PromptsTab /> },
-          { id: 'raw', label: 'Raw responses', content: <RawTab /> },
+          { id: 'raw', label: 'Responses', content: <RawTab /> },
           { id: 'transcript', label: 'Transcript', content: <TranscriptTab /> },
           { id: 'state', label: 'State', content: <StateTab /> },
         ]}

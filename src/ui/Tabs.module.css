@@ -1,7 +1,7 @@
 .list {
   display: flex;
   contain: inline-size;
-  gap: 4px;
+  gap: clamp(0px, 1vw, 4px);
   overflow-x: auto;
   scrollbar-width: none;
   margin: 0 calc(-1 * var(--gutter));
@@ -17,7 +17,7 @@
   position: relative;
   flex: none;
   min-height: var(--tap);
-  padding: 0 14px;
+  padding: 0 clamp(9px, 2.6vw, 14px);
   border: 0;
   background: transparent;
   color: var(--smoke);

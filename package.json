@@ -12,6 +12,8 @@
     "test:watch": "vitest",
     "preview": "vite preview",
     "mock-llm": "node scripts/mock-llm.mjs",
+    "mock-llm:selftest": "node scripts/mock-llm.selftest.mjs",
+    "e2e:phase1": "node scripts/e2e/phase1.mjs",
     "cap:sync": "cap sync android"
   },
   "dependencies": {
