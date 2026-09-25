@@ -29,6 +29,8 @@ import { AppSection } from './AppSection'
 const realUpdate = useSettings.getState().update
 
 beforeEach(() => {
+  // CI sets BUILD_NUMBER for the whole job; pin it so the labels don't depend on where tests run.
+  vi.stubEnv('VITE_BUILD_NUMBER', '0')
   env.native = false
   env.check.mockReset()
   env.open.mockReset()
@@ -38,7 +40,10 @@ beforeEach(() => {
     settings: { ...useSettings.getState().settings, autoUpdateCheck: true },
   })
 })
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.unstubAllEnvs()
+})
 
 describe('Settings, App section', () => {
   it('on the web: version, build, and that the web app updates itself', async () => {
