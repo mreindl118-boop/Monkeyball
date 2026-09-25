@@ -1,3 +1,4 @@
+import { SHOW_ME_NONBINARY } from '../../store/roster'
 import { useSettings } from '../../store/settings'
 import type { ShowMe } from '../../types'
 import { Field } from '../../ui/Field'
@@ -35,7 +36,7 @@ export function PlaySection() {
         label="Show me"
         kind="group"
         htmlFor="play-showme"
-        hint="Filters the roster. Nobody's progress is lost."
+        hint={`Filters the roster. ${SHOW_ME_NONBINARY} Nobody's progress is lost.`}
       >
         <Segmented value={s.showMe} options={SHOW_ME} onChange={(showMe) => void update({ showMe })} />
       </Field>

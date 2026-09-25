@@ -73,11 +73,13 @@
   font-weight: 600;
   font-size: 24px;
   line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
 .description {
   color: var(--smoke-text);
   font-size: 14.5px;
+  overflow-wrap: anywhere;
 }
 
 .body {

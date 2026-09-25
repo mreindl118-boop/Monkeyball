@@ -1,0 +1,67 @@
+.stack {
+  display: grid;
+  gap: 10px;
+}
+
+.link {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 14px 16px;
+  border-radius: var(--radius-m);
+  border: 1px solid var(--line);
+  background: var(--field-bg);
+  color: var(--blush);
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color 140ms var(--ease-out),
+    background-color 140ms var(--ease-out);
+}
+
+.link:hover {
+  border-color: var(--line-strong);
+  background: color-mix(in srgb, var(--field-bg) 80%, var(--blush-soft));
+}
+
+.link:active {
+  background: var(--brass-soft);
+}
+
+.link:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+  border-radius: var(--radius-m);
+}
+
+.title {
+  font-weight: 700;
+}
+
+.text {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--smoke-text);
+}
+
+.importRow {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+@media (min-width: 720px) {
+  .importRow {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 16px;
+  }
+}
+
+.hint {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--smoke-text);
+}

@@ -15,6 +15,7 @@ import { ConnectionForm } from '../ConnectionSetup/ConnectionForm'
 import { ProfileForm } from '../Onboarding/ProfileForm'
 import { AppSection } from './AppSection'
 import { ImageSection } from './ImageSection'
+import { ModsSection } from './ModsSection'
 import { PlaySection } from './PlaySection'
 import { SavesSection } from './SavesSection'
 import styles from './Settings.module.css'
@@ -130,20 +131,7 @@ export default function Settings() {
         title="Character sets and mods"
         description="Mix sets, import packs, and make your own characters."
       >
-        <div className={styles.linkRow}>
-          <span className={styles.linkTitle}>Character sets</span>
-          <span className={styles.linkText}>Turn sets on and off, read their blurbs, import .json or .zip packs.</span>
-          <span className={styles.linkBadge}>
-            <Chip tone="brass">Arrives with the next update</Chip>
-          </span>
-        </div>
-        <div className={styles.linkRow}>
-          <span className={styles.linkTitle}>Character editor</span>
-          <span className={styles.linkText}>Create, duplicate and export characters as mods.</span>
-          <span className={styles.linkBadge}>
-            <Chip tone="brass">Arrives with the next update</Chip>
-          </span>
-        </div>
+        <ModsSection />
       </Panel>
 
       <Panel

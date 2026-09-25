@@ -94,15 +94,67 @@ Spec: docs/SPEC.md. Build contract: docs/ARCHITECTURE.md. Casting: docs/ROSTER.m
     signature, package, version, cleartext and backup checks, the prerelease/latest logic, and the
     Pages deploy. Checked only on a device (not done yet): see Known issues.
 
+- Phase 2 (content), integrated, reviewed, fixed and checked end to end (not committed yet):
+  - Data: 14 venues with CSS backdrops (`src/data/venues.ts`; home needs Lover, Thursday drag
+    night note), 14 gifts with lock text (`src/data/gifts.ts`; both say "Friendship-locked" when
+    given a friend route that can never reach the requirement), the Afterhours set (12 cards and a
+    manifest with relationships and rumors) loaded by `src/data/bundled.ts`. Phase 6 set and
+    character ids are reserved so nothing custom is shadowed when those sets ship.
+  - Mods (`src/mods`): `normalize` (plural genders, loose JSON), `safety` (minor/childlike terms
+    including "high schooler", "schoolchild", "jr high", "minors", "under 16"; ages under 21
+    written in any field, such as "I'm only seventeen", "she's 16." or "Nova is 17"; the backstory
+    may say "at 19" or "when she was 16" but not state the character's age; "minor key", "a minor
+    in art history", "minority" and a backstory "childhood" pass), `validate` (the spec's rules plus
+    one trait per list, a favorite venue, no venue or gift both loved and hated, lowercase
+    hyphenated ids; cross-set relationships only through `knows` and never as partners or exes),
+    `pack` (.json and .zip import that never throws, folder names in any case, cards next to the
+    manifest, loose cards keep going without partners who aren't there; character JSON and pack zip
+    export). Every bundled card passes the validator (`src/data/bundled.test.ts`).
+  - Stores: `useRoster` (bundled sets, imported packs, "My characters" with id `custom`; save,
+    duplicate, delete, import, remove pack, set on/off) and `useGame` (relationships, game state,
+    news). Both load in the background at boot (App.tsx, own chunk), screens wait for them, and
+    every mutation waits for the first load. Storage failures on a save or an import are told to
+    the player; the stores' errors get the app's one-time storage warning.
+  - Packs: re-importing a pack asks first when characters would leave or the name or author
+    changed; a character whose new card fails keeps the earlier one; characters the player made in
+    a pack stay in it on a re-import and move to My characters when the pack is removed. Every id on
+    the device is checked per card, so one clash leaves out one card.
+  - Screens: hub (coasters grouped by set with lipstick-stamp stages, trait counts, friend-route
+    and jealousy marks; Show me, sort and set filters saved in settings; heat sheet; empty
+    states), profile (stage, meters, route, agreement, "???" attractions/style/traits, venues and
+    gifts tried out of 14, secrets with their unlock condition, partners once known with notes once
+    the style is known, a gallery strip that visibly scrolls, Ask on a date), Character sets
+    (toggle, blurb, who's in it, relationships, export, remove pack, import), editor (list,
+    `#/editor/_new`, read-only bundled cards with Duplicate to edit and template export, live
+    validation with each message at its field, 21+ enforced, locked world rules quoted, discard
+    prompt on Back and the Android back button, JSON and .zip export, saved trait ids that don't
+    follow label edits, a warning when an id would inherit a deleted character's progress),
+    Settings "Character sets and mods". Every export goes through `saveFile`. Long unbroken words
+    from packs wrap at 360px.
+  - UI pieces: Coaster, LipstickStamps, Meter, Backdrop (built, used by dates in Phase 3),
+    Portrait (placeholder art until Phase 5). Selected toggle chips carry a check; textareas grow
+    with their text; the toast's Dismiss has a 48px hit area. Repeated editor controls have their
+    row in the accessible name ("Like 2 Id", "Tier 3 Scene").
+  - E2E: `npm run e2e:phase2` (Pixel 7 emulation, then 360x800 and 1280x800): 12 coasters, Show me
+    and sort, Nova's profile, set off/on, duplicate Nova with the age rule, export JSON, import a
+    .zip pack built on the fly, the replace-pack question, a lone card whose partner isn't there,
+    a pack of long unbroken words at 360px (report sheet included). Shared Android helpers
+    (`PIXEL_7`, `checkTouchScreen`, `quickOnboard`...) live in scripts/e2e/lib.mjs.
+
 ## In progress
 
-- Nothing; Phase 2 (content) is next. The Afterhours set files have landed ahead of it.
+- Nothing. Phase 2 is done; Phase 3 (dating core) is next.
 
 ## Next
 
-- Phase 2 (content): venues, gifts, set manifest format, the Afterhours set, Character sets
-  screen, roster hub, profile, character editor with validation, mod import/export. Then
-  Phases 3 to 7 as listed in docs/SPEC.md.
+- Phase 3 (dating core): date setup (venue grid with Backdrop and `venueLock(venue, affection,
+  route)`, gift shelf with `giftLock(gift, affection, heat, route)`), story engine, judge,
+  suggestions, affection math, discovery, early exit, recap, memory. Then Phases 4 to 7 as listed
+  in docs/SPEC.md.
+- Phase 6, when a second bundled set ships: a skippable "Who's in town" step in onboarding that uses
+  the Character sets toggles (SPEC: "New game, and Settings, Character sets, let the player turn
+  sets on and off"). Until then a new game starts with Afterhours on, and Character sets is the
+  only place to switch sets.
 
 ## Known issues
 
@@ -136,8 +188,27 @@ Spec: docs/SPEC.md. Build contract: docs/ARCHITECTURE.md. Casting: docs/ROSTER.m
 - Claude streams have no idle timeout between chunks; the SDK's timeout covers only the start of
   the response.
 - Ready marks and model lists on the provider cards are in memory only; they reset on reload.
-- Haptics exist (src/platform/haptics.ts) but no control uses them yet (stamp press and unlocks
-  arrive in later phases). The date engine should use `refusalBeat` and `REFUSAL_NOTE`, show a
+- Removing an imported pack keeps any tier art it brought in the images table (progress is kept
+  too, so a re-import picks up where it left off).
+- Not checked on a device: whether the APK's file picker lets a .json through when the storage
+  provider reports it as octet-stream or plain text (the picker's accept list now includes both;
+  the importer checks the content either way).
+- Show me Women or Men leaves nonbinary characters out (they show under Everyone, and the control
+  says so). Revisit if players expect them in both.
+- Bundled sets and cards export as templates that can't be imported as they are (every copy of
+  crushLAB has those ids); the export says to change the ids first.
+- A single exported .json card leaves its partners behind: on import they are left off the card
+  with a note. The .zip export takes partners along.
+- Written ages in card text are caught by patterns ("17 years old", "I'm only seventeen", "she's
+  16.", "Nova is 17", "turned 18"); unusual phrasings can still slip past, and the scan can flag a
+  count that reads like an age ("we were two."), which the author has to rephrase.
+- When storage refuses a save or an import, the character or pack stays for the session only (the
+  player is told); deleting while storage fails comes back after a restart (only the one-time
+  storage warning says so).
+- `defaultRelationship` (src/store/defaults.ts) duplicates `newRelationship`
+  (src/engine/relationship.ts); a test keeps them equal.
+- Haptics: a stamp press (LipstickStamps), a saved card and an import use them; unlock reveals
+  arrive with Phase 5. The date engine should use `refusalBeat` and `REFUSAL_NOTE`, show a
   `setup` or `empty` LlmError through `explainRoleError`, and mark its bottom composer
   `data-keyboard-static` (Phase 3).
 - The debug panel's Transcript tab is a placeholder until dates exist (Phase 3).

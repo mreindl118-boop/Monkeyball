@@ -13,19 +13,19 @@ import Gate from './screens/Gate/Gate'
 const Onboarding = lazy(() => import('./screens/Onboarding/Onboarding'))
 const ConnectionSetup = lazy(() => import('./screens/ConnectionSetup/ConnectionSetup'))
 const Hub = lazy(() => import('./screens/Hub/Hub'))
+const Profile = lazy(() => import('./screens/Profile/Profile'))
+const CharacterSets = lazy(() => import('./screens/CharacterSets/CharacterSets'))
+const Editor = lazy(() => import('./screens/Editor/Editor'))
 const Settings = lazy(() => import('./screens/Settings/Settings'))
 const Debug = lazy(() => import('./screens/Debug/Debug'))
 
 /** Titles for screens that arrive in later phases. */
 const LATER: Partial<Record<ScreenName, string>> = {
-  profile: 'Profile',
   'date-setup': 'Date setup',
   date: 'Date',
   recap: 'Recap',
   gallery: 'Gallery',
   map: 'Polycule map',
-  sets: 'Character sets',
-  editor: 'Character editor',
   ending: 'Ending',
 }
 
@@ -77,6 +77,13 @@ function renderScreen(view: Screen, back: () => void, toHub: () => void): ReactN
       return <ConnectionSetup />
     case 'hub':
       return <Hub />
+    case 'profile':
+      // Keyed by id so moving between profiles starts each one fresh.
+      return <Profile key={view.id} />
+    case 'sets':
+      return <CharacterSets />
+    case 'editor':
+      return <Editor />
     case 'settings':
       return <Settings key="settings" />
     case 'debug':
@@ -101,6 +108,7 @@ export default function App() {
     // Android app: system bars, back button, keyboard, launch update check. Web: nothing much.
     const stopPlatform = initPlatform()
     let cancelled = false
+    let stopWatchingStorage: (() => void) | undefined
     const start = () => {
       if (cancelled) return
       let fromHash: Screen | null = null
@@ -113,6 +121,16 @@ export default function App() {
       setBooted(true)
       consumeFlash()
       if (useSettings.getState().error) warnNoStorage()
+      // Characters (packs and custom cards) and relationship progress load in the background, in
+      // their own chunk; screens that show characters wait for them (useRosterAndGame).
+      void import('./screens/Hub/useRosterGame')
+        .then((m) => {
+          if (cancelled) return
+          // Their storage failures (a pack too big for the quota) get the same one-time warning.
+          stopWatchingStorage = m.watchStorageErrors(warnNoStorage)
+          return m.loadRosterAndGame()
+        })
+        .catch(() => undefined)
     }
     void useSettings
       .getState()
@@ -132,6 +150,7 @@ export default function App() {
     })
     return () => {
       unsub()
+      stopWatchingStorage?.()
       cancelled = true
       unbind()
       stopPlatform()

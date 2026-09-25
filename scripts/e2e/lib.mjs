@@ -432,6 +432,190 @@ export async function checkDesign(page, where) {
   check(!problems.length, `${where}: ${problems.join('; ')}`)
 }
 
+// ---------------------------------------------------------------------------
+// Android (docs/ARCHITECTURE.md, "Android first")
+
+/** Chrome on a Pixel 7 (reduced user agent, as Chrome sends it). Pass as newPage options. */
+export const PIXEL_7 = {
+  viewport: { width: 412, height: 915 },
+  deviceScaleFactor: 2.625,
+  isMobile: true,
+  hasTouch: true,
+  userAgent:
+    'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36',
+}
+
+/** A small Android phone. */
+export const SMALL_PHONE = { width: 360, height: 800 }
+
+/**
+ * Minimum hit height for anything tappable. The design target is 48px, and that is what the
+ * checks use; E2E_MIN_TAP=44 relaxes it to the hard floor.
+ */
+export const MIN_TAP = Number(process.env.E2E_MIN_TAP) || 48
+
+/**
+ * Measures every tappable thing on the screen and lists those whose hit area is under `min` px
+ * tall. The hit area is measured with elementFromPoint along a vertical line through the element's
+ * center, so a ::before that extends it counts, and so does a <label> wrapping a hidden native
+ * input. Returns { checked, problems }.
+ */
+export function smallTargets(page, min = MIN_TAP) {
+  return page.evaluate((min) => {
+    const SELECTOR =
+      'button, [role="button"], [role="radio"], [role="tab"], [role="switch"], [role="checkbox"], ' +
+      '[role="menuitem"], [role="option"], a[href], select, textarea, summary, input:not([type="hidden"])'
+    const describe = (el) => {
+      const name = (el.getAttribute('aria-label') || el.textContent || el.getAttribute('name') || '').trim()
+      return `<${el.tagName.toLowerCase()}${el.getAttribute('role') ? ` role=${el.getAttribute('role')}` : ''}> "${name.slice(0, 40)}"`
+    }
+    const visible = (el) => {
+      if (el.closest('[aria-hidden="true"], [inert], .visually-hidden')) return false
+      const s = getComputedStyle(el)
+      if (s.display === 'none' || s.visibility === 'hidden') return false
+      const r = el.getBoundingClientRect()
+      return r.width > 0 && r.height > 0
+    }
+    const scroller = document.scrollingElement || document.documentElement
+    const start = { x: scroller.scrollLeft, y: scroller.scrollTop }
+    const problems = []
+    let checked = 0
+    for (const el of document.querySelectorAll(SELECTOR)) {
+      if (!visible(el)) continue
+      // Inline links inside running text are exempt (WCAG 2.5.8); none are expected in the app.
+      if (el.tagName === 'A' && getComputedStyle(el).display === 'inline') continue
+      // A native radio or checkbox hidden behind a styled label: the label is the target.
+      let target = el
+      if (el instanceof HTMLInputElement && ['radio', 'checkbox'].includes(el.type) && el.labels?.length) {
+        target = el.labels[0]
+      }
+      target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' })
+      const r = target.getBoundingClientRect()
+      const x = r.left + r.width / 2
+      const y = r.top + r.height / 2
+      const labels = el.labels ? [...el.labels] : []
+      const owns = (n) => !!n && (target.contains(n) || el.contains(n) || labels.some((l) => l.contains(n)))
+      let height = r.height
+      if (owns(document.elementFromPoint(x, y))) {
+        let top = y
+        let bottom = y
+        while (top > y - 60 && owns(document.elementFromPoint(x, top - 1))) top -= 1
+        while (bottom < y + 60 && owns(document.elementFromPoint(x, bottom + 1))) bottom += 1
+        height = bottom - top + 1
+      }
+      checked += 1
+      if (height < min) problems.push(`${describe(el)} is ${Math.round(height)}px tall`)
+    }
+    scroller.scrollTo(start.x, start.y)
+    return { checked, problems }
+  }, min)
+}
+
+/**
+ * The Android screen check: waits for the lazy screen, screenshots it (`shot`, plus `shot`-full
+ * when `full`), then fails on sideways scroll, a design-rule break or a touch target under
+ * MIN_TAP.
+ */
+export async function checkTouchScreen(page, name, { full = false, shot = name } = {}) {
+  // Screens are lazy-loaded behind a "One moment" placeholder; wait for the real one.
+  await page.locator('main').first().waitFor()
+  await page.getByText(/^(One moment|Opening the doors)$/).waitFor({ state: 'hidden' })
+  // Toasts float over the bottom of the page for a few seconds and would hide what's under them
+  // from the hit test; close them first (their own Dismiss button is checked by checkToastTargets).
+  await dismissToasts(page)
+  await page.evaluate(() => document.fonts?.ready).catch(() => {})
+  await page.evaluate(() => window.scrollTo(0, 0))
+  await screenshot(page, shot)
+  if (full) await screenshot(page, `${shot}-full`, { fullPage: true })
+  // With mobile emulation Chrome does what a phone does with a too-wide page: it zooms out, and
+  // innerWidth grows to the content width. So compare with clientWidth (the layout viewport, the
+  // device width), and also require that innerWidth didn't grow.
+  const { scrollWidth, clientWidth, innerWidth } = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+    innerWidth: window.innerWidth,
+  }))
+  check(
+    scrollWidth <= clientWidth && innerWidth <= clientWidth,
+    `${name}: the page scrolls sideways (scrollWidth ${scrollWidth}, innerWidth ${innerWidth}, device width ${clientWidth})`,
+  )
+  await checkDesign(page, name)
+  const { checked, problems } = await smallTargets(page)
+  check(checked > 0, `${name}: found nothing tappable to measure`)
+  check(!problems.length, `${name}: touch targets under ${MIN_TAP}px: ${problems.join('; ')}`)
+  log(`     ${name}: ${checked} touch targets, all at least ${MIN_TAP}px; no sideways scroll`)
+}
+
+/** Close every toast on screen with its Dismiss button. */
+export async function dismissToasts(page) {
+  for (let i = 0; i < 10; i++) {
+    const button = page.getByRole('button', { name: 'Dismiss', exact: true }).first()
+    if (!(await button.count())) return
+    await button.click().catch(() => {})
+    await sleep(50)
+  }
+}
+
+/** Fail when a showing toast's Dismiss button can be hit over less than MIN_TAP px. */
+export async function checkToastTargets(page) {
+  const n = await page.getByRole('button', { name: 'Dismiss', exact: true }).count()
+  check(n > 0, 'no toast is showing')
+  const { problems } = await smallTargets(page)
+  const bad = problems.filter((p) => p.includes('"Dismiss"'))
+  check(!bad.length, `toast Dismiss under ${MIN_TAP}px: ${bad.join('; ')}`)
+}
+
+/** Press and hold with a finger (CDP touch events, so pointerType is 'touch' as on a phone). */
+export async function touchLongPress(page, locator, ms = 900) {
+  await locator.scrollIntoViewIfNeeded()
+  const box = await locator.boundingBox()
+  check(box, 'Long-press target is not visible')
+  const cdp = await page.context().newCDPSession(page)
+  const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] })
+  await sleep(ms)
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+  await cdp.detach()
+}
+
+/** Tap on a touch page, click otherwise. */
+export async function press(locator) {
+  const touch = await locator.page().evaluate(() => navigator.maxTouchPoints > 0)
+  if (touch) await locator.tap()
+  else await locator.click()
+}
+
+/**
+ * The shortest way from empty storage to the hub: confirm 18+, fill the profile (name, gender,
+ * pronouns), save, and skip connection setup (the default Claude preset has no key, so the quiet
+ * check fails at once). Leaves the page on #/hub.
+ */
+export async function quickOnboard(page, origin, { name = 'Ana', gender = 'Woman', pronouns = 'she/her' } = {}) {
+  await page.goto(`${origin}/`)
+  await press(page.getByRole('button', { name: "I'm 18 or older" }))
+  await page.getByRole('heading', { name: "Who's walking in tonight?" }).waitFor()
+  await page.getByLabel('Name', { exact: true }).fill(name)
+  await press(page.getByRole('radiogroup', { name: 'Gender' }).getByRole('radio', { name: gender }))
+  await page.getByLabel('Pronouns', { exact: true }).fill(pronouns)
+  await press(page.getByRole('button', { name: 'Save and continue' }))
+  await page.waitForFunction(() => ['#/connection-setup', '#/hub'].includes(window.location.hash), null, {
+    timeout: 70_000,
+  })
+  if ((await hashOf(page)) === '#/connection-setup') {
+    await press(page.getByRole('button', { name: 'Skip for now' }))
+  }
+  await waitForHash(page, '#/hub')
+  await page.getByRole('heading', { name: new RegExp(name) }).waitFor()
+}
+
+/** Go to a screen by changing the hash in place (as a link would), and wait for it. */
+export async function goHash(page, hash) {
+  await page.evaluate((h) => {
+    window.location.hash = h
+  }, hash)
+  await waitForHash(page, hash)
+}
+
 /**
  * Wrap a script's main function: runs it, tears everything down, prints a summary and sets the
  * exit code.

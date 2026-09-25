@@ -87,7 +87,13 @@ everything else after confirm.
   connection migration and key stripping/masking in `src/store/connection.ts` (pure).
 - `roster.ts` — `useRoster`: `{ loaded, sets: SetManifest[] (bundled + packs), entries:
   Record<string, RosterEntry>, load(), reload() }` plus selectors `activeEntries(settings)`,
-  `setOf(id)`, `relationsFor(id)` (manifest relationships + card partners, deduped).
+  `setOf(id)`, `relationsFor(id)` (manifest relationships + card partners, deduped; partner, ex
+  and situationship only within a set). Mutations: `saveCustomCharacter(c, setId?, previousId?)`
+  (issues; a `STORAGE_FIELD` issue means saved for the session only), `deleteCustomCharacter`,
+  `duplicateCharacter`, `importPack(result, { replace? })` (an outcome with `confirm` when it
+  would replace a pack and change more than its cards), `removePack(id)` (returns the ids of the
+  player's own characters moved to My characters), `setActive`. Every mutation awaits the first
+  load; a read that overlaps a write reads again.
 - `game.ts` — `useGame`: `{ loaded, relationships: Record<string, Relationship>, game: GameState,
   load(), rel(id) (creates default lazily), saveRel(rel), patchGame(patch), addNews(...) }`.
 - `date.ts` — `useDate`: the active date session (see Date flow) and its actions.
@@ -292,18 +298,55 @@ generated (Dexie cache) → placeholder component.
 
 - `normalize.ts` — accepts looser JSON (plural genders like "women", missing optional arrays) and
   returns a `Character`.
-- `safety.ts` — minor/childlike term scan (word-boundary regexes: child, kid(s), minor, teen(age|ager),
-  underage, preteen, loli, shota, schoolgirl/boy, high school, middle school, junior high,
-  elementary school, barely legal, jailbait, childlike, little girl/boy, …) across all text fields,
-  plus any age under 21 written in appearance fields (look, artTags, bodyNotes, gallery and ending
-  scenes). "childhood" is allowed in backstory only.
+- `safety.ts` — minor/childlike term scan (word-boundary regexes: child, kid(s), minor(s),
+  teen(age|ager), underage, under 10 to 19, preteen, loli, shota, schoolgirl/boy/child,
+  high/middle/grade school(er), junior high, jr high, sixth-grader, elementary school, barely
+  legal, jailbait, childlike, little girl/boy, …) across all text fields, plus any age under 21
+  written in any field ("17 years old", "I'm only seventeen", "she's 16.", "Nova is 17", "turned
+  18"). Appearance fields (look, artTags, bodyNotes, gallery and ending scenes) also block "girl",
+  "boy", "young", bare numbers among tags and "almost 18". The backstory may mention a
+  "childhood" and place past events at an age ("at 19", "at the age of 17", "when she was 16"),
+  never state the character's age. Adjectival "minor" passes only before a known follower (key,
+  detail, league...) or a college subject ("a minor in art history").
 - `validate.ts` — `validateCharacter(c, ctx)` → `{ field, message }[]`: required fields, age ≥ 21
   integer, attractedTo non-empty, unique trait ids across all four lists, known venue and gift ids,
   partners exist in the same set, gallery has tiers 1–5 at 20/40/60/80/100, accent is hex, safety
   scan. Bundled sets must pass it (a unit test enforces this for every bundled card).
-- `pack.ts` — import `.json` (single character or `{ manifest, characters }`) and `.zip`
-  (manifest.json + characters/*.json, optional art/{characterId}/tier-n.*); export single character
-  JSON, set/pack zip.
+- `pack.ts` — import `.json` (single character, an array, `{ characters }` or `{ manifest,
+  characters }`) and `.zip` (manifest.json + characters/*.json, optional art/{characterId}/tier-n.*);
+  export single character JSON, set/pack zip.
+
+Built (Phase 2) decisions: the validator also requires one trait in each list and one favorite
+venue (the epilogue plays at the first), lowercase hyphenated ids, and no venue or gift that is
+both loved and hated. Ids of the Phase 6 sets and characters are reserved (`src/data/bundled.ts`).
+Custom characters without a pack live in the synthetic set "My characters" (id `custom`, never a
+pack id); a pack is saved whole or not at all, and removing it keeps relationship progress.
+Duplicates get `{id}-copy` ids and drop partners outside their new set. The editor opens
+`#/editor` (list), `#/editor/{id}` (bundled cards read-only) and `#/editor/_new`.
+
+- Show me is about the character's gender: Women shows women, Men shows men, and nonbinary
+  characters show under Everyone only. The Show me control says so (`SHOW_ME_NONBINARY`).
+- Imports check every id already on the device (a pack's own excepted) and the reserved ids, so a
+  clash leaves out that card, not the whole pack. Zip folder names match in any case, and cards
+  may sit next to manifest.json. A loose card (a single exported .json) travels alone: partners
+  who aren't in My characters or the same file are left off it, with a note in the report.
+- Re-importing a pack with the same id replaces it. When that would remove characters, or the name
+  or author differ, the importer asks first ("Replace pack"). A character whose new card fails its
+  checks keeps the earlier card. Characters the player made inside a pack are never deleted: they
+  stay in it on a re-import, and move to My characters (without partners from the pack) when the
+  pack is removed. A single character's .zip export is named after the character, never the pack.
+- A manifest's `knows` allows cross-set friends, rivals, coworkers and so on, only with sets it
+  lists; partners, exes and situationships stay inside a set (validator and `relationsFor`).
+- Bundled sets and cards export as templates (every copy of crushLAB has their ids); the export
+  says to change the ids before importing.
+- The profile shows a partner's manifest note only once the relationship style is discovered, and
+  venues and gifts tried as counts out of 14. A saved card's trait ids never follow label edits
+  (discoveries are stored by id); a new or renamed id that a deleted character used warns that it
+  picks up their progress.
+- `giftLock(gift, affection, heat, route?)` and `venueLock(venue, affection, route?)` return
+  "Friendship-locked" when the requirement is above the route's affection cap.
+- Storage failures on a save or an import are reported to the player (kept for the session), and
+  the roster and game stores' errors get the app's one-time storage warning.
 
 ## Design system (`src/ui/tokens.css`)
 
@@ -327,6 +370,11 @@ film becomes a fade; stamp press and sheet slides become instant.
   message ("cute", "pushy", "[lie]") force specific judge results for e2e checks. Sends CORS headers.
 - `scripts/e2e/*.mjs` — playwright-core scripts launching `/opt/pw-browsers/chromium` against
   `vite preview` + the mock, covering onboarding, a full 10-turn date, reload persistence, etc.
+- `scripts/e2e/phase2.mjs` (`npm run e2e:phase2`) — the Phase 2 screens under the same Pixel 7
+  profile: hub coasters, filters and sorts, a profile, set on/off, the editor's age rule, JSON
+  export (a real download), a .zip pack import, the replace-pack question, a lone card whose
+  partner isn't there, a pack of long unbroken words at 360px, then 360x800 and 1280x800 screenshots
+  (`p2-*.png`). The Android helpers (`PIXEL_7`, `checkTouchScreen`, `quickOnboard`) are in lib.mjs.
 - `scripts/e2e/android.mjs` (`npm run e2e:android`) — the first-launch flow as Chrome on a Pixel 7
   (touch, 412x915 at 2.625x, Android user agent), then every screen again at 360x800: no sideways
   scroll, every tappable thing hit-tested at 48px or more (`E2E_MIN_TAP=44` relaxes it), the design

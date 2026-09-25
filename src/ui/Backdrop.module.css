@@ -1,0 +1,67 @@
+.root {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--velvet-deep);
+}
+
+.fill {
+  position: absolute;
+  inset: 0;
+}
+
+/* The painted layer is its own size container, so round shapes can be sized against the box. */
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  container-type: size;
+  pointer-events: none;
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  min-height: 100%;
+}
+
+.shape {
+  position: absolute;
+  left: calc(var(--x) * 1%);
+  top: calc(var(--y) * 1%);
+  width: calc(var(--w) * 1%);
+  height: calc(var(--h) * 1%);
+  transform: rotate(var(--rot, 0deg));
+}
+
+/* Hairlines stay visible on small boxes. */
+.line {
+  min-width: 1px;
+  min-height: 1px;
+}
+
+.circle {
+  border-radius: 50%;
+}
+
+/* Equal width and height: a true circle centred where the numbers put it, as wide as the
+   smaller of the two percentages allows. */
+.round {
+  left: calc((var(--x) + var(--w) / 2) * 1%);
+  top: calc((var(--y) + var(--h) / 2) * 1%);
+  height: auto;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) rotate(var(--rot, 0deg));
+}
+
+@supports (width: 1cqw) {
+  .round {
+    width: min(calc(var(--w) * 1cqw), calc(var(--h) * 1cqh));
+  }
+}
+
+.scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 35%, rgb(20 6 14 / 0.55) 75%, rgb(20 6 14 / 0.85) 100%);
+}

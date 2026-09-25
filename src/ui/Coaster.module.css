@@ -1,0 +1,176 @@
+/* A pulpboard bar coaster. Every texture is a gradient: nothing is loaded and nothing animates
+   but the tap feedback (a transform). */
+
+.coaster {
+  --ink: #2a0f1f;
+  --band: color-mix(in srgb, var(--accent) 86%, #2a0f1f);
+  container-type: inline-size;
+  position: relative;
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button.coaster {
+  cursor: pointer;
+}
+
+.disc {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2.2cqi;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 12cqi 11cqi 11cqi;
+  border-radius: 50%;
+  background:
+    /* The accent band printed round the rim, with ink pinlines either side. */
+    radial-gradient(
+      circle closest-side,
+      transparent 0 79.5%,
+      rgb(42 15 31 / 0.6) 79.5% 80.6%,
+      var(--band) 80.6% 88.4%,
+      rgb(42 15 31 / 0.6) 88.4% 89.5%,
+      transparent 89.5%
+    ),
+    /* Deckled, darker edge where the board was cut. */
+    radial-gradient(circle closest-side, transparent 0 93%, rgb(70 38 24 / 0.28) 97%, rgb(60 30 20 / 0.55) 100%),
+    /* Pulp fibres. */
+    repeating-radial-gradient(circle at 23% 31%, rgb(92 58 38 / 0.06) 0 1px, transparent 1px 5px),
+    repeating-linear-gradient(33deg, rgb(255 250 240 / 0.07) 0 1px, transparent 1px 4px),
+    repeating-linear-gradient(-58deg, rgb(92 58 38 / 0.05) 0 1px, transparent 1px 6px),
+    /* The board itself, lit from the top left. */
+    radial-gradient(circle at 34% 28%, #ddc9b0 0%, #cfb89d 48%, #b99e83 100%);
+  box-shadow:
+    0 10px 22px rgb(0 0 0 / 0.45),
+    0 2px 4px rgb(0 0 0 / 0.3);
+  transition: transform 160ms var(--ease-out);
+}
+
+/* A faint ring where a glass once sat. On its own layer, so a browser without container units
+   only loses the stain. */
+.disc::after {
+  content: '';
+  position: absolute;
+  left: 54%;
+  top: 50%;
+  width: 58cqi;
+  height: 58cqi;
+  border-radius: 50%;
+  border: 1.6cqi solid rgb(120 70 45 / 0.1);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+button.coaster:hover .disc {
+  transform: rotate(-2deg);
+}
+
+button.coaster:active .disc {
+  transform: rotate(-2deg) scale(0.97);
+}
+
+button.coaster:focus-visible {
+  outline: none;
+}
+
+button.coaster:focus-visible .disc {
+  outline: 3px solid var(--brass);
+  outline-offset: 3px;
+}
+
+.art {
+  position: relative;
+  z-index: 1;
+  width: 31cqi;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 0.9cqi #cfb89d,
+    0 0 0 1.6cqi rgb(42 15 31 / 0.55);
+}
+
+.name {
+  position: relative;
+  z-index: 1;
+  max-width: 74cqi;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  font-size: clamp(14px, 11cqi, 22px);
+  line-height: 1.05;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.disc .stamps {
+  --stamp-w: clamp(11px, 8.4cqi, 18px);
+  position: relative;
+  z-index: 1;
+}
+
+.count {
+  position: relative;
+  z-index: 1;
+  font-size: clamp(11px, 7.2cqi, 14px);
+  font-weight: 700;
+  line-height: 1.2;
+  color: rgb(42 15 31 / 0.78);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tags pinned over the bottom of the rim. */
+.marks {
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  z-index: 2;
+  display: flex;
+  gap: 4px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 9px 0 7px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.4);
+}
+
+.markIcon {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.friend {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brass) 82%, #fff) 0%, var(--brass) 100%);
+  color: var(--ink);
+}
+
+.jealous {
+  background: color-mix(in srgb, var(--lipstick) 84%, #000);
+  color: #fff;
+}

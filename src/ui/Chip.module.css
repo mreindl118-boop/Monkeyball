@@ -42,6 +42,15 @@ button.chip:focus-visible {
   background: var(--lipstick-soft);
 }
 
+/* Selected toggle chips carry a check, so the state doesn't rest on color alone. */
+.check {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-left: -3px;
+  color: color-mix(in srgb, var(--lipstick) 45%, var(--blush));
+}
+
 .brass {
   border-color: rgb(201 164 92 / 0.5);
   color: var(--brass);

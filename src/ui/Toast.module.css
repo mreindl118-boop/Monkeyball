@@ -54,6 +54,7 @@
 }
 
 .dismiss {
+  position: relative;
   flex: none;
   min-height: 36px;
   padding: 0 10px;
@@ -63,6 +64,13 @@
   color: var(--smoke-text);
   font-size: 13px;
   font-weight: 600;
+}
+
+/* The toast's own padding gives the button a full 48px hit area without making it look bigger. */
+.dismiss::before {
+  content: '';
+  position: absolute;
+  inset: calc((36px - var(--tap)) / 2) 0;
 }
 
 .dismiss:hover {

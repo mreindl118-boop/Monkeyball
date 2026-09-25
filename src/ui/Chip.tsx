@@ -14,7 +14,15 @@ export interface ChipProps {
   title?: string
 }
 
-/** A pill: a tappable suggestion (with onClick) or a static tag. */
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false" className={styles.check}>
+      <path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+/** A pill: a tappable suggestion (with onClick) or a static tag. A selected toggle chip shows a check. */
 export function Chip({ children, onClick, selected, tone = 'default', disabled, className, title }: ChipProps) {
   const cls = cx(
     styles.chip,
@@ -39,6 +47,7 @@ export function Chip({ children, onClick, selected, tone = 'default', disabled, 
       disabled={disabled}
       title={title}
     >
+      {selected && <CheckIcon />}
       {children}
     </button>
   )

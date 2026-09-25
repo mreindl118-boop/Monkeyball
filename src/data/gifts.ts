@@ -1,8 +1,8 @@
 // The fourteen gifts (docs/SPEC.md, "Gifts (14)"). Ids are fixed: character cards and saves refer
 // to them. Lingerie needs Crush (60 affection) and heat 3 or more; locked gifts show why.
 
-import { stageFor, stageLabel } from '../engine/stages'
-import type { Gift, HeatLevel } from '../types'
+import { affectionCap, stageFor, stageLabel } from '../engine/stages'
+import type { Gift, HeatLevel, Route } from '../types'
 
 /** Gift ids in SPEC order. */
 export const GIFT_IDS = [
@@ -53,11 +53,16 @@ export function giftById(id: string): Gift | undefined {
   return BY_ID.get(id)
 }
 
+/** The wording the gallery uses for what a friend route can never reach. */
+export const FRIENDSHIP_LOCKED = 'Friendship-locked'
+
 /**
  * Why a gift can't be given yet, or null when it can: "Needs Crush and heat 3+", "Needs Crush"
- * or "Needs heat 3+". Affection is the relationship's; heat is the player's heat setting.
+ * or "Needs heat 3+". Affection is the relationship's; heat is the player's heat setting. On a
+ * friend route, where affection stops at 59, a gift that needs more is "Friendship-locked".
  */
-export function giftLock(gift: Gift, affection: number, heat: HeatLevel | number): string | null {
+export function giftLock(gift: Gift, affection: number, heat: HeatLevel | number, route?: Route): string | null {
+  if (route && gift.requiresAffection != null && gift.requiresAffection > affectionCap(route)) return FRIENDSHIP_LOCKED
   const needs: string[] = []
   if (gift.requiresAffection != null && !(affection >= gift.requiresAffection)) {
     needs.push(stageLabel(stageFor(gift.requiresAffection)))
@@ -69,6 +74,6 @@ export function giftLock(gift: Gift, affection: number, heat: HeatLevel | number
 }
 
 /** True when giftLock() would return null. */
-export function isGiftUnlocked(gift: Gift, affection: number, heat: HeatLevel | number): boolean {
-  return giftLock(gift, affection, heat) === null
+export function isGiftUnlocked(gift: Gift, affection: number, heat: HeatLevel | number, route?: Route): boolean {
+  return giftLock(gift, affection, heat, route) === null
 }

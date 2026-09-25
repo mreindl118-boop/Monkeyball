@@ -43,6 +43,15 @@
   resize: vertical;
 }
 
+/* Grow with the text (Chrome 123+, so the Android WebView and Chrome on Android), so a long
+   paragraph never hides behind its own bottom edge. */
+@supports (field-sizing: content) {
+  .textarea {
+    field-sizing: content;
+    max-height: 60vh;
+  }
+}
+
 .mono {
   font-family: var(--font-mono);
   font-size: 14px;

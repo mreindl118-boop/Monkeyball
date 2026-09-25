@@ -33,7 +33,9 @@
 
 .header {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 4px;
+  min-width: 0;
 }
 
 .title {
@@ -42,11 +44,13 @@
   font-weight: 600;
   font-size: 22px;
   line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
 .description {
   color: var(--smoke-text);
   font-size: 14px;
+  overflow-wrap: anywhere;
 }
 
 /* Note / callout */
@@ -77,6 +81,7 @@
 
 .noteTitle {
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .divider {

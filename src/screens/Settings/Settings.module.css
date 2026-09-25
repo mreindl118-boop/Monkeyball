@@ -45,29 +45,6 @@
   gap: 4px;
 }
 
-.linkRow {
-  display: grid;
-  justify-items: start;
-  gap: 4px;
-  padding: 14px 16px;
-  border-radius: var(--radius-m);
-  border: 1px solid var(--line);
-  background: var(--field-bg);
-}
-
-.linkTitle {
-  font-weight: 700;
-}
-
-.linkText {
-  font-size: 13.5px;
-  color: var(--smoke-text);
-}
-
-.linkBadge {
-  margin-top: 6px;
-}
-
 .actions {
   display: flex;
   flex-wrap: wrap;

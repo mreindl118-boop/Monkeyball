@@ -1,10 +1,17 @@
 .root {
+  /* Names, blurbs and cards can come from third-party packs: a long unbroken word wraps
+     instead of pushing the page sideways. */
+  overflow-wrap: anywhere;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-content: start;
-  gap: 22px;
-  max-width: 720px;
-  padding-top: calc(var(--safe-top) + 20px);
+  gap: 20px;
+  padding-top: calc(var(--safe-top) + 14px);
+}
+
+.header {
+  display: grid;
+  gap: 14px;
 }
 
 .top {
@@ -14,29 +21,203 @@
   gap: 12px;
 }
 
-.greeting {
-  display: grid;
-  gap: 8px;
-  padding: 12px 0 4px;
+.topActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: -8px;
+}
+
+.heatButton {
+  padding-left: 10px;
+}
+
+.heatKiss {
+  width: 22px;
+  height: 15px;
+  color: var(--lipstick);
 }
 
 .hello {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: clamp(34px, 9vw, 52px);
+  font-size: clamp(32px, 8.6vw, 48px);
   line-height: 1.05;
 }
 
 .hello .name {
   font-style: italic;
+}
+
+/* Places: three tiles in a row, thumb-sized. */
+.nav {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.navTile {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 4px;
+  min-height: 64px;
+  padding: 8px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--field-bg);
   color: var(--blush);
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition:
+    background-color 140ms var(--ease-out),
+    border-color 140ms var(--ease-out),
+    transform 120ms var(--ease-out);
 }
 
-.sub {
+.navTile svg {
+  width: 22px;
+  height: 22px;
+  color: var(--brass);
+}
+
+.navTile:hover {
+  border-color: var(--line-strong);
+  background: var(--blush-soft);
+}
+
+.navTile:active {
+  transform: scale(0.97);
+}
+
+.navTile:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+  border-radius: var(--radius-m);
+}
+
+.navLabel {
+  overflow-wrap: anywhere;
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+/* Phones: Show me and Sort by share a row, the set filter gets its own. */
+.setFilter {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 720px) {
+  .filters {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+  }
+
+  .setFilter {
+    grid-column: auto;
+  }
+}
+
+.group {
+  display: grid;
+  gap: 16px;
+}
+
+.groupHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.setName {
+  min-width: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: clamp(24px, 6.4vw, 32px);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.groupCount {
+  flex: none;
+  font-size: 13.5px;
   color: var(--smoke-text);
-  max-width: 46ch;
 }
 
+/* Two coasters across on a phone, more on wider screens. Row gaps leave room for the tags that
+   hang off each coaster's rim. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(146px, 1fr));
+  gap: 26px 14px;
+  margin: 0;
+  padding: 0 0 8px;
+  list-style: none;
+}
+
+@media (min-width: 720px) {
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+    gap: 30px 22px;
+  }
+}
+
+.cell {
+  min-width: 0;
+}
+
+.loadingGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(146px, 1fr));
+  gap: 26px 14px;
+}
+
+.ghost {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1px dashed var(--line-strong);
+  background:
+    radial-gradient(circle closest-side, transparent 0 80%, rgb(242 198 207 / 0.06) 81% 89%, transparent 90%),
+    var(--velvet-deep);
+  animation: breathe 1.6s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.actions > * {
+  flex: 1 1 200px;
+}
+
+@media (min-width: 720px) {
+  .actions > * {
+    flex: 0 0 auto;
+    min-width: 200px;
+  }
+}
+
+/* Connection status (ConnectionStatus.tsx). */
 .status {
   display: grid;
   grid-template-columns: 12px minmax(0, 1fr);
@@ -94,51 +275,4 @@
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 8px;
-}
-
-.soon {
-  display: grid;
-  gap: 8px;
-  justify-items: start;
-}
-
-.coasters {
-  display: flex;
-  gap: 10px;
-  margin-top: 4px;
-}
-
-.coaster {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  border: 1px dashed var(--line-strong);
-  background:
-    radial-gradient(circle at 50% 50%, transparent 52%, rgb(242 198 207 / 0.06) 53%, transparent 60%),
-    var(--velvet-deep);
-}
-
-.coaster:nth-child(2) {
-  transform: rotate(8deg) translateY(4px);
-}
-
-.coaster:nth-child(3) {
-  transform: rotate(-6deg);
-}
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.actions > * {
-  flex: 1 1 160px;
-}
-
-@media (min-width: 720px) {
-  .actions > * {
-    flex: 0 0 auto;
-    min-width: 160px;
-  }
 }

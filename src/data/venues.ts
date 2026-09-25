@@ -5,8 +5,9 @@
 // Shape geometry is in percent of the backdrop box: x/y are the top-left corner, w/h the size.
 // Blurs stay small and shapes stay few so mid-range Android phones keep scrolling smoothly.
 
-import { stageFor, stageLabel } from '../engine/stages'
-import type { Venue } from '../types'
+import { affectionCap, stageFor, stageLabel } from '../engine/stages'
+import type { Route, Venue } from '../types'
+import { FRIENDSHIP_LOCKED } from './gifts'
 
 /** Venue ids in SPEC order. */
 export const VENUE_IDS = [
@@ -286,9 +287,13 @@ export function isVenueUnlocked(venue: Venue, affection: number): boolean {
   return venue.requiresAffection == null || affection >= venue.requiresAffection
 }
 
-/** The requirement to show on a locked venue, e.g. "Needs Lover", or null when it's open. */
-export function venueLock(venue: Venue, affection: number): string | null {
+/**
+ * The requirement to show on a locked venue, e.g. "Needs Lover", or null when it's open. On a
+ * friend route, where affection stops at 59, a venue that needs more is "Friendship-locked".
+ */
+export function venueLock(venue: Venue, affection: number, route?: Route): string | null {
   if (isVenueUnlocked(venue, affection)) return null
+  if (route && (venue.requiresAffection ?? 0) > affectionCap(route)) return FRIENDSHIP_LOCKED
   return `Needs ${stageLabel(stageFor(venue.requiresAffection ?? 0))}`
 }
 

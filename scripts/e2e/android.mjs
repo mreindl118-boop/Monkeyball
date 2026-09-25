@@ -17,36 +17,21 @@
 
 import {
   check,
-  checkDesign,
+  checkTouchScreen,
   hashOf,
   launchBrowser,
   log,
   main,
   newPage,
+  PIXEL_7,
   screenshot,
-  sleep,
+  SMALL_PHONE as SMALL,
   startApp,
   startMock,
   step,
+  touchLongPress,
   waitForHash,
 } from './lib.mjs'
-
-/** Chrome on a Pixel 7 (reduced user agent, as Chrome sends it). */
-const PIXEL_7 = {
-  viewport: { width: 412, height: 915 },
-  deviceScaleFactor: 2.625,
-  isMobile: true,
-  hasTouch: true,
-  userAgent:
-    'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Mobile Safari/537.36',
-}
-/** A small Android phone. */
-const SMALL = { width: 360, height: 800 }
-/**
- * Minimum hit height for anything tappable. The design target is 48px, and that is what this
- * checks; E2E_MIN_TAP=44 relaxes it to the hard floor.
- */
-const MIN_TAP = Number(process.env.E2E_MIN_TAP) || 48
 
 const PROFILE = {
   name: 'Ana',
@@ -57,102 +42,9 @@ const PROFILE = {
 // ---------------------------------------------------------------------------
 // Checks
 
-/**
- * Measures every tappable thing on the screen and lists those whose hit area is under MIN_TAP px
- * tall. The hit area is measured with elementFromPoint along a vertical line through the element's
- * center, so a ::before that extends it counts, and so does a <label> wrapping a hidden native
- * input. Returns { checked, problems }.
- */
-function smallTargets(page) {
-  return page.evaluate((min) => {
-    const SELECTOR =
-      'button, [role="button"], [role="radio"], [role="tab"], [role="switch"], [role="checkbox"], ' +
-      '[role="menuitem"], [role="option"], a[href], select, textarea, summary, input:not([type="hidden"])'
-    const describe = (el) => {
-      const name = (el.getAttribute('aria-label') || el.textContent || el.getAttribute('name') || '').trim()
-      return `<${el.tagName.toLowerCase()}${el.getAttribute('role') ? ` role=${el.getAttribute('role')}` : ''}> "${name.slice(0, 40)}"`
-    }
-    const visible = (el) => {
-      if (el.closest('[aria-hidden="true"], [inert], .visually-hidden')) return false
-      const s = getComputedStyle(el)
-      if (s.display === 'none' || s.visibility === 'hidden') return false
-      const r = el.getBoundingClientRect()
-      return r.width > 0 && r.height > 0
-    }
-    const scroller = document.scrollingElement || document.documentElement
-    const start = { x: scroller.scrollLeft, y: scroller.scrollTop }
-    const problems = []
-    let checked = 0
-    for (const el of document.querySelectorAll(SELECTOR)) {
-      if (!visible(el)) continue
-      // Inline links inside running text are exempt (WCAG 2.5.8); none are expected in the app.
-      if (el.tagName === 'A' && getComputedStyle(el).display === 'inline') continue
-      // A native radio or checkbox hidden behind a styled label: the label is the target.
-      let target = el
-      if (el instanceof HTMLInputElement && ['radio', 'checkbox'].includes(el.type) && el.labels?.length) {
-        target = el.labels[0]
-      }
-      target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' })
-      const r = target.getBoundingClientRect()
-      const x = r.left + r.width / 2
-      const y = r.top + r.height / 2
-      const labels = el.labels ? [...el.labels] : []
-      const owns = (n) => !!n && (target.contains(n) || el.contains(n) || labels.some((l) => l.contains(n)))
-      let height = r.height
-      if (owns(document.elementFromPoint(x, y))) {
-        let top = y
-        let bottom = y
-        while (top > y - 60 && owns(document.elementFromPoint(x, top - 1))) top -= 1
-        while (bottom < y + 60 && owns(document.elementFromPoint(x, bottom + 1))) bottom += 1
-        height = bottom - top + 1
-      }
-      checked += 1
-      if (height < min) problems.push(`${describe(el)} is ${Math.round(height)}px tall`)
-    }
-    scroller.scrollTo(start.x, start.y)
-    return { checked, problems }
-  }, MIN_TAP)
-}
-
-/** Overflow, touch targets and design rules on the current screen; then a screenshot. */
-async function checkScreen(page, name, { full = false } = {}) {
-  // Screens are lazy-loaded behind a "One moment" placeholder; wait for the real one.
-  await page.locator('main').first().waitFor()
-  await page.getByText(/^(One moment|Opening the doors)$/).waitFor({ state: 'hidden' })
-  await page.evaluate(() => document.fonts?.ready).catch(() => {})
-  await page.evaluate(() => window.scrollTo(0, 0))
-  await screenshot(page, `android-${name}`)
-  if (full) await screenshot(page, `android-${name}-full`, { fullPage: true })
-  // With mobile emulation Chrome does what a phone does with a too-wide page: it zooms out, and
-  // innerWidth grows to the content width. So compare with clientWidth (the layout viewport, the
-  // device width), and also require that innerWidth didn't grow.
-  const { scrollWidth, clientWidth, innerWidth } = await page.evaluate(() => ({
-    scrollWidth: document.documentElement.scrollWidth,
-    clientWidth: document.documentElement.clientWidth,
-    innerWidth: window.innerWidth,
-  }))
-  check(
-    scrollWidth <= clientWidth && innerWidth <= clientWidth,
-    `${name}: the page scrolls sideways (scrollWidth ${scrollWidth}, innerWidth ${innerWidth}, device width ${clientWidth})`,
-  )
-  await checkDesign(page, name)
-  const { checked, problems } = await smallTargets(page)
-  check(checked > 0, `${name}: found nothing tappable to measure`)
-  check(!problems.length, `${name}: touch targets under ${MIN_TAP}px: ${problems.join('; ')}`)
-  log(`     ${name}: ${checked} touch targets, all at least ${MIN_TAP}px; no sideways scroll`)
-}
-
-/** Press and hold with a finger (CDP touch events, so pointerType is 'touch' as on a phone). */
-async function touchLongPress(page, locator, ms = 900) {
-  await locator.scrollIntoViewIfNeeded()
-  const box = await locator.boundingBox()
-  check(box, 'Long-press target is not visible')
-  const cdp = await page.context().newCDPSession(page)
-  const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 }
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] })
-  await sleep(ms)
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
-  await cdp.detach()
+/** Overflow, touch targets and design rules on the current screen; then android-<name>.png. */
+function checkScreen(page, name, { full = false } = {}) {
+  return checkTouchScreen(page, name, { full, shot: `android-${name}` })
 }
 
 /** Width and height of a PNG from its header. */
@@ -308,9 +200,9 @@ async function androidFlow(browser, app, mock) {
 
   await step('a later-phase screen ("not built yet")', async () => {
     await page.evaluate(() => {
-      window.location.hash = '#/sets'
+      window.location.hash = '#/gallery'
     })
-    await waitForHash(page, '#/sets')
+    await waitForHash(page, '#/gallery')
     await page.getByText('Not built yet').waitFor()
     await checkScreen(page, '07-not-built')
   }, page)

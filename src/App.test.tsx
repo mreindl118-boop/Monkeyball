@@ -73,7 +73,7 @@ describe('App first-launch flow', () => {
     expect(useNav.getState().screen.name).toBe('hub')
 
     // Screens from later phases render a friendly placeholder.
-    navigateByHash('#/profile/nova')
+    navigateByHash('#/gallery')
     await screen.findByText('Not built yet')
     fireEvent.click(screen.getByRole('button', { name: 'Hub' }))
     await screen.findByText('Robin')

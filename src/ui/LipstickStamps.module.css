@@ -1,0 +1,79 @@
+.root {
+  --stamp-w: 22px;
+  --ink: var(--lipstick);
+  --blank: color-mix(in srgb, var(--smoke) 75%, transparent);
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-width: 0;
+}
+
+.small {
+  --stamp-w: 16px;
+  gap: 6px;
+}
+
+.large {
+  --stamp-w: 30px;
+}
+
+/* On a pale coaster the prints read as real lipstick and the blanks as faint pencil. */
+.print {
+  --ink: #c81d52;
+  --blank: rgb(42 15 31 / 0.34);
+}
+
+.row {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--stamp-w) * 0.08);
+  line-height: 0;
+}
+
+.stamp {
+  flex: none;
+  width: var(--stamp-w);
+  height: calc(var(--stamp-w) * 0.6875);
+  transform: rotate(var(--tilt, 0deg));
+}
+
+.on {
+  color: var(--ink);
+}
+
+.off {
+  color: var(--blank);
+}
+
+/* A stamp pressed onto the paper: lands a touch large, squashes, settles. Reduced motion makes
+   it instant (tokens.css shortens every animation). */
+.press {
+  animation: press 380ms var(--ease-out) var(--delay, 0ms) both;
+}
+
+@keyframes press {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--tilt, 0deg)) scale(1.9);
+  }
+  55% {
+    opacity: 1;
+    transform: rotate(var(--tilt, 0deg)) scale(0.88);
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(var(--tilt, 0deg)) scale(1);
+  }
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--blush);
+  white-space: nowrap;
+}
+
+.small .label {
+  font-size: 13px;
+}
