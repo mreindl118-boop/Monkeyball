@@ -194,19 +194,46 @@ Spec: docs/SPEC.md. Build contract: docs/ARCHITECTURE.md. Casting: docs/ROSTER.m
     the early exit (turn counter and the date's running total on the recap); the +25 gain cap
     with hints on; a restart on the hub mid-date.
 
+- Phase 4 (relationships), integrated and checked end to end (not committed yet):
+  - Engine (src/engine, pure, tested): `agreements.ts` (seeing, others seen, disclosure terms,
+    jealousy, the judge's `{opinion}`, Define-the-relationship availability and the character's
+    own wish, the Agreement result, betrayal checks and their memory lines, the story's
+    `{knownOthers}`, the map's standing line), `gossip.ts` (word of a date spreading one hop by
+    relation, friend-route gossip lines, rumors on secret unlocks, `{sharedSecrets}`),
+    `metamour.ts` (approval by relation, stored overrides), `rekindle.ts`, `endings.ts` (all seven
+    in the ARCHITECTURE order, titles, descriptions, epilogue directions), `trust.ts` (the
+    permanent grudge), and `dateFlow.ts` (turn steps for disclosure, breach, betrayal, heat pushes
+    and jealousy; `openDtr`/`closeDtr`; `createEpilogue`; `finishDate` settles the world). Every
+    acceptance scenario has a unit test (`src/engine/relationships.test.ts`).
+  - Store `useDate`: the world is everyone in play, `openDtr`, `closeDtr`, `dismissDtrOffer`,
+    `startEpilogue`, `persistWorld`, the automatic "Before {name}'s epilogue" slot
+    (`src/store/epilogueSlot.ts`). Dev builds only: the debug panel's "Random rolls" field
+    (`src/store/rolls.ts`) pins the game's rolls to succeed, fail or a seed.
+  - Screens: Define the relationship on the date screen (sheet, the character's offer banner, the
+    talk bar with Close the talk, the outcome in the transcript), the recap (agreement before and
+    after, betrayal hits on the meters, gossip, rumors, "Word got around"), the polycule map
+    (`#/map`) with person sheets, the ending screen (`#/ending/:id`), the profile's "Your ending"
+    card, "What they know" and rumors, the hub's "Word around town", "Automatic" save slots.
+  - Mock: the Agreement prompt accepts the requested type; "[decline]", "[counter]" and "[silent]"
+    in the talk decline, counter with their style's agreement, or leave it unresolved.
+  - E2E: `npm run e2e:phase4` (dev server, 31 steps; see ARCHITECTURE, Testing). Integration fixes:
+    copy that picked a pronoun for a named character ("They can say yes", "in their words", "at
+    their pace", "Their profile keeps it") now uses names; the epilogue recap's ending is lower-case
+    mid-sentence; gossip news no longer repeats "Word got around"; gossip lines on the recap end as
+    sentences; the DTR sheet's description no longer repeats the name; the map's legend has the
+    faint "Seeing, no agreement" thread; the store no longer imports a screen module for the slot
+    helpers; the roster tests and the Phase 2 e2e no longer assume Afterhours is the only bundled
+    set.
+
 ## In progress
 
-- Nothing. Phase 3 is done; Phase 4 (relationships) is next.
+- The Polycule and Backstage set content (src/data/sets/polycule, src/data/sets/backstage) is in
+  the tree but not reviewed or committed; both are off by default. It passes the bundled-card
+  validator. Slow Burn isn't there yet.
 
 ## Next
 
-- Phase 4 (relationships): trust rules beyond the basics (grudge factor, breach penalty, appended
-  to `BASE_TRUST_RULES`), name-mention disclosure and betrayal steps in `TURN_STEPS`,
-  `heatPushes` and `jealous`, Define the relationship (the disabled button in the date's status
-  panel; `StorySpecial` already supports the DTR turn note) and the Agreement prompt, gossip,
-  rekindle, the polycule map, endings. `world.rng` and `DateWorld.setId` are waiting for gossip;
-  `othersSeen` (src/store/date.ts, the judge's `{others}`) should follow endings and agreements.
-  Then Phases 5 to 7 as listed in docs/SPEC.md.
+- Phase 5 (gallery and art), then Phases 6 and 7 as listed in docs/SPEC.md.
 - Phase 6, when a second bundled set ships: a skippable "Who's in town" step in onboarding that uses
   the Character sets toggles (SPEC: "New game, and Settings, Character sets, let the player turn
   sets on and off"). Until then a new game starts with Afterhours on, and Character sets is the
@@ -283,8 +310,18 @@ Spec: docs/SPEC.md. Build contract: docs/ARCHITECTURE.md. Casting: docs/ROSTER.m
   included). The button doesn't say the date is set aside without a recap.
 - The composer's focus is kept in Chromium (e2e); whether the Android WebView keeps the soft
   keyboard up for a read-only field between turns is still to be checked on a device.
-- The judge's `{others}` counts anyone the player has been on a date with, including characters
-  the player has stopped seeing; Phase 4 (endings, rekindles, agreements) decides who counts.
 - The date's settings refresh before each call except the orientation mode and the profile, which
   stay as the date began (changing either mid-date could switch the route).
 - Portraits on the date and recap screens are the Phase 2 placeholder until Phase 5 art.
+- Phase 4: rumors heard and passed on, name-mention disclosures and friend-route gossip reveals live
+  on the date session until the date finishes; a date recovered after a restart loses them.
+- Phase 4: a friend-route character who hears you're seeing someone can carry the jealousy mark
+  (the engine's `isJealous` doesn't look at the route). Revisit if friends shouldn't mind.
+- Phase 4, not checked on a device: the Android back button closing the DTR sheet and the map's
+  person sheet (both are Sheets, so they register as overlays), and the soft keyboard while the talk
+  bar is showing.
+- The polycule map's circles respond to taps only; keyboard and screen-reader users use the list
+  under the map (same person sheets).
+- `npm run e2e:phase4` runs on the vite dev server, not the production build, because the pinned
+  rolls are dev-only; the production build is covered by the Phase 1 to 3 and Android scripts.
+- The ending descriptions keep the spec's generic "them" ("You and them, the future is open.").

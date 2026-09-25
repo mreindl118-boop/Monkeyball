@@ -320,7 +320,9 @@ async function androidFlow(browser, app, tmp) {
     await press(page.getByRole('button', { name: 'Character sets', exact: true }))
     await waitForHash(page, '#/sets')
     await page.getByRole('heading', { name: 'Afterhours', exact: true }).waitFor()
-    await press(page.getByRole('button', { name: /^Who is in it/ }))
+    // Other bundled sets are listed too (off by default); open Afterhours' own list.
+    const afterhours = page.getByRole('listitem').filter({ has: page.getByRole('heading', { name: 'Afterhours', exact: true }) })
+    await press(afterhours.getByRole('button', { name: /^Who is in it/ }))
     await page.getByRole('button', { name: /^Kai Okoro/ }).waitFor()
     await page.getByText('Nova Castellanos and Kai Okoro', { exact: false }).first().waitFor()
     await checkTouchScreen(page, 'sets', { full: true, shot: shot('sets') })

@@ -107,6 +107,19 @@ everything else after confirm.
   still loading), `retry`, `end`, `cancel` (leaving the screen stops the call; the date stays
   open), `resume`, `findInterrupted`, `recoverInterrupted`, `dropInterrupted`, `setDraft`,
   `clear`. `createDateStore(deps)` builds one with a fake model, db and stores for tests.
+  Phase 4 (built): the date's world is everyone in play (`characters`, `rels`, `game`,
+  `setRelations` from `activeRelations(data, activeSets)`, `rumors`, `setOf`); the model calls gain
+  `agreement` (judge role, agreement schema); `hooks.persistWorld(rels, game)` saves what a finished
+  date changed elsewhere in one transaction. Actions `openDtr(requested)` (who opened it: the
+  character when their offer is showing and wasn't waved off, else the player), `closeDtr()` (a
+  `'dtr'` action; `retry()` covers it), `dismissDtrOffer()` (state `dtrOfferDismissed`),
+  `startEpilogue(id)` (`StartResult` gains `{ ok: false, reason: 'not-ready' }`). `start` and
+  `startEpilogue` share one internal start routine; an interrupted epilogue keeps its ending when
+  recovered. The random source is `appRandom` (`src/store/rolls.ts`: Math.random; dev builds only,
+  the debug panel's "Random rolls" field pins it to succeed, fail or a seed).
+- `epilogueSlot.ts` — the automatic "Before {name}'s epilogue" slot (id `auto-epilogue-{id}`,
+  written after the date where someone first reaches 100, and before an epilogue if missing),
+  `endingReady`, `reachedWon`, `possessive`. `src/screens/Ending/endingModel.ts` re-exports them.
 - `debug.ts` — `useDebug`: ring buffer (last 200) of `DebugEntry` + the last assembled prompt per
   kind. Every LLM/image call logs here. In-memory only.
 - `nav.ts` — `useNav` (above).
@@ -352,6 +365,38 @@ Phase 3 decisions:
   affection. Affection was already at 0, as low as it goes."), and what you learned lists only
   venue and gift reactions that were new this date (`venueNew`, `giftNew`).
 
+Phase 4 decisions (built; the engine is src/engine/agreements.ts, gossip.ts, metamour.ts,
+rekindle.ts, endings.ts and the extended dateFlow.ts, trust.ts, discovery.ts, recap.ts):
+- A betrayal turn replaces the judge's numbers: the betrayal's affection (−10 to −20) and trust
+  (−15 to −30) count instead of the judge's delta, which guarantees a caught lie costs more trust
+  than affection. It counts toward the date's −20 walk-out like any loss.
+- Misgendering is a turn-off every character has (`UNIVERSAL_TRAITS`): the judge's turn-off list
+  carries it for everyone and the LANDED line names it. It is never added to the profile's
+  discovered traits, so discovered/total counts stay right.
+- Who counts as "seeing": with `world.rels`, the judge's `{others}` follows `seeing` (romantic
+  route, a date, affection 20+) plus anyone the character already knows about; characters of sets
+  switched off are left out. The old store helper `othersSeen` only feeds `world.others`, which the
+  engine ignores once `world.rels` is given.
+- Gossip after a date reaches only characters who have been on a date with the player, and only
+  romantic-route dates spread. Friend-route gossip starts at affection 20, at most 3 lines per date.
+  Gossip news reads "{Kai} heard you've been out with {Nova}." (the hub strip is "Word around town").
+- Rekindles: every eligible pair is rolled at every date end; a pair is recorded in
+  `game.rekindled` only once it fires.
+- Define the relationship opens once per date; its note rides on every story reply while the talk
+  is open. The Agreement call is skipped if the player said nothing in the talk. Re-agreeing the
+  same type keeps the original `madeAt`. If `closeDtr` fails or is stopped the talk stays open;
+  ending the date always settles it. No new date status: closing uses `'judging'`.
+- The grudge is permanent after any betrayal: positive trust gains are scaled (compersion/low
+  0.75, medium 0.5, high 0.34), and the +1 trust for a completed date lands on only that share of
+  dates.
+- Copy never picks a pronoun for a named character ("In Nova's words", "at Nova's pace").
+- Screens: the polycule map (`#/map`: SVG constellation, tap a circle or the list under it for the
+  person sheet; the legend covers agreement, seeing with no agreement, tension, partners, exes,
+  situationships), the ending screen (`#/ending/:id`), the profile's "Your ending" card, "What they
+  know" and "Rumors you've heard", the hub's "Word around town" strip, the recap's agreement, betrayal
+  hits on the meters, gossip, rumors and "Word got around", the DTR sheet, offer banner and talk bar
+  on the date screen. Automatic save slots carry a brass "Automatic" tag.
+
 Define the relationship: from Friend stage (affection ≥ 40) the date screen offers it. The player
 picks exclusive/open/poly/casual; the next story call carries the DTR turnNote; turns are flagged
 `dtr` until the player closes the talk or the date ends, then the agreement prompt runs once and its
@@ -451,12 +496,24 @@ film becomes a fade; stamp press and sheet slides become instant.
   with SSE). It recognises the prompt kind by its first line (judge / suggestions / agreement /
   memory / story) and answers deterministically; keywords in the player's message force judge
   results for e2e checks ("vinyl" a like +3, "banter" a turn-on +6, "cute" and "pushy" turn-offs,
-  "misgender", "[lie]" a breach, "[tank]" −20), and the story reply follows the prompt (opener,
+  "misgender", "[lie]" a breach, "[tank]" −20; the Agreement prompt accepts the requested type, and
+  "[decline]", "[counter]" (their style's agreement) or "[silent]" in the talk change that), and the
+  story reply follows the prompt (opener, the Define-the-relationship note,
   last turn, exit, a soured or delighted mood). `MOCK_DELAY` paces streamed tokens,
   `MOCK_OPENING_DELAY` paces opening beats only (so e2e can photograph a reply mid-stream). Sends
   CORS headers. `npm run mock-llm:selftest` checks every route and toggle.
 - `scripts/e2e/*.mjs` — playwright-core scripts launching `/opt/pw-browsers/chromium` against
   `vite preview` + the mock, covering onboarding, a full 10-turn date, reload persistence, etc.
+- `scripts/e2e/phase4.mjs` (`npm run e2e:phase4`) — relationships, on the vite dev server (the
+  "Random rolls" field is dev-only). Seeds relationships by exporting a save in Settings, rewriting
+  it in node and importing it back; pins the rolls to "succeed" so gossip always spreads. Pixel 7:
+  Nova to Friend, Define the relationship (sheet, talk bar, "Nova said yes"), the agreement on the
+  profile and map; Kai's date with a misgendering line (affection and trust drop); gossip tells Nova
+  (hub news, jealousy mark, "What they know", map tension and person sheet, her next story prompt
+  in the debug panel); a caught lie (trust drops more than affection; betrayal recap); Jules on the
+  friend route (mark, 59 cap, gossip) and dateable in everyone mode (the offer banner); Nova at 100
+  (ending card, ending screen, six-turn epilogue, recap, the automatic slot restores). Then 360x800
+  and a desktop pass. Screenshots `p4-android-*`, `p4-360-*`, `p4-desktop-*`. `E2E_ONLY=a|b|d|desktop`.
 - `scripts/e2e/phase3.mjs` (`npm run e2e:phase3`) — the dating core against the mock, Pixel 7
   profile first: connection through Other providers, Custom; Nova at the record store with hot
   sauce (+8 before a word); the opening streams with her opener; chips fill the input and never
