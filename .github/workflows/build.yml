@@ -128,6 +128,14 @@ jobs:
           if grep -q registerSW dist/index.html; then echo "::error::index.html registers a service worker in the APK"; exit 1; fi
       - name: Generate Android project
         run: npx cap add android
+      - name: Clear stale service-worker storage on every launch
+        # Belt and braces with the sw.js kill switch: the activity deletes the WebView's
+        # service-worker folder before the WebView starts (saves are in other folders).
+        run: |
+          f=android/app/src/main/java/app/crushlab/game/MainActivity.java
+          test -f "$f" || { echo "::error::MainActivity.java not where expected"; exit 1; }
+          cp scripts/android/MainActivity.java "$f"
+          grep -q 'Service Worker' "$f"
       - name: Launcher icons and splash icon
         # Pre-rendered by scripts/make-icons.mjs from assets/icon.svg and assets/icon-foreground.svg:
         # adaptive icon (velvet background, foreground, monochrome for themed icons), legacy icons,
